@@ -1,0 +1,2 @@
+set LWFS_TARGETS=webkitcss,canvas,webgl
+set LWFS_USE_OUTPUT_FOLDER=1

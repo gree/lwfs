@@ -1,0 +1,20 @@
+* {
+    margin: 0px;
+    padding: 0px;
+    -webkit-tap-highlight-color:rgba(0,0,0,0);
+    -webkit-tap-callout:none;
+}
+#wrapper {
+    margin: 9px 18px 9px 18px;
+}
+#header {
+    margin: 0px;
+    padding: 0px;
+}
+#lpart {
+    text-align: left;
+    float: left;
+}
+#rpart {
+    text-align: right;
+}

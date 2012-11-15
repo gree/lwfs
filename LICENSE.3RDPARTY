@@ -1,0 +1,89 @@
+This file contains license details for 3rd party software which is
+required by LWFS.
+
+LWF
+===
+
+* LWF
+  https://github.com/gree/lwf/LICENSE
+  (zLib)
+    * LWF depends on 3rd party software. The following contains details.
+      https://github.com/gree/lwf/LICENSE.3RDPARTY
+
+JavaScript
+==========
+
+* AutoReloader-js
+  https://github.com/KojiNakamaru/AutoReloader-js/tree/develop
+  (public domain)
+
+* javascript-table-sorter
+  https://github.com/KojiNakamaru/javascript-table-sorter/blob/develop/README.md
+  (CC BY 3.0)
+
+* qrcode.js
+  http://www.d-project.com/qrcode/index.html
+  http://www.opensource.org/licenses/mit-license.php
+  (MIT)
+
+Ruby
+====
+
+* Ruby 1.9.3
+  http://www.ruby-lang.org/en/about/license.txt
+  (2-clause BSD)
+
+* MinGW runtime
+  http://www.mingw.org/license
+  (public domain)
+
+* Ruby Installer
+  https://github.com/oneclick/rubyinstaller/blob/master/LICENSE.txt
+  (3-clause BSD)
+
+* httpclient
+  https://github.com/nahi/httpclient/blob/master/README.txt
+  (Ruby)
+
+* uuidtools
+  https://github.com/sporkmonger/uuidtools/blob/master/LICENSE.txt
+  (Apache 2.0)
+
+* rb-fsevent
+  https://github.com/thibaudgg/rb-fsevent/blob/master/LICENSE
+  (MIT)
+
+* rb-fchange
+  https://github.com/stereobooster/rb-fchange/blob/master/LICENSE.md
+  (MIT)
+
+* rb-inotify
+  https://github.com/nex3/rb-inotify/blob/master/MIT-LICENSE
+  (MIT)
+
+* ffi
+  https://github.com/ffi/ffi/blob/master/LICENSE
+  (LGPL3)
+
+* listen
+  https://github.com/guard/listen/blob/master/LICENSE
+  (MIT)
+
+* libxml-ruby
+  https://github.com/KojiNakamaru/libxml-ruby/blob/develop/LICENSE
+  (MIT)
+    * libxml-ruby depends on libxml2 and libiconv. The following
+      contains license details.
+      * libxml2
+        http://www.xmlsoft.org/
+        http://opensource.org/licenses/mit-license.html
+        (MIT)
+      * libiconv
+        http://www.gnu.org/software/libiconv/
+        (LGPL)
+
+* rb-img
+  gems/rb-img-0.0.5/LICENSE
+  (zLib)
+    * rb-img depends on 3rd party software The following contains details.
+      gems/rb-img-0.0.5/LICENSE.3RDPARTY

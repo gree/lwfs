@@ -1,0 +1,6 @@
+unalias -a
+export PATH=/usr/local/rvm/bin:/usr/bin:/bin:/usr/sbin:/sbin
+if [ -f /usr/local/rvm/bin/rvm ]; then
+   source /usr/local/rvm/scripts/rvm
+   rvm reload
+fi

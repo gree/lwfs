@@ -1,0 +1,28 @@
+require 'rake'
+require 'rake/testtask'
+
+desc "compile C extension"
+task :compile do
+  chdir('ext/img') do
+    sh 'ruby extconf.rb'
+    sh 'make'
+  end
+  sh 'cp ext/img/img.bundle lib'
+end
+
+task :default => :compile
+
+Rake::TestTask.new(:test) do |t|
+  t.test_files = FileList['test/test_*.rb']
+  t.verbose = false
+end
+
+task :test => :compile
+
+task :clean do
+  sh 'rm -f test/*.png test/*.jpg lib/*.so lib/*.bundle lib/*.dll'
+  chdir('ext/img') do
+    sh 'if [ -f Makefile ]; then make clean; fi'
+    sh 'rm -f Makefile'
+  end
+end

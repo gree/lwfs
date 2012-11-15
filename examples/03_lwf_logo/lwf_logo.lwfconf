@@ -1,0 +1,12 @@
+// -*- mode: javascript; -*-
+{
+    "init":
+    [
+        [
+            "_root",
+            "moveTo",
+            400,
+            400
+        ]
+    ]
+}

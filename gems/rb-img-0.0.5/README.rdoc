@@ -1,0 +1,53 @@
+= rb-img
+
+== DESCRIPTION:
+
+Ruby 'Img' extension to save image data in png/jpg. This extension
+requires only three famous libraries (zlib, libpng, libjpeg) so that
+it is easy to build.
+
+== FEATURES/PROBLEMS:
+
+* Save an image expressed as a binary string into a jpg/png file.
+* Supported input image formats (currently only big endian is supported):
+  * RGB888
+  * RGBA8888
+  * ARGB8888
+  * RGB565
+  * RGBA4444
+  * RGBA5551
+
+== SYNOPSIS:
+
+  require 'rb-img'
+  bytes = []
+  512.times do |y|
+    512.times do |x|
+      r = (255 * x / 511.0).round
+      g = (255 * (511 - x) / 511.0).round
+      b = (255 * y / 511.0).round
+      a = (255 * y / 511.0).round
+      bytes.push(r)
+      bytes.push(g)
+      bytes.push(b)
+      bytes.push(a)
+    end
+  end
+  bytes.pack('C*')
+  Img::save('foo.png', 512, 512, Img::RGB8888, bytes)
+
+Other examples can be found in test/test_img.rb.
+
+== REQUIREMENTS:
+
+* zlib (http://www.zlib.net/)
+* libpng (http://www.libpng.org/pub/png/libpng.html)
+* libjpeg (http://www.ijg.org/)
+
+== INSTALL:
+
+  gem install img-*.gem
+
+== LICENSE:
+
+Please refer LICENSE and LICENSE.3RDPARTY.
