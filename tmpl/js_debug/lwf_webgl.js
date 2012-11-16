@@ -4833,6 +4833,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     LWF.prototype.addButtonEventHandler = function(instanceName, handlers) {
       var button, h, instId, _ref;
+      this.interactive = true;
       instId = this.searchInstanceId(this.getStringId(instanceName));
       if (instId >= 0 && instId < this.data.instanceNames.length) {
         h = this.buttonEventHandlers[instId];
