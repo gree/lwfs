@@ -1760,7 +1760,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       return matrix.scaleX * matrix.scaleY - matrix.skew0 * matrix.skew1 < 0;
     };
 
-    Utility.getMatrix = function(movie) {
+    Utility.syncMatrix = function(movie) {
       var matrix, matrixId, md, rotation, scaleX, scaleY, translate;
       matrixId = movie.matrixId;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
@@ -1795,7 +1795,82 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       movie.property.setMatrix(matrix, scaleX, scaleY, rotation);
     };
 
-    Utility.getColorTransform = function(movie) {
+    Utility.getX = function(movie) {
+      var matrix, matrixId, translate;
+      matrixId = movie.matrixId;
+      if ((matrixId & Constant.MATRIX_FLAG) === 0) {
+        translate = movie.lwf.data.translates[matrixId];
+        return translate.translateX;
+      } else {
+        matrixId &= ~Constant.MATRIX_FLAG;
+        matrix = movie.lwf.data.matrices[matrixId];
+        return matrix.translateX;
+      }
+    };
+
+    Utility.getY = function(movie) {
+      var matrix, matrixId, translate;
+      matrixId = movie.matrixId;
+      if ((matrixId & Constant.MATRIX_FLAG) === 0) {
+        translate = movie.lwf.data.translates[matrixId];
+        return translate.translateY;
+      } else {
+        matrixId &= ~Constant.MATRIX_FLAG;
+        matrix = movie.lwf.data.matrices[matrixId];
+        return matrix.translateY;
+      }
+    };
+
+    Utility.getScaleX = function(movie) {
+      var matrix, matrixId, md, scaleX;
+      matrixId = movie.matrixId;
+      if ((matrixId & Constant.MATRIX_FLAG) === 0) {
+        return 1;
+      } else {
+        matrixId &= ~Constant.MATRIX_FLAG;
+        matrix = movie.lwf.data.matrices[matrixId];
+        md = this.getMatrixDeterminant(matrix);
+        scaleX = Math.sqrt(matrix.scaleX * matrix.scaleX + matrix.skew1 * matrix.skew1);
+        if (md) {
+          scaleX = -scaleX;
+        }
+        return scaleX;
+      }
+    };
+
+    Utility.getScaleY = function(movie) {
+      var matrix, matrixId, scaleY;
+      matrixId = movie.matrixId;
+      if ((matrixId & Constant.MATRIX_FLAG) === 0) {
+        return 1;
+      } else {
+        matrixId &= ~Constant.MATRIX_FLAG;
+        matrix = movie.lwf.data.matrices[matrixId];
+        scaleY = Math.sqrt(matrix.scaleY * matrix.scaleY + matrix.skew0 * matrix.skew0);
+        return scaleY;
+      }
+    };
+
+    Utility.getRotation = function(movie) {
+      var matrix, matrixId, md, rotation;
+      matrixId = movie.matrixId;
+      if ((matrixId & Constant.MATRIX_FLAG) === 0) {
+        return 0;
+      } else {
+        matrixId &= ~Constant.MATRIX_FLAG;
+        matrix = movie.lwf.data.matrices[matrixId];
+        md = this.getMatrixDeterminant(matrix);
+        if (md) {
+          rotation = Math.atan2(matrix.skew1, -matrix.scaleX);
+        } else {
+          rotation = Math.atan2(matrix.skew1, matrix.scaleX);
+        }
+        rotation = rotation / Math.PI * 180;
+        return rotation;
+      }
+    };
+
+    Utility.syncColorTransform = function(movie) {
       var alphaTransform, colorTransform, colorTransformId;
       colorTransformId = movie.colorTransformId;
       if ((colorTransformId & Constant.COLORTRANSFORM_FLAG) === 0) {
@@ -1813,6 +1888,19 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         colorTransform = movie.lwf.data.colorTransforms[colorTransformId];
       }
       movie.property.setColorTransform(colorTransform);
+    };
+
+    Utility.getAlpha = function(movie) {
+      var alphaTransform, colorTransform, colorTransformId;
+      colorTransformId = movie.colorTransformId;
+      if ((colorTransformId & Constant.COLORTRANSFORM_FLAG) === 0) {
+        alphaTransform = movie.lwf.data.alphaTransforms[colorTransformId];
+        return alphaTransform.alpha;
+      } else {
+        colorTransformId = colorTransformId & ~Constant.COLORTRANSFORM_FLAG;
+        colorTransform = movie.lwf.data.colorTransforms[colorTransformId];
+        return colorTransform.alpha;
+      }
     };
 
     Utility.calcMatrixId = function(lwf, dst, src0, src1Id) {
@@ -3796,7 +3884,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.move = function(x, y) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.move(x, y);
       return this;
@@ -3804,7 +3892,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.moveTo = function(x, y) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.moveTo(x, y);
       return this;
@@ -3812,7 +3900,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.rotate = function(degree) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.rotate(degree);
       return this;
@@ -3820,7 +3908,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.rotateTo = function(degree) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.rotateTo(degree);
       return this;
@@ -3828,7 +3916,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.scale = function(x, y) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.scale(x, y);
       return this;
@@ -3836,7 +3924,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.scaleTo = function(x, y) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.scaleTo(x, y);
       return this;
@@ -3858,7 +3946,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.setAlpha = function(alpha) {
       if (!this.property.hasColorTransform) {
-        Utility.getColorTransform(this);
+        Utility.syncColorTransform(this);
       }
       this.property.setAlpha(alpha);
       return this;
@@ -3875,85 +3963,91 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.getX = function() {
-      if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+      if (this.property.hasMatrix) {
+        return this.property.matrix.translateX;
+      } else {
+        return Utility.getX(this);
       }
-      return this.property.matrix.translateX;
     };
 
     Movie.prototype.setX = function(v) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.moveTo(v, this.property.matrix.translateY);
     };
 
     Movie.prototype.getY = function() {
-      if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+      if (this.property.hasMatrix) {
+        return this.property.matrix.translateY;
+      } else {
+        return Utility.getY(this);
       }
-      return this.property.matrix.translateY;
     };
 
     Movie.prototype.setY = function(v) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.moveTo(this.property.matrix.translateX, v);
     };
 
     Movie.prototype.getScaleX = function() {
-      if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+      if (this.property.hasMatrix) {
+        return this.property.scaleX;
+      } else {
+        return Utility.getScaleX(this);
       }
-      return this.property.scaleX;
     };
 
     Movie.prototype.setScaleX = function(v) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.scaleTo(v, this.property.scaleY);
     };
 
     Movie.prototype.getScaleY = function() {
-      if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+      if (this.property.hasMatrix) {
+        return this.property.scaleY;
+      } else {
+        return Utility.getScaleY(this);
       }
-      return this.property.scaleY;
     };
 
     Movie.prototype.setScaleY = function(v) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.scaleTo(this.property.scaleX, v);
     };
 
     Movie.prototype.getRotation = function() {
-      if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+      if (this.property.hasMatrix) {
+        return this.property.rotation;
+      } else {
+        return Utility.getRotation(this);
       }
-      return this.property.rotation;
     };
 
     Movie.prototype.setRotation = function(v) {
       if (!this.property.hasMatrix) {
-        Utility.getMatrix(this);
+        Utility.syncMatrix(this);
       }
       this.property.rotateTo(v);
     };
 
     Movie.prototype.getAlphaProperty = function() {
-      if (!this.property.hasColorTransform) {
-        Utility.getColorTransform(this);
+      if (this.property.hasColorTransform) {
+        return this.property.colorTransform.multi.alpha;
+      } else {
+        return Utility.getAlpha(this);
       }
-      return this.property.colorTransform.multi.alpha;
     };
 
     Movie.prototype.setAlphaProperty = function(v) {
       if (!this.property.hasColorTransform) {
-        Utility.getColorTransform(this);
+        Utility.syncColorTransform(this);
       }
       this.property.setAlpha(v);
     };
