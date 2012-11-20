@@ -26,7 +26,7 @@
                   var duration = t1 - t0;
                   t0 = t1;
                   var d = vsync - ((duration > vsync) ? duration % vsync : duration);
-                  var id = window.setTimeout(function() {callback(t1 + d);});
+                  var id = window.setTimeout(function() {callback(t1 + d);}, d);
                   return id;
               };
           })();
@@ -57,6 +57,29 @@
      };
 
      playLWF = function(lwf) {
+         if (lwf == null) {
+             var err = this.error;
+             if (err == null) {
+                 err = {
+                     reason: 'N/A',
+                     url: 'N/A'
+                 };
+             }
+             var elm = document.createElement('div');
+             elm.style.fontFamily = 'monospace';
+             elm.style.fontSize = 'medium';
+             elm.innerHTML
+                 = '<p>ERROR: failed to load the lwf.</p>'
+                 + '<p>reason: ' + err.reason + '</p>'
+                 + '<p>url: ' + err.url + '</p>';
+             var lpart = document.getElementById('lpart');
+             if (lpart != null) {
+                 lpart.appendChild(elm);
+             } else {
+                 document.body.appendChild(elm);
+             }
+             return;
+         }
          var t0 = window.performance.now();
          var t0_tapped = 0;
          var t1_tapped = window.performance.now();
