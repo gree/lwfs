@@ -5105,7 +5105,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWF.prototype.setPropertyDirty = function() {
-      this.propertyDirty = true;
+      this.isPropertyDirty = true;
       if (this.parent != null) {
         this.parent.lwf.setPropertyDirty();
       }
@@ -5608,7 +5608,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     WebkitCSSRendererFactory.prototype.beginRender = function(lwf) {};
 
     WebkitCSSRendererFactory.prototype.endRender = function(lwf) {
-      var c, command, m, renderer, style, _i, _len, _ref1;
+      var c, command, m, renderer, scaleX, scaleY, skew0, skew1, style, translateX, translateY, _i, _len, _ref1;
       _ref1 = this.commands;
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
         command = _ref1[_i];
@@ -5621,10 +5621,16 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         style.zIndex = renderer.zIndex;
         style.opacity = renderer.alpha;
         m = command.matrix;
+        scaleX = m.scaleX.toFixed(12);
+        scaleY = m.scaleY.toFixed(12);
+        skew1 = m.skew1.toFixed(12);
+        skew0 = m.skew0.toFixed(12);
+        translateX = m.translateX.toFixed(12);
+        translateY = m.translateY.toFixed(12);
         if (this.use3D) {
-          style.webkitTransform = "matrix3d(" + ("" + m.scaleX + "," + m.skew1 + ",0,0,") + ("" + m.skew0 + "," + m.scaleY + ",0,0,") + "0,0,1,0," + ("" + m.translateX + "," + m.translateY + ",0,1)");
+          style.webkitTransform = "matrix3d(" + ("" + scaleX + "," + skew1 + ",0,0,") + ("" + skew0 + "," + scaleY + ",0,0,") + "0,0,1,0," + ("" + translateX + "," + translateY + ",0,1)");
         } else {
-          style.webkitTransform = "matrix(" + ("" + m.scaleX + "," + m.skew1 + "," + m.skew0 + "," + m.scaleY + ",") + ("" + m.translateX + "," + m.translateY + ")");
+          style.webkitTransform = "matrix(" + ("" + scaleX + "," + skew1 + "," + skew0 + "," + scaleY + "," + translateX + "," + translateY + ")");
         }
       }
       this.commands = [];
@@ -5856,6 +5862,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       } else {
         if (this.matrixForAtlas != null) {
           m = this.matrixForAtlas;
+        } else {
+          m = this.matrix;
         }
       }
       if (!matrixChanged && this.alpha === c.multi.alpha && this.zIndex === renderingIndex) {
@@ -5953,7 +5961,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.node.style.textShadow = ("" + textProperty.shadowOffsetX + "px ") + ("" + textProperty.shadowOffsetY + "px ") + ("" + textProperty.shadowBlur + "px ") + this.context.factory.convertRGB(this.context.shadowColor);
       }
       this.context.factory.stage.appendChild(this.node);
-      this.matrix = new Matrix();
+      this.matrix = new Matrix(0, 0, 0, 0, 0, 0);
       this.alpha = -1;
       this.zIndex = -1;
       this.visible = true;
