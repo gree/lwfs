@@ -73,8 +73,8 @@ gems:
 	bash -c 'source _bashrc; gem install httpclient'
 	bash -c 'source _bashrc; gem install rb-fchange'
 	bash -c 'source _bashrc; gem install uuidtools'
-	bash -c 'source _bashrc; gem install ../../../gems/libxml-ruby-*.gem'
-	bash -c 'source _bashrc; gem install ../../../gems/rb-img-*.gem'
+	bash -c 'source _bashrc; gem install ../../../vendor/cache/libxml-ruby-*[0-9].gem'
+	bash -c 'source _bashrc; gem install ../../../vendor/cache/rb-img-*[0-9].gem'
 
 cleanall: clean
 	rm -rf dl

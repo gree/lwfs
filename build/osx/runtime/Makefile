@@ -13,10 +13,10 @@ gems:
 	sudo bash -c 'source _bashrc; gem install rb-fsevent'
 	sudo bash -c 'source _bashrc; gem install uuidtools'
 	sudo bash -c 'mkdir /opt/local/lib/bk; mv /opt/local/lib/lib{iconv,xml2,z}*.dylib /opt/local/lib/bk;  mv /opt/local/lib/lib{iconv,xml2}*.la /opt/local/lib/bk'
-	sudo bash -c 'source _bashrc; gem install ../../../gems/libxml-ruby-*[0-9].gem'
+	sudo bash -c 'source _bashrc; gem install ../../../vendor/cache/libxml-ruby-*[0-9].gem'
 	sudo bash -c 'mv /opt/local/lib/bk/* /opt/local/lib; rmdir /opt/local/lib/bk'
 	sudo bash -c 'mkdir /opt/local/lib/bk; mv /opt/local/lib/lib{jpeg,png,z}*.dylib /opt/local/lib/bk;  mv /opt/local/lib/lib{jpeg,png}*.la /opt/local/lib/bk'
-	sudo bash -c 'source _bashrc; gem install ../../../gems/rb-img-*[0-9].gem'
+	sudo bash -c 'source _bashrc; gem install ../../../vendor/cache/rb-img-*[0-9].gem'
 	sudo bash -c 'mv /opt/local/lib/bk/* /opt/local/lib; rmdir /opt/local/lib/bk'
 
 cleanall: clean

@@ -11,8 +11,8 @@ platforms :ruby, :mingw do
   elsif RUBY_PLATFORM =~ /linux/
     gem "rb-inotify"
   end
-  gem "libxml-ruby", :path => "gems/libxml-ruby-2.3.3.1"
-  gem "rb-img", :path => "gems/rb-img-0.0.5"
+  gem "libxml-ruby"
+  gem "rb-img"
 end
 platforms :jruby do
   gem "rb-listen"
