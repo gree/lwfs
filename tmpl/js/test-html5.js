@@ -85,7 +85,7 @@
          var t1_tapped = window.performance.now();
          var destroy, onexec, onmove, onpress, onrelease, ongestureend, stage;
          var updateInfo1, updateInfo2, updateInfo3;
-         var stage_scale0 = 0;
+         var iw0 = 0;
          var stage_scale = 1;
          var stage_w = 0;
          var stage_h = 0;
@@ -111,30 +111,34 @@
                  return;
              }
              {
-                 stage_scale = 1;
+                 var dpr = window.devicePixelRatio;
+                 if (window['testlwf_html5target'] == 'webkitcss') {
+                     dpr = 1;
+                 }
+                 var iw;
                  if (window['testlwf_mobile']) {
-                     var iw = window.innerWidth;
-                     stage_scale = iw / lwf.width;
+                     iw = window.innerWidth;
                  } else {
-                     var iw = window.innerWidth - 36;
+                     iw = window.innerWidth - 36;
                      if (iw < 0) {
                          iw = 0;
                      }
-                     if (iw < lwf.width) {
-                         stage_scale = iw / lwf.width;
+                     if (iw > lwf.width) {
+                         iw = lwf.width;
                      }
                  }
-                 stage_w = ~~(lwf.width * stage_scale);
-                 stage_h = ~~(lwf.height * stage_scale);
+                 stage_w = ~~iw;
+                 stage_h = ~~(iw * lwf.height / lwf.width);
                  stage.style.width = stage_w + 'px';
                  stage.style.height = stage_h + 'px';
-                 stage.width = lwf.width;
-                 stage.height = lwf.height;
-                 if (window['testlwf_html5target'] == 'webkitcss' && stage_scale != stage_scale0) {
+                 stage.width = ~~(stage_w * dpr);
+                 stage.height = ~~(stage_h * dpr);
+                 stage_scale = stage_w / (lwf.width * dpr);
+                 if (iw0 != iw) {
                      lwf.property.clear();
-                     lwf.fitForWidth(stage_w, stage_h);
+                     lwf.fitForWidth(stage.width, stage.height);
+                     iw0 = iw;
                  }
-                 stage_scale0 = stage_scale;
              }
              if (! window['testlwf_mobile']) {
                  updateInfo1();
@@ -172,10 +176,8 @@
              }
              x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
              y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
-             if (window['testlwf_html5target'] != 'webkitcss') {
-                 x /= stage_scale;
-                 y /= stage_scale;
-             }
+             x /= stage_scale;
+             y /= stage_scale;
              lwf.inputPoint(x, y);
              if (window['testlwf_mobile']) {
                  e.preventDefault();
@@ -196,10 +198,8 @@
              }
              x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
              y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
-             if (window['testlwf_html5target'] != 'webkitcss') {
-                 x /= stage_scale;
-                 y /= stage_scale;
-             }
+             x /= stage_scale;
+             y /= stage_scale;
              lwf.inputPoint(x, y);
              lwf.inputPress();
              if (window['testlwf_mobile']) {

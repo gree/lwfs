@@ -247,8 +247,8 @@
       var w = parseInt(RegExp.$1, 10);
       var h = parseInt(RegExp.$2, 10);
       // Multiply stage.{width,height} by window.devicePixelRatio.
-      stage.width = w * window.devicePixelRatio;
-      stage.height = h * window.devicePixelRatio;
+      stage.width = ~~(w * window.devicePixelRatio);
+      stage.height = ~~(h * window.devicePixelRatio);
       stage.style.width = "" + w + "px";
       stage.style.height = "" + h + "px";
     }
