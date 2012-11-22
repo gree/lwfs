@@ -2536,15 +2536,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     __extends(LWFContainer, _super);
 
-    function LWFContainer(parent, child) {
+    function LWFContainer(lwf, parent, child) {
+      this.lwf = lwf;
       this.parent = parent;
       this.child = child;
     }
-
-    LWFContainer.prototype.set = function(parent, child) {
-      this.parent = parent;
-      this.child = child;
-    };
 
     LWFContainer.prototype.checkHit = function(px, py) {
       var button;
@@ -3189,7 +3185,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.deleteAttachedLWF(this, lwfContainer);
         }
       }
-      lwfContainer = new LWFContainer(this, attachLWF);
+      lwfContainer = new LWFContainer(this.lwf, this, attachLWF);
       if (attachLWF.interactive) {
         this.lwf.interactive = true;
       }
@@ -3474,6 +3470,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             }
           }
         }
+        if (this.attachedLWFs != null) {
+          this.hasButton = true;
+        }
         if (!this.postLoaded) {
           this.postLoaded = true;
           if (this.postLoadFunc != null) {
@@ -3599,7 +3598,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.linkButton = function() {
       var depth, lwfContainer, movie, obj, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2;
-      if (!this.visible || !this.active) {
+      if (!this.visible || !this.active || !this.hasButton) {
         return;
       }
       if (this.attachedLWFs != null) {
@@ -4203,6 +4202,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.pointX = Number.MIN_VALUE;
       this.pointY = Number.MIN_VALUE;
       this.pressing = false;
+      this.buttonHead = null;
       if (!this.interactive && this.data.frames.length === 1) {
         this.disableExec();
       }
@@ -4398,7 +4398,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
         if (this.interactive) {
           this.buttonHead = null;
-          this.rootMovie.linkButton();
+          if (this.rootMovie.hasButton) {
+            this.rootMovie.linkButton();
+          }
         }
       }
       if (execed || this.isLWFAttached || this.isPropertyDirty || (matrix != null) || (colorTransform != null)) {
