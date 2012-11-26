@@ -18,3 +18,7 @@
 #rpart {
     text-align: right;
 }
+#loading {
+    visibility: hidden;
+    vertical-align: middle;
+}

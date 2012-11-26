@@ -183,6 +183,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     t0 = t1 = t2 = t3 = t4 = t5 = t6 = t7 = t8 = Time.now
     Thread.new do
       is_in_progress = true
+      updateTopStatus(true);
       while is_in_progress
         catch :restart do
           t1 = Time.now
@@ -237,6 +238,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
           end
           t8 = Time.now
           is_in_progress = false
+          updateTopStatus(false);
         end
         if not is_in_progress
           p "thread finished #{t8 - t0} #{t8 - t1} i #{t2 - t1} s #{t3 - t2} i #{t4 - t3} c #{t5 - t4} i #{t6 - t5} u #{t7 - t6} i #{t8 - t7}"
@@ -563,6 +565,12 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     end
   end
 
+  def updateTopStatus(is_in_conversion)
+    File.open("#{DST_DIR}/.status", 'w') do |fp|
+      fp.write("{\"is_in_conversion\":#{is_in_conversion}}");
+    end
+  end
+
   def updateTopIndex(is_start = false)
     names = []
     if not is_start
@@ -588,6 +596,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     <link rel="icon" href="../img/favicon.png" />
     <link rel="stylesheet" href="../css/common.css" />
     <link rel="stylesheet" href="../css/sorter.css" />
+    <script type="text/javascript" src="../js/status.js" interval="1"></script>
     <script type="text/javascript" src="../js/sorter.js"></script>
     <script type="text/javascript" src="../js/qrcode.js"></script>
     <script type="text/javascript">
@@ -603,7 +612,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     <div id="wrapper">
       <div id="header">
         <div id="lpart">
-          <h1>lwfs#{(is_start) ? ' (initializing...)' : ''}</h1>
+          <h1>lwfs<img id="loading" src="../img/loading.gif" /></h1>
           <p>(version: #{VERSION})</p>
         </div>
         <div id="rpart">
