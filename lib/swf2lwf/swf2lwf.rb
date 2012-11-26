@@ -1077,7 +1077,7 @@ end
 
 class Place
   attr_reader :depth, :object, :instance_name, :matrix
-  def initialize(depth, object, instance_name, matrix)
+  def set(depth, object, instance_name, matrix)
     @depth = depth
     @object = object
     @instance_name = instance_name
@@ -1171,7 +1171,7 @@ end
 
 class Button < SWFObject
   attr_accessor :width, :height,
-    :matrix, :color_transform, :actions, :name, :type
+    :matrix, :color_transform, :actions, :name, :type, :script_actions
   def initialize(width, height, matrix, color_transform)
     super()
     @width = width
@@ -1179,11 +1179,28 @@ class Button < SWFObject
     @matrix = matrix
     @color_transform = color_transform
     @actions = Array.new
+    @script_actions = Hash.new
     @name = nil
   end
 
-  def add_action action
+  def add_action(action)
     @actions.push action
+  end
+
+  def add_script_action(key, action)
+    actions = @script_actions[key]
+    if actions.nil?
+      actions = @actions.dup
+      @script_actions[key] = actions
+    end
+    actions.push action
+  end
+
+  def dup_by_key(key)
+    b = dup()
+    b.actions = @script_actions[key]
+    b.script_actions = Hash.new
+    b
   end
 end
 
@@ -2119,6 +2136,8 @@ def parse_place_object2
   clipping_depth = get_word if has_clipping_depth
 
   if has_obj_id
+    place = Place.new
+
     instance_name = name ||
       create_instance_name(matrix.translate_x, matrix.translate_y)
     if @objects[obj_id].class == Button
@@ -2143,7 +2162,8 @@ def parse_place_object2
               when "rollOut"
                 condition = ROLLOUT
               end
-              button.add_action [condition, [[:CALL, funcname]], 0]
+              button.add_script_action(
+                place, [condition, [[:CALL, funcname]], 0])
               @using_script_funcname_map[funcname] =
                 @script_funcname_map[funcname]
             end
@@ -2157,7 +2177,7 @@ def parse_place_object2
       end
     end
     @objects[obj_id].reference
-    place = Place.new(depth, @objects[obj_id], name, matrix)
+    place.set(depth, @objects[obj_id], name, matrix)
     info "  PLACE depth:#{depth} obj:#{obj_id} name:[#{name}]"
     control = ControlMOVE.new(place, matrix, color_transform)
     @instance_name_map[name] = true unless name.nil?
@@ -2836,6 +2856,33 @@ def parse_fla(lwfbasedir)
   end
 end
 
+def add_lwfbutton(button)
+  conditionId = nil
+  conditions = 0
+  button.actions.each do |action|
+    next if action[1].empty?
+    conditionId ||= @data_buttonCondition.size
+    @data_buttonCondition.push LWFButtonCondition.new(
+      action[0], action[2], add_actions(action[1]))
+    conditions += 1
+  end
+
+  lwfButton = LWFButton.new(
+    button.width,
+    button.height,
+    add_matrix(button.matrix),
+    add_colorTransform(button.color_transform),
+    conditionId || 0,
+    conditions)
+  lwfButtonId = @map_button[lwfButton.to_a]
+  if lwfButtonId.nil?
+    lwfButtonId = @data_button.size
+    @data_button.push lwfButton
+    @map_button[lwfButton.to_a] = lwfButtonId
+  end
+  add_object(button, LWF_OBJECT_BUTTON, lwfButtonId)
+end
+
 def swf2lwf(*args)
   args.each do |arg|
     unless File.file?(arg)
@@ -2861,6 +2908,7 @@ def swf2lwf(*args)
   @logfile.puts Time.now.ctime
   @option = 0
   @objects = Hash.new
+  @button_map = Hash.new
   @instance_name_map = Hash.new
   @instance_name_map["_root"] = true
   @label_map = Hash.new
@@ -3032,30 +3080,14 @@ def swf2lwf(*args)
         add_object(obj, LWF_OBJECT_PROGRAMOBJECT, lwfProgramObjectId)
 
       else
-        conditionId = nil
-        conditions = 0
-        button.actions.each do |action|
-          next if action[1].empty?
-          conditionId ||= @data_buttonCondition.size
-          @data_buttonCondition.push LWFButtonCondition.new(
-            action[0], action[2], add_actions(action[1]))
-          conditions += 1
+        add_lwfbutton(button)
+        unless button.script_actions.empty?
+          button.script_actions.keys.each do |place|
+            b = button.dup_by_key(place)
+            @button_map[place] = b
+            add_lwfbutton(b)
+          end
         end
-
-        lwfButton = LWFButton.new(
-          button.width,
-          button.height,
-          add_matrix(button.matrix),
-          add_colorTransform(button.color_transform),
-          conditionId || 0,
-          conditions)
-        lwfButtonId = @map_button[lwfButton.to_a]
-        if lwfButtonId.nil?
-          lwfButtonId = @data_button.size
-          @data_button.push lwfButton
-          @map_button[lwfButton.to_a] = lwfButtonId
-        end
-        add_object(obj, LWF_OBJECT_BUTTON, lwfButtonId)
       end
 
     when Graphic
@@ -3230,7 +3262,13 @@ def swf2lwf(*args)
           when ControlMOVE
             place = control.place
             error "object error" if place.object.nil?
-            lwfObjectId = @map_objectId[place.object]
+
+            button = @button_map[place]
+            unless button.nil?
+              lwfObjectId = @map_objectId[button]
+            else
+              lwfObjectId = @map_objectId[place.object]
+            end
             if lwfObjectId.nil?
               lwfObjectId = -1
               error "object error"
