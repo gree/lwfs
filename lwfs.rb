@@ -227,6 +227,8 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
               p "restart at #{__LINE__}"
               throw :restart
             end
+            is_in_progress = false
+            updateTopStatus(false);
             if not REMOTE_SERVER.nil?
               3.times do |i|  # retry three times
                 `rsync -az --delete --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
@@ -237,8 +239,6 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
             @@is_in_post = false
           end
           t8 = Time.now
-          is_in_progress = false
-          updateTopStatus(false);
         end
         if not is_in_progress
           p "thread finished #{t8 - t0} #{t8 - t1} i #{t2 - t1} s #{t3 - t2} i #{t4 - t3} c #{t5 - t4} i #{t6 - t5} u #{t7 - t6} i #{t8 - t7}"
