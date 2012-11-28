@@ -683,12 +683,17 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
 end
 
 watcher = 0
+mime_types = {
+  'js' => 'text/javascript',
+  'json' => 'text/javascript'
+}
 server = WEBrick::HTTPServer.new({
   :DocumentRoot => 'htdocs',
   :BindAddress => '0.0.0.0',
   :Port => 10080,
   :Logger => WEBrick::Log.new(LOG_FILE),
   :AccessLog => [[File.open(LOG_FILE, 'w'), WEBrick::AccessLog::COMBINED_LOG_FORMAT]],
+  :MimeTypes => WEBrick::HTTPUtils::DefaultMimeTypes.merge(mime_types),
   :StartCallback => Proc.new {
     Thread.new do 
       sleep(0.1)
