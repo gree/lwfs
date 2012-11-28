@@ -24,4 +24,4 @@ unset LWFS_REMOTE_SERVER
 # app
 cd $BASE/lwfs
 chmod a+rwx htdocs/lwfs
-ruby lwfs.rb &
+ruby lwfs.rb
