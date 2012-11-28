@@ -159,6 +159,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     res.status = 200
     res.body = 'OK'
     if req.path == '/update/start'
+      updateTopStatus(true);
       updateTopIndex(true)
       if not REMOTE_SERVER.nil?
         3.times do |i|  # retry three times
