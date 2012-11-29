@@ -182,9 +182,16 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
       @@is_in_post = true
     end
     t0 = t1 = t2 = t3 = t4 = t5 = t6 = t7 = t8 = Time.now
+    is_in_progress = true
+    updateTopStatus(true);
+    if not REMOTE_SERVER.nil?
+      3.times do |i|  # retry three times
+        `rsync -az --exclude='list/*/' --delete --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
+        break if $? == 0
+        sleep(1.0)
+      end
+    end
     Thread.new do
-      is_in_progress = true
-      updateTopStatus(true);
       while is_in_progress
         catch :restart do
           t1 = Time.now
