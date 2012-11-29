@@ -81,8 +81,8 @@
              return;
          }
          var t0 = window.performance.now();
-         var t0_tapped = 0;
-         var t1_tapped = window.performance.now();
+         // var t0_tapped = 0;
+         // var t1_tapped = window.performance.now();
          var destroy, onexec, onmove, onpress, onrelease, ongestureend, stage;
          var updateInfo1, updateInfo2, updateInfo3;
          var iw0 = 0;
@@ -214,12 +214,12 @@
              if (window['testlwf_mobile']) {
                  e.preventDefault();
              }
-             var t2_tapped = window.performance.now();
-             if (t2_tapped - t1_tapped < 300 && t1_tapped - t0_tapped < 300) {
-                 ongestureend();
-             }
-             t0_tapped = t1_tapped;
-             t1_tapped = t2_tapped;
+             // var t2_tapped = window.performance.now();
+             // if (t2_tapped - t1_tapped < 300 && t1_tapped - t0_tapped < 300) {
+             //     ongestureend();
+             // }
+             // t0_tapped = t1_tapped;
+             // t1_tapped = t2_tapped;
          };
          ongestureend = function(e) {
              if (! lwf) {
@@ -318,6 +318,7 @@
                          break;
                      case 32:  // space
                          lwf.init();
+                         lwf.rootMovie.moveTo(window['testlwf_rootoffset']['x'], window['testlwf_rootoffset']['y']);
                          lwf.rootMovie.gotoAndPlay(1);
                          isHandled = true;
                          break;
