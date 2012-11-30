@@ -55,6 +55,7 @@ else
   VERSION = 'development'
 end
 REMOTE_SERVER = ENV['LWFS_REMOTE_SERVER']
+BIRD_WATCHER_SERVER = ENV['LWFS_BIRD_WATCHER_SERVER']
 if ENV['LWFS_TARGETS'].nil?
   TARGETS = ['webkitcss', 'canvas', 'webgl']
 else
@@ -475,7 +476,21 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
       else
         lwfjs = 'lwf.js'
       end
-      ['release', 'debug'].each do |rel|
+      ['release', 'debug', 'birdwatcher'].each do |rel|
+        birdwatcher = '';
+        if rel == 'birdwatcher'
+          birdwatcher = <<-"EOF"
+    <script type="text/javascript" src="../../js/birdwatcher.js"></script>
+    <script type="text/javascript">
+      window["testlwf_birdwatcher"] = new BirdWatcher([['LWF']]);
+      window["testlwf_birdwatcher"].reportId = '#{MY_ID}_#{target.upcase}_#{name.gsub(/\s/, '_')}';
+      window["testlwf_birdwatcher"].reportUrl = 'http://#{BIRD_WATCHER_SERVER}/';
+    </script>
+          EOF
+        end
+        if birdwatcher == ''
+          birdwatcher = "    <script type=\"text/javascript\">/* birdwatcher is disabled */</script>\n"
+        end
         content = <<-"EOF"
 <!DOCTYPE HTML>
 <html>
@@ -503,13 +518,14 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
       }
     </script>
 #{userscripts}
+#{birdwatcher}
     <script type="text/javascript" src="../../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </head>
   <body>
   </body>
 </html>
         EOF
-        File.open("#{folder}/index-#{target}#{(rel == 'release') ? '' : '-debug'}.html", 'w') do |fp|
+        File.open("#{folder}/index-#{target}#{(rel == 'release') ? '' : '-' + rel}.html", 'w') do |fp|
           fp.write(content)
         end
       end

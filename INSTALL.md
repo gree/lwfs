@@ -69,6 +69,11 @@ image files to LWFS\_work\_output.
 
     env LWFS_USE_OUTPUT_FOLDER=1 ruby lwfs.rb
 
+Invoke the following if you want to specify the server of
+birdwatcher.js (https://github.com/imaya/birdwatcher.js/).
+
+    env LWFS_BIRD_WATCHER_SERVER=birdwacher-server-hostname ruby lwfs.rb
+
 You can also specifiy multiple environment variables.
 
 ## Requirements

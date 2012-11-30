@@ -1,6 +1,7 @@
 (function() {
      var isFinishing = false;
-     var clamp, createStage, playLWF, inPlay, fps, fps0, debug;
+     var clamp, createStage, playLWF, inPlay, fps, fps0;
+     var mode = 'release';
 
      window.performance = window.performance || {};
      window.performance.now
@@ -232,10 +233,14 @@
              var info = '';
              var elm = document.getElementById('info1');
              info = '(x' + (~~(stage_scale * 1000) / 1000) + ', ' + stage_w + 'x' + stage_h + ', ' + fps + 'fps)';
-             if (debug) {
-                 stats = {
+             if (mode == 'debug') {
+                 var stats = {
                      max_depth: 0,
                      elements: {}
+                 };
+                 var inspector = function(obj, hierarchy, depth, rIndex) {
+                     stats.elements[obj.constructor.name] = (stats.elements[obj.constructor.name] | 0) + 1;
+                     stats.max_depth = (depth > stats.max_depth) ? depth : stats.max_depth;
                  };
                  lwf.inspect(inspector);
                  info += '  #max_depth:' + stats.max_depth;
@@ -257,11 +262,6 @@
              elm.innerHTML = '<span>(' + window['testlwf_commandline'] + ') </span><span style="background-color:yellow">' + warning + '</span>';
          };
          updateInfo3 = function() {
-         };
-         var stats;
-         var inspector = function(obj, hierarchy, depth, rIndex) {
-             stats.elements[obj.constructor.name] = (stats.elements[obj.constructor.name] | 0) + 1;
-             stats.max_depth = (depth > stats.max_depth) ? depth : stats.max_depth;
          };
          stage = this['stage'];
          stage.lwf = lwf;
@@ -409,19 +409,38 @@
                  var div = document.createElement('div');
                  div.className = 'info';
                  div.id = 'info3';
-                 debug = (window.location.pathname.match(/-debug\.html$/)) ? 1 : 0;
-                 var href = window.location.href;
-                 if (debug) {
-                     href = href.replace(/-debug\.html$/, '.html');
-                 } else {
+                 mode = 'release';
+                 if (window.location.pathname.match(/-debug\.html$/)) {
+                     mode = 'debug';
+                 } else if (window.location.pathname.match(/-birdwatcher\.html$/)) {
+                     mode = 'birdwatcher';
+                 }
+                 var href = decodeURI(window.location.href);
+                 if (mode == 'release') {
                      href = href.replace(/\.html$/, '-debug.html');
+                 } else if (mode == 'debug') {
+                     href = href.replace(/-debug\.html$/, '-birdwatcher.html');
+                 } else {
+                     href = href.replace(/-birdwatcher\.html$/, '.html');
+                 }
+                 var bw = '';
+                 if (window['testlwf_birdwatcher']) {
+                     var birdwatcher = window['testlwf_birdwatcher'];
+                     bw
+                         = ' see <a href="'
+                         + encodeURI(birdwatcher.reportUrl + '#' + birdwatcher.reportId)
+                         + '" target="_blank">graphs/logs</a>.';
+                 } else {
+                     bw
+                         = '';
                  }
                  div.innerHTML
                      = '<div id="info3sub">'
                      + 'SPACE: rewind, S: pause/resume, F: step, UP: increase fps, DOWN: decrease fps, 0: reset fps, ESC: destroy.'
                      + '</div>'
                      + '<div>'
-                     + '<a href="' + href + '">' + ((debug) ? '/js_debug/' : '/js/') + window['testlwf_lwfjs'] + '</a> is in use.'
+                     + '<div>current mode: <a href="' + href + '">' + mode + '</a>.'
+                     + bw
                      + '</div>';
                  lpart.appendChild(div);
              }
@@ -431,6 +450,13 @@
              stage = createStage();
              wrapper.appendChild(stage);
              document.body.appendChild(wrapper);
+         }
+         if (window['testlwf_birdwatcher']) {
+             var birdwatcher = window['testlwf_birdwatcher'];
+             birdwatcher.enableRemoteLog();
+             birdwatcher.maxDepth = 8;
+             birdwatcher.start();
+             setInterval(function() {birdwatcher.reportRemote();}, 1000);
          }
          var LWF, cache;
          LWF = window['LWF'];
