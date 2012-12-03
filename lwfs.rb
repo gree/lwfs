@@ -121,32 +121,6 @@ FileUtils.cp_r('tmpl', BASE_DIR) unless File.directory?(BASE_DIR)
 
 $mutex_p = Mutex.new
 
-# prevent caching (cf. http://chrismdp.github.com/2011/12/cache-busting-ruby-http-server/)
-class NonCachingFileHandler < WEBrick::HTTPServlet::FileHandler
-  def prevent_caching(res)
-    t = Time.now
-    res['ETag']          = nil
-    res['Last-Modified'] = t
-    res['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0'
-    res['Pragma']        = 'no-cache'
-    res['Expires']       = t
-  end
-
-  def do_GET(req, res)
-    $mutex_p.synchronize do
-      super
-      prevent_caching(res)
-    end
-  end
-
-  def do_POST(req, res)
-    $mutex_p.synchronize do
-      super
-      prevent_caching(res)
-    end
-  end
-end
-
 class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   @@mutex_i = Mutex.new
   @@is_in_post = false
@@ -734,7 +708,6 @@ server = WEBrick::HTTPServer.new({
   }
 })
 
-server.mount('/', NonCachingFileHandler, 'htdocs/')
 server.mount('/update', UpdateServlet)
 
 ['INT', 'TERM'].each { |signal|

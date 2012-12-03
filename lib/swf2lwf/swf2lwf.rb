@@ -2245,6 +2245,7 @@ alias parse_place_object3 parse_place_object2
 def parse_remove_object
   obj_id = get_word if @tag_parser == :parse_remove_object
   depth = get_word
+  info "  depth #{depth}"
   @current_movie.display_list_prev[depth] = nil
   @current_movie.display_list[depth] = nil
 end

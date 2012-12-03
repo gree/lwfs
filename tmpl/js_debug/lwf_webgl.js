@@ -66,52 +66,42 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Matrix.prototype.setWithComparing = function(m) {
-      if (this.scaleX !== m.scaleX) {
-        this.scaleX = m.scaleX;
-        this.scaleY = m.scaleY;
-        this.skew0 = m.skew0;
-        this.skew1 = m.skew1;
-        this.translateX = m.translateX;
-        this.translateY = m.translateY;
-        return true;
+      var changed, scaleX, scaleY, skew0, skew1, translateX, translateY;
+      if (m === null) {
+        return false;
       }
-      if (this.scaleY !== m.scaleY) {
-        this.scaleY = m.scaleY;
-        this.skew0 = m.skew0;
-        this.skew1 = m.skew1;
-        this.translateX = m.translateX;
-        this.translateY = m.translateY;
-        return true;
+      scaleX = m.scaleX;
+      scaleY = m.scaleY;
+      skew0 = m.skew0;
+      skew1 = m.skew1;
+      translateX = m.translateX;
+      translateY = m.translateY;
+      changed = false;
+      if (this.scaleX !== scaleX) {
+        this.scaleX = scaleX;
+        changed = true;
       }
-      if (this.skew0 !== m.skew0) {
-        this.skew0 = m.skew0;
-        this.skew1 = m.skew1;
-        this.translateX = m.translateX;
-        this.translateY = m.translateY;
-        return true;
+      if (this.scaleY !== scaleY) {
+        this.scaleY = scaleY;
+        changed = true;
       }
-      if (this.skew1 !== m.skew1) {
-        this.skew1 = m.skew1;
-        this.translateX = m.translateX;
-        this.translateY = m.translateY;
-        return true;
+      if (this.skew0 !== skew0) {
+        this.skew0 = skew0;
+        changed = true;
       }
-      if (this.skew1 !== m.skew1) {
-        this.skew1 = m.skew1;
-        this.translateX = m.translateX;
-        this.translateY = m.translateY;
-        return true;
+      if (this.skew1 !== skew1) {
+        this.skew1 = skew1;
+        changed = true;
       }
-      if (this.translateX !== m.translateX) {
-        this.translateX = m.translateX;
-        this.translateY = m.translateY;
-        return true;
+      if (this.translateX !== translateX) {
+        this.translateX = translateX;
+        changed = true;
       }
-      if (this.translateY !== m.translateY) {
-        this.translateY = m.translateY;
-        return true;
+      if (this.translateY !== translateY) {
+        this.translateY = translateY;
+        changed = true;
       }
-      return false;
+      return changed;
     };
 
     return Matrix;
@@ -179,6 +169,37 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     ColorTransform.prototype.set = function(c) {
       this.multi.set(c.multi);
       return this;
+    };
+
+    ColorTransform.prototype.setWithComparing = function(c) {
+      var alpha, blue, changed, cm, green, m, red;
+      if (c === null) {
+        return false;
+      }
+      cm = c.multi;
+      red = cm.red;
+      green = cm.green;
+      blue = cm.blue;
+      alpha = cm.alpha;
+      changed = false;
+      m = this.multi;
+      if (m.red !== red) {
+        m.red = red;
+        changed = true;
+      }
+      if (m.green !== green) {
+        m.green = green;
+        changed = true;
+      }
+      if (m.blue !== blue) {
+        m.blue = blue;
+        changed = true;
+      }
+      if (m.alpha !== alpha) {
+        m.alpha = alpha;
+        changed = true;
+      }
+      return changed;
     };
 
     return ColorTransform;
@@ -1776,8 +1797,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.syncMatrix = function(movie) {
-      var matrix, matrixId, md, rotation, scaleX, scaleY, translate;
-      matrixId = movie.matrixId;
+      var matrix, matrixId, md, rotation, scaleX, scaleY, translate, _ref;
+      matrixId = (_ref = movie.matrixId) != null ? _ref : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         translate = movie.lwf.data.translates[matrixId];
         scaleX = 1;
@@ -1811,8 +1832,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.getX = function(movie) {
-      var matrix, matrixId, translate;
-      matrixId = movie.matrixId;
+      var matrix, matrixId, translate, _ref;
+      matrixId = (_ref = movie.matrixId) != null ? _ref : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         translate = movie.lwf.data.translates[matrixId];
         return translate.translateX;
@@ -1824,8 +1845,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.getY = function(movie) {
-      var matrix, matrixId, translate;
-      matrixId = movie.matrixId;
+      var matrix, matrixId, translate, _ref;
+      matrixId = (_ref = movie.matrixId) != null ? _ref : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         translate = movie.lwf.data.translates[matrixId];
         return translate.translateY;
@@ -1837,8 +1858,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.getScaleX = function(movie) {
-      var matrix, matrixId, md, scaleX;
-      matrixId = movie.matrixId;
+      var matrix, matrixId, md, scaleX, _ref;
+      matrixId = (_ref = movie.matrixId) != null ? _ref : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         return 1;
       } else {
@@ -1854,8 +1875,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.getScaleY = function(movie) {
-      var matrix, matrixId, scaleY;
-      matrixId = movie.matrixId;
+      var matrix, matrixId, scaleY, _ref;
+      matrixId = (_ref = movie.matrixId) != null ? _ref : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         return 1;
       } else {
@@ -1867,8 +1888,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.getRotation = function(movie) {
-      var matrix, matrixId, md, rotation;
-      matrixId = movie.matrixId;
+      var matrix, matrixId, md, rotation, _ref;
+      matrixId = (_ref = movie.matrixId) != null ? _ref : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         return 0;
       } else {
@@ -1886,8 +1907,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.syncColorTransform = function(movie) {
-      var alphaTransform, colorTransform, colorTransformId;
-      colorTransformId = movie.colorTransformId;
+      var alphaTransform, colorTransform, colorTransformId, _ref;
+      colorTransformId = (_ref = movie.colorTransformId) != null ? _ref : 0;
       if ((colorTransformId & Constant.COLORTRANSFORM_FLAG) === 0) {
         alphaTransform = movie.lwf.data.alphaTransforms[colorTransformId];
         colorTransform = {
@@ -1906,8 +1927,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.getAlpha = function(movie) {
-      var alphaTransform, colorTransform, colorTransformId;
-      colorTransformId = movie.colorTransformId;
+      var alphaTransform, colorTransform, colorTransformId, _ref;
+      colorTransformId = (_ref = movie.colorTransformId) != null ? _ref : 0;
       if ((colorTransformId & Constant.COLORTRANSFORM_FLAG) === 0) {
         alphaTransform = movie.lwf.data.alphaTransforms[colorTransformId];
         return alphaTransform.alpha;
@@ -1935,6 +1956,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         src1 = lwf.data.matrices[matrixId];
         this.calcMatrix(dst, src0, src1);
       }
+      return dst;
     };
 
     Utility.calcMatrix = function(dst, src0, src1) {
@@ -1944,6 +1966,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       dst.skew1 = src0.skew1 * src1.scaleX + src0.scaleY * src1.skew1;
       dst.scaleY = src0.skew1 * src1.skew0 + src0.scaleY * src1.scaleY;
       dst.translateY = src0.skew1 * src1.translateX + src0.scaleY * src1.translateY + src0.translateY;
+      return dst;
     };
 
     Utility.rotateMatrix = function(dst, src, scale, offsetX, offsetY) {
@@ -2001,11 +2024,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.copyMatrix = function(dst, src) {
-      if (src) {
+      if (src !== null) {
         dst.set(src);
       } else {
         dst.clear();
       }
+      return dst;
     };
 
     Utility.invertMatrix = function(dst, src) {
@@ -2038,6 +2062,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         src1 = lwf.data.colorTransforms[colorTransformId];
         this.calcColorTransform(dst, src0, src1);
       }
+      return dst;
     };
 
     Utility.calcColorTransform = function(dst, src0, src1) {
@@ -2045,14 +2070,16 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       dst.multi.green = src0.multi.green * src1.multi.green;
       dst.multi.blue = src0.multi.blue * src1.multi.blue;
       dst.multi.alpha = src0.multi.alpha * src1.multi.alpha;
+      return dst;
     };
 
     Utility.copyColorTransform = function(dst, src) {
-      if (src) {
+      if (src !== null) {
         dst.set(src);
       } else {
         dst.clear();
       }
+      return dst;
     };
 
     Utility.calcColor = function(dst, c, t) {
@@ -2105,19 +2132,42 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.parent = parent;
       this.type = type;
       this.objectId = objectId;
-      this.matrix = new Matrix;
-      this.colorTransform = new ColorTransform;
+      this.matrixId = null;
+      this.colorTransformId = null;
+      this.matrixIdChanged = true;
+      this.colorTransformIdChanged = true;
+      this.matrix = new Matrix(0, 0, 0, 0, 0, 0);
+      this.colorTransform = new ColorTransform(0, 0, 0, 0);
       this.execCount = 0;
+      this.updated = false;
+      this.isButton = this.type === Type.BUTTON;
+      this.isMovie = this.type === Type.MOVIE || this.type === Type.ATTACHEDMOVIE;
+      this.isParticle = this.type === Type.PARTICLE;
+      this.isProgramObject = this.type === Type.PROGRAMOBJECT;
+      this.isText = this.type === Type.TEXT;
     }
 
     LObject.prototype.exec = function(matrixId, colorTransformId) {
-      this.matrixId = matrixId != null ? matrixId : 0;
-      this.colorTransformId = colorTransformId != null ? colorTransformId : 0;
+      if (matrixId == null) {
+        matrixId = 0;
+      }
+      if (colorTransformId == null) {
+        colorTransformId = 0;
+      }
+      this.matrixIdChanged = this.matrixId !== matrixId;
+      this.matrixId = matrixId;
+      this.colorTransformIdChanged = this.colorTransformId !== colorTransformId;
+      this.colorTransformId = colorTransformId;
     };
 
     LObject.prototype.update = function(m, c) {
-      Utility.calcMatrixId(this.lwf, this.matrix, m, this.dataMatrixId);
-      Utility.copyColorTransform(this.colorTransform, c);
+      this.updated = true;
+      if (m !== null) {
+        Utility.calcMatrixId(this.lwf, this.matrix, m, this.dataMatrixId);
+      }
+      if (c !== null) {
+        Utility.copyColorTransform(this.colorTransform, c);
+      }
       this.lwf.renderObject();
     };
 
@@ -2156,26 +2206,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.lwf = null;
     };
 
-    LObject.prototype.isButton = function() {
-      return this.type === Type.BUTTON;
-    };
-
-    LObject.prototype.isMovie = function() {
-      return this.type === Type.MOVIE || this.type === Type.ATTACHEDMOVIE;
-    };
-
-    LObject.prototype.isParticle = function() {
-      return this.type === Type.PARTICLE;
-    };
-
-    LObject.prototype.isProgramObject = function() {
-      return this.type === Type.PROGRAMOBJECT;
-    };
-
-    LObject.prototype.isText = function() {
-      return this.type === Type.TEXT;
-    };
-
     return LObject;
 
   })();
@@ -2207,6 +2237,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           case GObjType.TEXT:
             obj = new Text(lwf, parent, graphicObjectId);
         }
+        obj.exec();
         this.displayList[i] = obj;
       }
     }
@@ -2412,8 +2443,16 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     __extends(Button, _super);
 
-    function Button(lwf, parent, objId, instId) {
+    function Button(lwf, parent, objId, instId, matrixId, colorTransformId) {
+      if (matrixId == null) {
+        matrixId = null;
+      }
+      if (colorTransformId == null) {
+        colorTransformId = null;
+      }
       Button.__super__.constructor.call(this, lwf, parent, Type.BUTTON, objId, instId);
+      this.matrixId = matrixId;
+      this.colorTransformId = colorTransformId;
       this.invert = new Matrix();
       this.hitX = Number.MIN_VALUE;
       this.hitY = Number.MIN_VALUE;
@@ -2444,9 +2483,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         colorTransformId = 0;
       }
       Button.__super__.exec.call(this, matrixId, colorTransformId);
-      if (this.handler != null) {
-        this.handler.call("enterFrame", this);
-      }
+      this.enterFrame();
     };
 
     Button.prototype.update = function(m, c) {
@@ -2487,6 +2524,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.hitX = Number.MIN_VALUE;
         this.hitY = Number.MIN_VALUE;
         return false;
+      }
+    };
+
+    Button.prototype.enterFrame = function() {
+      if (this.handler != null) {
+        this.handler.call("enterFrame", this);
       }
     };
 
@@ -2705,8 +2748,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     function Movie(lwf, parent, objId, instId, matrixId, colorTransformId, attached, handler) {
       var func, type, _ref;
-      this.matrixId = matrixId != null ? matrixId : 0;
-      this.colorTransformId = colorTransformId != null ? colorTransformId : 0;
+      if (matrixId == null) {
+        matrixId = null;
+      }
+      if (colorTransformId == null) {
+        colorTransformId = null;
+      }
       if (attached == null) {
         attached = false;
       }
@@ -2715,6 +2762,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       type = attached ? Type.ATTACHEDMOVIE : Type.MOVIE;
       Movie.__super__.constructor.call(this, lwf, parent, type, objId, instId);
+      this.matrixId = matrixId;
+      this.colorTransformId = colorTransformId;
       this.data = lwf.data.movies[objId];
       this.totalFrames = this.data.frames;
       this.instanceHead = null;
@@ -2722,6 +2771,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.currentFrameInternal = -1;
       this.execedFrame = -1;
       this.animationPlayedFrame = -1;
+      this.lastControlOffset = -1;
+      this.lastControls = -1;
+      this.lastHasButton = false;
+      this.lastControlAnimationOffset = -1;
+      this.skipped = false;
       this.postLoaded = false;
       this.active = true;
       this.visible = true;
@@ -2730,6 +2784,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.overriding = false;
       this.attachMovieExeced = false;
       this.attachMoviePostExeced = false;
+      this.movieExecCount = -1;
+      this.postExecCount = -1;
       this.property = new Property(lwf);
       if (typeof this.__defineGetter__ !== "undefined") {
         this.__defineGetter__("x", function() {
@@ -3082,10 +3138,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         return null;
       }
       instance = this.instanceHead;
-      while (instance != null) {
-        if (instance.isMovie()) {
+      while (instance !== null) {
+        if (instance.isMovie) {
           i = instance.searchAttachedMovie(attachName, recursive);
-          if (i != null) {
+          if (i !== null) {
             return i;
           }
         }
@@ -3252,10 +3308,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         return null;
       }
       instance = this.instanceHead;
-      while (instance != null) {
-        if (instance.isMovie()) {
+      while (instance !== null) {
+        if (instance.isMovie) {
           i = instance.searchAttachedLWF(attachName, recursive);
-          if (i != null) {
+          if (i !== null) {
             return i;
           }
         }
@@ -3305,14 +3361,14 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       dataObject = data.objects[objId];
       dataObjectId = dataObject.objectId;
       obj = this.displayList[depth];
-      if ((obj != null) && (obj.type !== dataObject.objectType || obj.objectId !== dataObjectId || (obj.isMovie() && obj.instanceId !== instId))) {
+      if ((obj != null) && (obj.type !== dataObject.objectType || obj.objectId !== dataObjectId || (obj.isMovie && obj.instanceId !== instId))) {
         obj.destroy();
         obj = null;
       }
       if (obj == null) {
         switch (dataObject.objectType) {
           case Type.BUTTON:
-            obj = new Button(this.lwf, this, dataObjectId, instId);
+            obj = new Button(this.lwf, this, dataObjectId, instId, matrixId, colorTransformId);
             break;
           case Type.GRAPHIC:
             obj = new Graphic(this.lwf, this, dataObjectId);
@@ -3336,19 +3392,20 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             obj = new ProgramObject(this.lwf, this, dataObjectId);
         }
       }
-      if (obj.type === Type.MOVIE) {
+      if (obj.isMovie || obj.isButton) {
         obj.linkInstance = null;
-        if (this.instanceHead == null) {
+        if (this.instanceHead === null) {
           this.instanceHead = obj;
         } else {
           this.instanceTail.linkInstance = obj;
         }
         this.instanceTail = obj;
-      } else if (obj.type === Type.BUTTON) {
-        this.hasButton = true;
+        if (obj.isButton) {
+          this.hasButton = true;
+        }
       }
       this.displayList[depth] = obj;
-      obj.execCount = this.lwf.execCount;
+      obj.execCount = this.movieExecCount;
       obj.exec(matrixId, colorTransformId);
     };
 
@@ -3372,15 +3429,14 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.postExec = function(progressing) {
-      var animationPlayed, attachName, control, controlAnimationOffset, ctrl, data, depth, frame, i, instance, movie, obj, p, v, _i, _j, _k, _l, _len, _len1, _m, _ref, _ref1, _ref2, _ref3, _ref4, _ref5;
+      var animationPlayed, attachName, control, controlAnimationOffset, ctrl, data, depth, frame, i, instance, movie, obj, p, postExeced, v, _i, _j, _k, _l, _len, _len1, _m, _n, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6;
       this.hasButton = false;
       if (!this.active) {
         return;
       }
-      this.instanceHead = null;
-      this.instanceTail = null;
       this.execedFrame = -1;
-      if (progressing && this.playing && !this.jumped) {
+      postExeced = this.postExecCount === this.lwf.execCount;
+      if (progressing && this.playing && !this.jumped && !postExeced) {
         ++this.currentFrameInternal;
       }
       while (true) {
@@ -3390,45 +3446,84 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         if (this.currentFrameInternal === this.execedFrame) {
           break;
         }
-        this.instanceHead = null;
-        this.instanceTail = null;
         this.currentFrameCurrent = this.currentFrameInternal;
         this.execedFrame = this.currentFrameCurrent;
         data = this.lwf.data;
         frame = data.frames[this.data.frameOffset + this.currentFrameCurrent];
-        controlAnimationOffset = -1;
-        for (i = _i = 0, _ref = frame.controls; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-          control = data.controls[frame.controlOffset + i];
-          switch (control.controlType) {
-            case ControlType.MOVE:
-              p = data.places[control.controlId];
-              this.execObject(p.depth, p.objectId, p.matrixId, 0, p.instanceId);
-              break;
-            case ControlType.MOVEM:
-              ctrl = data.controlMoveMs[control.controlId];
-              p = data.places[ctrl.placeId];
-              this.execObject(p.depth, p.objectId, ctrl.matrixId, 0, p.instanceId);
-              break;
-            case ControlType.MOVEC:
-              ctrl = data.controlMoveCs[control.controlId];
-              p = data.places[ctrl.placeId];
-              this.execObject(p.depth, p.objectId, p.matrixId, ctrl.colorTransformId, p.instanceId);
-              break;
-            case ControlType.MOVEMC:
-              ctrl = data.controlMoveMCs[control.controlId];
-              p = data.places[ctrl.placeId];
-              this.execObject(p.depth, p.objectId, ctrl.matrixId, ctrl.colorTransformId, p.instanceId);
-              break;
-            case ControlType.ANIMATION:
-              if (controlAnimationOffset === -1) {
-                controlAnimationOffset = i;
+        if (this.lastControlOffset === frame.controlOffset && this.lastControls === frame.controls) {
+          controlAnimationOffset = this.lastControlAnimationOffset;
+          if (this.skipped) {
+            instance = this.instanceHead;
+            while (instance !== null) {
+              if (instance.isMovie) {
+                instance.attachMovieExeced = false;
+                instance.attachMoviePostExeced = false;
+              } else if (instance.isButton) {
+                instance.enterFrame();
               }
+              instance = instance.linkInstance;
+            }
+            this.hasButton = this.lastHasButton;
+          } else {
+            for (depth = _i = 0, _ref = this.data.depths; 0 <= _ref ? _i < _ref : _i > _ref; depth = 0 <= _ref ? ++_i : --_i) {
+              obj = this.displayList[depth];
+              if (obj != null) {
+                if (!postExeced) {
+                  obj.matrixIdChanged = false;
+                  obj.colorTransformIdChanged = false;
+                }
+                if (obj.isMovie) {
+                  obj.attachMovieExeced = false;
+                  obj.attachMoviePostExeced = false;
+                } else if (obj.isButton) {
+                  obj.enterFrame();
+                  this.hasButton = true;
+                }
+              }
+            }
+            this.lastHasButton = this.hasButton;
+            this.skipped = true;
           }
-        }
-        for (depth = _j = 0, _ref1 = this.data.depths; 0 <= _ref1 ? _j < _ref1 : _j > _ref1; depth = 0 <= _ref1 ? ++_j : --_j) {
-          obj = this.displayList[depth];
-          if (obj != null) {
-            if (obj.execCount !== this.lwf.execCount) {
+        } else {
+          ++this.movieExecCount;
+          this.instanceHead = null;
+          this.instanceTail = null;
+          this.lastControlOffset = frame.controlOffset;
+          this.lastControls = frame.controls;
+          controlAnimationOffset = -1;
+          for (i = _j = 0, _ref1 = frame.controls; 0 <= _ref1 ? _j < _ref1 : _j > _ref1; i = 0 <= _ref1 ? ++_j : --_j) {
+            control = data.controls[frame.controlOffset + i];
+            switch (control.controlType) {
+              case ControlType.MOVE:
+                p = data.places[control.controlId];
+                this.execObject(p.depth, p.objectId, p.matrixId, 0, p.instanceId);
+                break;
+              case ControlType.MOVEM:
+                ctrl = data.controlMoveMs[control.controlId];
+                p = data.places[ctrl.placeId];
+                this.execObject(p.depth, p.objectId, ctrl.matrixId, 0, p.instanceId);
+                break;
+              case ControlType.MOVEC:
+                ctrl = data.controlMoveCs[control.controlId];
+                p = data.places[ctrl.placeId];
+                this.execObject(p.depth, p.objectId, p.matrixId, ctrl.colorTransformId, p.instanceId);
+                break;
+              case ControlType.MOVEMC:
+                ctrl = data.controlMoveMCs[control.controlId];
+                p = data.places[ctrl.placeId];
+                this.execObject(p.depth, p.objectId, ctrl.matrixId, ctrl.colorTransformId, p.instanceId);
+                break;
+              case ControlType.ANIMATION:
+                if (controlAnimationOffset === -1) {
+                  controlAnimationOffset = i;
+                }
+            }
+          }
+          this.lastControlAnimationOffset = controlAnimationOffset;
+          this.lastHasButton = this.hasButton;
+          for (depth = _k = 0, _ref2 = this.data.depths; 0 <= _ref2 ? _k < _ref2 : _k > _ref2; depth = 0 <= _ref2 ? ++_k : --_k) {
+            obj = this.displayList[depth];
+            if ((obj != null) && obj.execCount !== this.movieExecCount) {
               obj.destroy();
               this.displayList[depth] = null;
             }
@@ -3436,17 +3531,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
         this.attachMovieExeced = true;
         if (this.attachedMovies != null) {
-          _ref2 = this.attachedMovieList;
-          for (_k = 0, _len = _ref2.length; _k < _len; _k++) {
-            movie = _ref2[_k];
+          _ref3 = this.attachedMovieList;
+          for (_l = 0, _len = _ref3.length; _l < _len; _l++) {
+            movie = _ref3[_l];
             if (movie != null) {
               movie.exec();
             }
           }
         }
         instance = this.instanceHead;
-        while (instance != null) {
-          if (instance.isMovie()) {
+        while (instance !== null) {
+          if (instance.isMovie) {
             movie = instance;
             movie.postExec(progressing);
             if (!this.hasButton && movie.hasButton) {
@@ -3457,18 +3552,18 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
         this.attachMoviePostExeced = true;
         if (this.attachedMovies != null) {
-          _ref3 = this.detachedMovies;
-          for (attachName in _ref3) {
-            v = _ref3[attachName];
+          _ref4 = this.detachedMovies;
+          for (attachName in _ref4) {
+            v = _ref4[attachName];
             movie = this.attachedMovies[attachName];
             if (movie != null) {
               this.deleteAttachedMovie(this, movie, true, false);
             }
           }
           this.detachedMovies = {};
-          _ref4 = this.attachedMovieList;
-          for (_l = 0, _len1 = _ref4.length; _l < _len1; _l++) {
-            movie = _ref4[_l];
+          _ref5 = this.attachedMovieList;
+          for (_m = 0, _len1 = _ref5.length; _m < _len1; _m++) {
+            movie = _ref5[_m];
             if (movie != null) {
               movie.postExec(progressing);
               if (!this.hasButton && movie.hasButton) {
@@ -3492,7 +3587,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         if (controlAnimationOffset !== -1 && this.execedFrame === this.currentFrameInternal) {
           animationPlayed = this.animationPlayedFrame === this.currentFrameCurrent && !this.jumped;
           if (!animationPlayed) {
-            for (i = _m = controlAnimationOffset, _ref5 = frame.controls; controlAnimationOffset <= _ref5 ? _m < _ref5 : _m > _ref5; i = controlAnimationOffset <= _ref5 ? ++_m : --_m) {
+            for (i = _n = controlAnimationOffset, _ref6 = frame.controls; controlAnimationOffset <= _ref6 ? _n < _ref6 : _n > _ref6; i = controlAnimationOffset <= _ref6 ? ++_n : --_n) {
               control = data.controls[frame.controlOffset + i];
               this.lwf.playAnimation(control.controlId, this);
             }
@@ -3510,75 +3605,68 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (this.handler != null) {
         this.handler.call("enterFrame", this);
       }
+      this.postExecCount = this.lwf.execCount;
+    };
+
+    Movie.prototype.updateObject = function(obj, m, c, matrixChanged, colorTransformChanged) {
+      var objc, objm;
+      if (obj.isMovie && obj.property.hasMatrix) {
+        objm = m;
+      } else if (matrixChanged || !obj.updated || obj.matrixIdChanged) {
+        objm = Utility.calcMatrixId(this.lwf, this.matrix1, m, obj.matrixId);
+      } else {
+        objm = null;
+      }
+      if (obj.isMovie && obj.property.hasColorTransform) {
+        objc = c;
+      } else if (colorTransformChanged || !obj.updated || obj.colorTransformIdChanged) {
+        objc = Utility.calcColorTransformId(this.lwf, this.colorTransform1, c, obj.colorTransformId);
+      } else {
+        objc = null;
+      }
+      return obj.update(objm, objc);
     };
 
     Movie.prototype.update = function(m, c) {
-      var attachName, c1, depth, lwfContainer, m1, movie, obj, objHasOwnColorTransform, objHasOwnMatrix, objc, objm, v, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2, _ref3;
+      var attachName, colorTransformChanged, depth, lwfContainer, matrixChanged, movie, obj, v, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2, _ref3;
       if (!this.active) {
         return;
       }
-      if (!this.overriding) {
-        Utility.copyMatrix(this.matrix, m);
-        Utility.copyColorTransform(this.colorTransform, c);
+      if (this.overriding) {
+        matrixChanged = true;
+        colorTransformChanged = true;
+      } else {
+        matrixChanged = this.matrix.setWithComparing(m);
+        colorTransformChanged = this.colorTransform.setWithComparing(c);
       }
       if (this.handler != null) {
         this.handler.call("update", this);
       }
+      if (this.property.hasMatrix) {
+        matrixChanged = true;
+        m = Utility.calcMatrix(this.matrix0, this.matrix, this.property.matrix);
+      } else {
+        m = this.matrix;
+      }
+      if (this.property.hasColorTransform) {
+        colorTransformChanged = true;
+        c = Utility.calcColorTransform(this.colorTransform0, this.colorTransform, this.property.colorTransform);
+      } else {
+        c = this.colorTransform;
+      }
       for (depth = _i = 0, _ref = this.data.depths; 0 <= _ref ? _i < _ref : _i > _ref; depth = 0 <= _ref ? ++_i : --_i) {
         obj = this.displayList[depth];
         if (obj != null) {
-          objm = this.matrix0;
-          objHasOwnMatrix = obj.type === Type.MOVIE && obj.property.hasMatrix;
-          if (this.property.hasMatrix) {
-            if (objHasOwnMatrix) {
-              Utility.calcMatrix(objm, this.matrix, this.property.matrix);
-            } else {
-              Utility.calcMatrix(this.matrix1, this.matrix, this.property.matrix);
-              Utility.calcMatrixId(this.lwf, objm, this.matrix1, obj.matrixId);
-            }
-          } else {
-            if (objHasOwnMatrix) {
-              Utility.copyMatrix(objm, this.matrix);
-            } else {
-              Utility.calcMatrixId(this.lwf, objm, this.matrix, obj.matrixId);
-            }
-          }
-          objc = this.colorTransform0;
-          objHasOwnColorTransform = obj.type === Type.MOVIE && obj.property.hasColorTransform;
-          if (this.property.hasColorTransform) {
-            if (objHasOwnColorTransform) {
-              Utility.calcColorTransform(objc, this.colorTransform, this.property.colorTransform);
-            } else {
-              Utility.calcColorTransform(this.colorTransform1, this.colorTransform, this.property.colorTransform);
-              Utility.calcColorTransformId(this.lwf, objc, this.colorTransform1, obj.colorTransformId);
-            }
-          } else {
-            if (objHasOwnColorTransform) {
-              Utility.copyColorTransform(objc, this.colorTransform);
-            } else {
-              Utility.calcColorTransformId(this.lwf, objc, this.colorTransform, obj.colorTransformId);
-            }
-          }
-          obj.update(objm, objc);
+          this.updateObject(obj, m, c, matrixChanged, colorTransformChanged);
         }
       }
       if ((this.attachedMovies != null) || (this.attachedLWFs != null)) {
-        m = this.matrix;
-        if (this.property.hasMatrix) {
-          m1 = this.matrix1.set(m);
-          Utility.calcMatrix(m, m1, this.property.matrix);
-        }
-        c = this.colorTransform;
-        if (this.property.hasColorTransform) {
-          c1 = this.colorTransform1.set(c);
-          Utility.calcColorTransform(c, c1, this.property.colorTransform);
-        }
         if (this.attachedMovies != null) {
           _ref1 = this.attachedMovieList;
           for (_j = 0, _len = _ref1.length; _j < _len; _j++) {
             movie = _ref1[_j];
             if (movie != null) {
-              movie.update(m, c);
+              this.updateObject(movie, m, c, matrixChanged, colorTransformChanged);
             }
           }
         }
@@ -3629,12 +3717,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       for (depth = _k = 0, _ref2 = this.data.depths; 0 <= _ref2 ? _k < _ref2 : _k > _ref2; depth = 0 <= _ref2 ? ++_k : --_k) {
         obj = this.displayList[depth];
         if (obj != null) {
-          if (obj.type === Type.BUTTON) {
+          if (obj.isButton) {
             obj.linkButton();
-          } else if (obj.type === Type.MOVIE) {
-            movie = obj;
-            if (movie.hasButton) {
-              movie.linkButton();
+          } else if (obj.isMovie) {
+            if (obj.hasButton) {
+              obj.linkButton();
             }
           }
         }
@@ -3817,12 +3904,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         stringId = this.lwf.getStringId(stringId);
       }
       instance = this.instanceHead;
-      while (instance != null) {
-        if (instance.isMovie() && this.lwf.getInstanceNameStringId(instance.instanceId) === stringId) {
+      while (instance !== null) {
+        if (instance.isMovie && this.lwf.getInstanceNameStringId(instance.instanceId) === stringId) {
           return instance;
-        } else if (recursive && instance.isMovie()) {
+        } else if (recursive && instance.isMovie) {
           i = instance.searchMovieInstance(stringId, recursive);
-          if (i != null) {
+          if (i !== null) {
             return i;
           }
         }
@@ -3834,12 +3921,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     Movie.prototype.searchMovieInstanceByInstanceId = function(instId, recursive) {
       var i, instance;
       instance = this.instanceHead;
-      while (instance != null) {
-        if (instance.isMovie() && instance.instanceId === instId) {
+      while (instance !== null) {
+        if (instance.isMovie && instance.instanceId === instId) {
           return instance;
-        } else if (recursive && instance.isMovie()) {
+        } else if (recursive && instance.isMovie) {
           i = instance.searchMovieInstanceByInstanceId(instId, recursive);
-          if (i != null) {
+          if (i !== null) {
             return i;
           }
         }
@@ -3857,12 +3944,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         stringId = this.lwf.getStringId(stringId);
       }
       instance = this.instanceHead;
-      while (instance != null) {
-        if (instance.isButton() && this.lwf.getInstanceNameStringId(instance.instanceId) === stringId) {
+      while (instance !== null) {
+        if (instance.isButton && this.lwf.getInstanceNameStringId(instance.instanceId) === stringId) {
           return instance;
-        } else if (recursive && instance.isMovie()) {
+        } else if (recursive && instance.isMovie) {
           i = instance.searchButtonInstance(stringId, recursive);
-          if (i != null) {
+          if (i !== null) {
             return i;
           }
         }
@@ -3874,12 +3961,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     Movie.prototype.searchButtonInstanceByInstanceId = function(instId, recursive) {
       var i, instance;
       instance = this.instanceHead;
-      while (instance != null) {
-        if (instance.isButton() && instance.instanceId === instId) {
+      while (instance !== null) {
+        if (instance.isButton && instance.instanceId === instId) {
           return instance;
-        } else if (recursive && instance.isMovie()) {
+        } else if (recursive && instance.isMovie) {
           i = instance.searchMovieInstanceByInstanceId(instId, recursive);
-          if (i != null) {
+          if (i !== null) {
             return i;
           }
         }
@@ -4199,7 +4286,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.thisTick = 0;
       this.attachVisible = true;
       this.execCount = 0;
-      this.updateCount = 0;
       this.isExecDisabled = false;
       this.isPropertyDirty = false;
       this.isLWFAttached = false;
@@ -4224,7 +4310,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.attachName = null;
       this.depth = null;
       this.matrix = new Matrix;
+      this.matrixIdentity = new Matrix;
       this.colorTransform = new ColorTransform;
+      this.colorTransformIdentity = new ColorTransform;
       this.init();
       this.setRendererFactory(rendererFactory);
     }
@@ -4323,13 +4411,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       p = this.property;
       if (p.hasMatrix) {
         if (matrix != null) {
-          m = this.matrix;
-          Utility.calcMatrix(m, matrix, p.matrix);
+          m = Utility.calcMatrix(this.matrix, matrix, p.matrix);
         } else {
           m = p.matrix;
         }
       } else {
-        m = matrix;
+        m = matrix != null ? matrix : this.matrixIdentity;
       }
       return m;
     };
@@ -4339,13 +4426,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       p = this.property;
       if (p.hasColorTransform) {
         if (colorTransform != null) {
-          c = this.colorTransform;
-          Utility.calcColorTransform(c, colorTransform, p.colorTransform);
+          c = Utility.calcColorTransform(this.colorTransform, colorTransform, p.colorTransform);
         } else {
           c = p.colorTransform;
         }
       } else {
-        c = colorTransform;
+        c = colorTransform != null ? colorTransform : this.colorTransformIdentity;
       }
       return c;
     };
@@ -4365,7 +4451,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       currentProgress = this.progress;
       if (this.isExecDisabled) {
         if (!this.executedForExecDisabled) {
-          this.rootMovie.execCount = ++this.execCount;
+          ++this.execCount;
           this.rootMovie.exec();
           this.rootMovie.postExec(true);
           this.executedForExecDisabled = true;
@@ -4395,7 +4481,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             break;
           }
           this.progress -= this.tick;
-          this.rootMovie.execCount = ++this.execCount;
+          ++this.execCount;
           this.rootMovie.exec();
           this.rootMovie.postExec(progressing);
           execed = true;
@@ -4403,11 +4489,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         if (this.progress < this.roundOffTick) {
           this.progress = 0;
         }
-        if (this.interactive) {
-          this.buttonHead = null;
-          if (this.rootMovie.hasButton) {
-            this.rootMovie.linkButton();
-          }
+        this.buttonHead = null;
+        if (this.interactive && this.rootMovie.hasButton) {
+          this.rootMovie.linkButton();
         }
       }
       if (execed || this.isLWFAttached || this.isPropertyDirty || (matrix != null) || (colorTransform != null)) {
@@ -4457,7 +4541,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.renderingCount = this.renderingIndex;
       this.thisTick = 0;
       this.isPropertyDirty = false;
-      this.updateCount++;
     };
 
     LWF.prototype.render = function(rIndex, rCount, rOffset) {
@@ -4661,7 +4744,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       obj = this.instances[instId];
       while (obj != null) {
-        if (obj.isMovie()) {
+        if (obj.isMovie) {
           return obj;
         }
         obj = obj.nextInstance;
@@ -4706,7 +4789,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       obj = this.instances[instId];
       while (obj != null) {
-        if (obj.isButton()) {
+        if (obj.isButton) {
           return obj;
         }
         obj = obj.nextInstance;
@@ -5921,7 +6004,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.checkTextures(settings, data);
       lwfUrl = settings["lwf"];
       this.cache[lwfUrl] = {};
-      this.cache[lwfUrl].__data__ = data;
+      this.cache[lwfUrl].data = data;
       settings.total = settings._textures.length + 1;
       if (data.useScript) {
         settings.total++;
@@ -5946,7 +6029,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       settings.error = [];
       if (this.cache[lwfUrl] != null) {
-        data = this.cache[lwfUrl].__data__;
+        data = this.cache[lwfUrl].data;
         if (data != null) {
           this.checkTextures(settings, data);
           settings.total = settings._textures.length + 1;
@@ -6096,6 +6179,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         if (onprogress != null) {
           onprogress.call(settings, settings.loadedCount, settings.total);
         }
+        _this.cache[lwfUrl].script = script;
         script = script.onload = script.onabort = script.onerror = null;
         return _this.loadImages(settings, data);
       };
@@ -6198,7 +6282,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             alphaImg = imageCache[alpha.filename];
             if ((jpgImg != null) && (alphaImg != null)) {
               if (_this.constructor === WebkitCSSResourceCache) {
-                name = "canvas_" + jpg.filename.replace(/[\.-]/, "_");
+                name = "canvas_" + jpg.filename.replace(/[\.-]/g, "_");
                 ctx = document.getCSSCanvasContext("2d", name, jpgImg.width, jpgImg.height);
                 canvas = ctx.canvas;
                 canvas.name = name;
@@ -6258,10 +6342,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       var cache, embeddedScript, factory, lwf, lwfUrl, _ref1, _ref2, _ref3;
       lwfUrl = settings["lwf"];
       cache = this.cache[lwfUrl];
-      if ((_ref1 = cache.__instances__) == null) {
-        cache.__instances__ = 0;
+      if ((_ref1 = cache.instances) == null) {
+        cache.instances = 0;
       }
-      cache.__instances__++;
+      cache.instances++;
       factory = this.newFactory(settings, imageCache, data);
       if (data.useScript) {
         embeddedScript = (_ref2 = global["LWF"]) != null ? (_ref3 = _ref2["Script"]) != null ? _ref3[data.name()] : void 0 : void 0;
@@ -6279,7 +6363,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.unloadLWF = function(lwf) {
-      if ((this.cache[lwf.url] != null) && --this.cache[lwf.url].__instances__ <= 0) {
+      var cache, head;
+      cache = this.cache[lwf.url];
+      if ((cache != null) && --cache.instances <= 0) {
+        head = document.getElementsByTagName('head')[0];
+        head.removeChild(cache.script);
         delete this.cache[lwf.url];
       }
     };
