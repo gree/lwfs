@@ -54,6 +54,25 @@ requirement, you can prepare a rsync/web server on some remote (Linux)
 host and make LWFS to synchronize converted contents onto the remote
 host. Please check remote/ for further details.
 
+### BirdWatcher Server
+
+BirdWatcher (https://github.com/imaya/birdwatcher.js/) is a JavaScript
+profiler purely written in JavaScript. It is easy to use even on
+mobile devices and can send stats to its node.js server on which a
+user can check various graphs/console logs.
+
+By default, LWFS shows a page for each data with the release version
+of lwf.js. A user can then switch to the page with the debug version
+of lwf.js and/or the page with the debug version of lwf.js and
+birdwatcher.js. For the last case, you need to have a BirdWatcher
+server running on node.js. Please check the following steps.
+
+    npm install socket.io
+    git clone git://github.com/imaya/birdwatcher.js.git
+    cd birdwatcher.js/server
+    vi config.js  # if you need to change the port number.
+    node server.js
+
 ## How To Start
 
 Invoke the following.
@@ -69,10 +88,9 @@ image files to LWFS\_work\_output.
 
     env LWFS_USE_OUTPUT_FOLDER=1 ruby lwfs.rb
 
-Invoke the following if you want to specify the server of
-birdwatcher.js (https://github.com/imaya/birdwatcher.js/).
+Invoke the following if you want to specify the BirdWatcher server.
 
-    env LWFS_BIRD_WATCHER_SERVER=birdwacher-server-hostname ruby lwfs.rb
+    env LWFS_BIRD_WATCHER_SERVER=birdwacher-server-hostname:port ruby lwfs.rb
 
 You can also specifiy multiple environment variables.
 
