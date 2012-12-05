@@ -11,7 +11,7 @@
     {path: location.href, lastModified: null}
   ];
 
-  var INTERVAL = 1000;
+  var INTERVAL = 500;
   var WATCH_MAX_TIME = 1000 * 60 * 3;//watching 3 minutes
   var counter = 0;
   var isBusy = false;
@@ -58,10 +58,10 @@
    */
   var polling = function() {
     intervalId = setInterval(function() {
-      // var timesAfter = (new Date().getTime()) - now.getTime();
-      // if (timesAfter > WATCH_MAX_TIME) {
-      //   stopPolling();
-      // }
+      var timesAfter = (new Date().getTime()) - now.getTime();
+      if (WATCH_MAX_TIME > 0 && timesAfter > WATCH_MAX_TIME) {
+        stopPolling();
+      }
       //console.log(timesAfter);
       if (!isBusy) {
         checkUpdate(counter);
@@ -98,21 +98,6 @@
     return true;
   };
 
-  var formatDate = function(d) {
-    var year = d.getUTCFullYear();
-    var month = d.getUTCMonth() + 1;
-    var date = d.getUTCDate();
-    var hours = d.getUTCHours();
-    var minutes = d.getUTCMinutes();
-    var seconds = d.getUTCSeconds();
-    month = (month < 10) ? '0' + month : '' + month;
-    date = (date < 10) ? '0' + date : '' + date;
-    hours = (hours < 10) ? '0' + hours : '' + hours;
-    minutes = (minutes < 10) ? '0' + minutes : '' + minutes;
-    seconds = (seconds < 10) ? '0' + seconds : '' + seconds;
-    return year + '-' + month + '-' + date + ' ' + hours + ':' + minutes + ':' + seconds + ' +0000';
-  };
-
   /**
    * check update
    * @name checkUpdate
@@ -133,15 +118,15 @@
     //event handler
     xhr.onreadystatechange = function() {
       if(xhr.readyState === 4){
-        var fileLastModified = xhr.getResponseHeader("Last-Modified");
         if (xhr.status === 200) {
           if (isInitialied()) {
-            if (Date.parse(lastModified) < Date.parse(fileLastModified)) {
+            var fileLastModified = Date.parse(xhr.getResponseHeader("Last-Modified"));
+            if (lastModified < fileLastModified) {
               TARGET_FILES[index].lastModified = fileLastModified;
               reload();
             }
           } else {
-            TARGET_FILES[index].lastModified = formatDate(now);
+            TARGET_FILES[index].lastModified = now;
           }
         }
       }
@@ -206,6 +191,25 @@
 
     }
   };
+
+  // cf. http://d.hatena.ne.jp/amachang/20061201/1164986067
+  var currentScript
+    = (function (e) {
+      if (e.nodeName.toLowerCase() == 'script') {
+        return e;
+      }
+      return arguments.callee(e.lastChild);
+    })(document);
+  if (currentScript.hasAttributes()) {
+    for (var i in currentScript.attributes) {
+      var attr = currentScript.attributes[i];
+      if (attr.name === "interval") {
+        INTERVAL = ~~Math.round(parseFloat(attr.value) * 1000);
+      } else if (attr.name === "watch_max_time") {
+        WATCH_MAX_TIME = ~~Math.round(parseFloat(attr.value) * 1000);
+      }
+    }
+  }
 
   //begin polling
   polling();
