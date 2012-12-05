@@ -2590,10 +2590,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     __extends(LWFContainer, _super);
 
-    function LWFContainer(lwf, parent, child) {
-      this.lwf = lwf;
+    function LWFContainer(parent, child) {
       this.parent = parent;
       this.child = child;
+      this.lwf = this.parent.lwf;
     }
 
     LWFContainer.prototype.checkHit = function(px, py) {
@@ -3248,7 +3248,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.deleteAttachedLWF(this, lwfContainer);
         }
       }
-      lwfContainer = new LWFContainer(this.lwf, this, attachLWF);
+      lwfContainer = new LWFContainer(this, attachLWF);
       if (attachLWF.interactive) {
         this.lwf.interactive = true;
       }
@@ -6849,6 +6849,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.textContexts.push(new CanvasTextContext(this, data, text));
       }
       this.stage.style.webkitUserSelect = "none";
+      this.stage.style.webkitTransform = "translateZ(0)";
       this.stageContext = this.stage.getContext("2d");
       if (this.stage.width === 0 && this.stage.height === 0) {
         this.stage.width = data.header.width;
