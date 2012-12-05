@@ -3,6 +3,8 @@
     padding: 0px;
     -webkit-tap-highlight-color:rgba(0,0,0,0);
     -webkit-tap-callout:none;
+    background-color:#ffffff;
+    opacity:1;
 }
 #wrapper {
     margin: 9px 18px 9px 18px;
