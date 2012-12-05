@@ -5,12 +5,21 @@
   var Game;
 
   Game = (function() {
-    function Game(stage, cache, textNode) {
+    function Game(stage, cache, textNode, graphNode) {
       this.stage = stage;
       this.stageIsCanvas = (stage.tagName.toLowerCase() === "canvas");
       this.cache = cache;
       this.textNode = textNode != null ? textNode : null;
+      this.graphNode = graphNode != null ? graphNode : null;
       this.requests = [];
+      if (this.graphNode != null) {
+        this.ctx = this.graphNode.getContext("2d");
+        this.graphIndex = 0;
+        this.graphX = 0;
+        this.graphY = 0;
+        this.graphWidth = this.graphNode.width;
+        this.graphHeight = this.graphNode.height;
+      }
     }
 
     Game.prototype.requestLWF = function(lwfName, onload) {
@@ -169,6 +178,30 @@
       if (this.textNode != null) {
         fps = Math.round(1.0 / tick);
         this.textNode.textContent = this.fps60 + " fps(avg) " + fps + "fps";
+        if (this.ctx != null) {
+          var x = this.graphIndex;
+          var y = (1 - fps / 60) * (this.graphHeight - 1);
+          if (y < 0) {
+            y = 0;
+          }
+          if (y >= this.graphHeight) {
+            y = this.graphHeight - 1;
+          }
+          this.ctx.fillStyle = "rgb(255,255,255)";
+          this.ctx.fillRect(this.graphX, 0, 2, this.graphHeight);
+          this.ctx.fillStyle = "rgb(0,0,0)";
+          this.ctx.beginPath();
+          this.ctx.moveTo(this.graphX, this.graphY);
+          this.ctx.lineTo(x, y);
+          this.ctx.stroke();
+          this.graphX = x;
+          this.graphY = y;
+          this.graphIndex += 2;
+          if (this.graphIndex > this.graphWidth) {
+            this.graphIndex = 0;
+            this.graphX = 0;
+          }
+        }
       }
       return requestAnimationFrame(function() {
         return _this.exec();
@@ -180,7 +213,7 @@
   })();
 
   window.onload = function() {
-    var LWF, cache, div, game, lastTime, lwfName, renderer, stage, textNode, vendor, _i, _len, _ref;
+    var LWF, cache, div, graphNode, game, lastTime, lwfName, renderer, stage, textNode, vendor, _i, _len, _ref;
     if (window.requestAnimationFrame == null) {
       _ref = ['webkit', 'moz'];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -235,6 +268,8 @@
       stage = document.createElement("div");
       LWF.useWebkitCSSRenderer();
     }
+    var w = 0;
+    var h = 0;
     stage.style.position = "absolute";
     stage.width = 0;
     stage.height = 0;
@@ -244,8 +279,8 @@
     if (window.location.search.match(/size=(\d+)x(\d+)/)
         || (typeof window["test_args"] != undefined
                && window["test_args"].match(/size=(\d+)x(\d+)/))) {
-      var w = parseInt(RegExp.$1, 10);
-      var h = parseInt(RegExp.$2, 10);
+      w = parseInt(RegExp.$1, 10);
+      h = parseInt(RegExp.$2, 10);
       // Multiply stage.{width,height} by window.devicePixelRatio.
       stage.width = ~~(w * window.devicePixelRatio);
       stage.height = ~~(h * window.devicePixelRatio);
@@ -274,6 +309,12 @@
             && window["test_args"].match(/fps=(true|false)/))) {
       if (RegExp.$1 === "true") {
         document.body.appendChild(document.createElement('br'));
+        graphNode = document.createElement("canvas");
+        graphNode.width = w - 140;
+        graphNode.height = 24;
+        graphNode.style.width = '' + (w - 140) + 'px';
+        graphNode.style.height = '24px';
+        document.body.appendChild(graphNode);
         textNode = document.createTextNode("0fps");
         document.body.appendChild(textNode);
         document.body.appendChild(document.createElement('br'));
@@ -282,7 +323,7 @@
     div = document.createElement("div");
     document.body.appendChild(div);
     div.appendChild(stage);
-    game = new Game(stage, cache, textNode);
+    game = new Game(stage, cache, textNode, graphNode);
     window["game"] = game;
     return game.load(lwfName);
   };
