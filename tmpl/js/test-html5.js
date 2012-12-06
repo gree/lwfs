@@ -542,13 +542,20 @@
          }
          cache = LWF.ResourceCache.get();
          window['testlwf_lwf'].match(/(.*\/)([^\/]+)/);
-         return cache.loadLWF({
-                                  'prefix': RegExp.$1,
-                                  'lwf': RegExp.$2,
-                                  'stage': stage,
-                                  'onload': playLWF,
-                                  'useBackgroundColor': true,
-                                  'fitForWidth': true
-                              });
+         var params = {
+             'prefix': RegExp.$1,
+             'lwf': RegExp.$2,
+             'stage': stage,
+             'onload': playLWF,
+             'useBackgroundColor': true,
+             'fitForWidth': true
+         };
+         if (window['testlwf_settings'] != null) {
+             var settings = window['testlwf_settings'];
+             for (var i in settings) {
+                 params[i] = settings[i];
+             }
+         }
+         return cache.loadLWF(params);
      };
  }).call(this);
