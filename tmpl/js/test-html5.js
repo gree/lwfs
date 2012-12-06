@@ -163,14 +163,14 @@
                          iw = lwf.width;
                      }
                  }
-                 stage_w = ~~iw;
-                 stage_h = ~~(iw * lwf.height / lwf.width);
-                 stage.style.width = stage_w + 'px';
-                 stage.style.height = stage_h + 'px';
-                 stage.width = ~~(stage_w * dpr);
-                 stage.height = ~~(stage_h * dpr);
-                 stage_scale = stage_w / (lwf.width * dpr);
                  if (iw0 != iw) {
+                     stage_w = ~~iw;
+                     stage_h = ~~(iw * lwf.height / lwf.width);
+                     stage.style.width = stage_w + 'px';
+                     stage.style.height = stage_h + 'px';
+                     stage.width = ~~(stage_w * dpr);
+                     stage.height = ~~(stage_h * dpr);
+                     stage_scale = stage_w / (lwf.width * dpr);
                      lwf.property.clear();
                      lwf.fitForWidth(stage.width, stage.height);
                      iw0 = iw;
