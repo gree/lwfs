@@ -72,6 +72,8 @@
      createFPSDisplay = function() {
          var div = document.createElement('div');
          div.className = 'info';
+         div.style.backgroundColor = '#ffffff';
+         div.style.opacity = '1';
          if (! window['testlwf_mobile'] || mode == 'debug') {
              var canvas = document.createElement('canvas');
              canvas.width = fps.graph.width;
