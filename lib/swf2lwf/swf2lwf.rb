@@ -816,18 +816,18 @@ class LWFString
 end
 
 def info(str)
-  @logfile.puts str.tosjis if $DEBUG and @logfile
+  @logfile.puts str if $DEBUG and @logfile
   puts str if $DEBUG
 end
 
 def warn(str)
-  @logfile.puts "WARN: #{str}".tosjis if @logfile
-  puts "WARN: #{str}" #.tosjis
+  @logfile.puts "WARN: #{str}" if @logfile
+  puts "WARN: #{str}"
 end
 
 def error(str)
-  @logfile.puts "ERROR: #{str}".tosjis if @logfile
-  puts "ERROR: #{str}" #.tosjis
+  @logfile.puts "ERROR: #{str}" if @logfile
+  puts "ERROR: #{str}"
 end
 
 class Stage
@@ -2778,8 +2778,17 @@ def parse_xflxml(xml, isRootMovie = false)
               if event == "keyPress"
                 error "doesn't support script in keyPress event"
               else
-                script_name =
-                  "#{name}_#{index}_#{instance_linkage_name}_#{instance_name}"
+                head = tail = script_name = ''
+                if instance_linkage_name =~ /(.+)\/([^\/]+)$/
+                  head = $1
+                  tail = $2
+                  head.gsub!(/\//, '_')
+                  script_name =
+                    "#{head}_#{name}_#{index}_#{tail}_#{instance_name}"
+                else
+                  script_name =
+                    "#{name}_#{index}_#{instance_linkage_name}_#{instance_name}"
+                end
                 funcname = "#{script_name}_#{event}"
                 @instance_script_map[script_name] ||= Hash.new
                 @instance_script_map[script_name][event] ||= Hash.new
