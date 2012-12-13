@@ -1,2 +1,2 @@
 .DS_Store
-htdocs/lwfs/*
+htdocs/lwfs/[A-Za-z0-9]*
