@@ -327,7 +327,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
                 "#{dst}/*.lwfconf",
                 "#{dst}/swf2lwf.conf",
                 "#{dst}/index.html",
-                "#{src}/**/*.xml",
+                "#{dst}/**/*.xml",
                 "#{dst}/**/*.js"]).each do |dst_file|
         next if excludes =~ dst_file
         file = dst_file.sub(/#{dst}\//, '')
