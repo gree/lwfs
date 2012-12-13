@@ -294,6 +294,7 @@
                  return;
              }
              lwf.init();
+             lwf.rootMovie.moveTo(window['testlwf_rootoffset']['x'], window['testlwf_rootoffset']['y']);
              lwf.rootMovie.gotoAndPlay(1);
          };
          updateInfo1 = function() {
@@ -411,6 +412,29 @@
                  }
              }
          };
+         if (window['testlwf_birdwatcher']) {
+             var birdwatcher = window['testlwf_birdwatcher'];
+             if (birdwatcher['iid']) {
+                 clearInterval(birdwatcher['iid']);
+                 birdwatcher['iid'] = null;
+             }
+             if (birdwatcher['instance']) {
+                 birdwatcher['instance'].stop();
+                 birdwatcher['instance'] = null;
+             }
+             if (lwf.functions) {
+                 window['functions'] = lwf.functions;
+             }
+             birdwatcher['instance'] = new BirdWatcher([['LWF'], ['functions']]);
+             var bw = birdwatcher['instance'];
+             bw.reportUrl = birdwatcher['reportUrl'];
+             bw.reportId = birdwatcher['reportId'];
+             bw.stop();
+             bw.enableRemoteLog();
+             bw.maxDepth = 8;
+             bw.start();
+             birdwatcher['iid'] = setInterval(function() {bw.reportRemote();}, 1000);
+         };
          requestAnimationFrame(onexec);
          if (window['testlwf_mobile']) {
              stage.addEventListener('gestureend', ongestureend, false);
@@ -525,13 +549,6 @@
              stage = createStage();
              wrapper.appendChild(stage);
              document.body.appendChild(wrapper);
-         }
-         if (window['testlwf_birdwatcher']) {
-             var birdwatcher = window['testlwf_birdwatcher'];
-             birdwatcher.enableRemoteLog();
-             birdwatcher.maxDepth = 8;
-             birdwatcher.start();
-             setInterval(function() {birdwatcher.reportRemote();}, 1000);
          }
          var LWF, cache;
          LWF = window['LWF'];

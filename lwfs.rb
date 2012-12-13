@@ -456,7 +456,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
           birdwatcher = <<-"EOF"
     <script type="text/javascript" src="../../js/birdwatcher.js"></script>
     <script type="text/javascript">
-      window["testlwf_birdwatcher"] = new BirdWatcher([['LWF']]);
+      window["testlwf_birdwatcher"] = {};
       window["testlwf_birdwatcher"].reportId = '#{MY_ID}_#{target.upcase}_#{name.gsub(/\s/, '_')}';
       window["testlwf_birdwatcher"].reportUrl = 'http://#{BIRD_WATCHER_SERVER}/';
     </script>
