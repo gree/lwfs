@@ -424,7 +424,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     end
   end
 
-  def outputOK(folder, name, prefix, args, warnings)
+  def outputOK(folder, name, prefix, commandline, warnings)
     if warnings != ''
       content = <<-"EOF"
 <!DOCTYPE HTML>
