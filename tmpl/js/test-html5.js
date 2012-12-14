@@ -120,7 +120,7 @@
          // var t0_tapped = 0;
          // var t1_tapped = window.performance.now();
          var destroy, onexec, onmove, onpress, onrelease, ongestureend, stage;
-         var updateInfo1, updateInfo2, updateInfo3;
+         var updateInfo;
          var iw0 = 0;
          var stage_scale = 1;
          var stage_w = 0;
@@ -177,9 +177,7 @@
                  }
              }
              if (! window['testlwf_mobile']) {
-                 updateInfo1();
-                 updateInfo2();
-                 updateInfo3();
+                 updateInfo();
              }
              lwf.setFrameRate(fr);
              var t1 = window.performance.now();
@@ -297,7 +295,7 @@
              lwf.rootMovie.moveTo(window['testlwf_rootoffset']['x'], window['testlwf_rootoffset']['y']);
              lwf.rootMovie.gotoAndPlay(1);
          };
-         updateInfo1 = function() {
+         updateInfo = function() {
              var info = '';
              var elm = document.getElementById('info1');
              info = '(x' + (~~(stage_scale * 1000) / 1000) + ', ' + stage_w + 'x' + stage_h + ', ' + fr + 'fps)';
@@ -320,16 +318,6 @@
                  }
              }
              elm.textContent = info;
-         };
-         updateInfo2 = function() {
-             var elm = document.getElementById('info2');
-             var warning = '';
-             if (window['testlwf_commandline'].match(/ -p /)) {
-                 warning = 'WARNING: using images extracted from the swf.';
-             }
-             elm.innerHTML = '<span>(' + window['testlwf_commandline'] + ') </span><span style="background-color:yellow">' + warning + '</span>';
-         };
-         updateInfo3 = function() {
          };
          stage = this['stage'];
          stage.lwf = lwf;
@@ -360,7 +348,7 @@
                  if (key == '0') {
                      fr = fr0;
                      if (! window['testlwf_mobile']) {
-                         updateInfo1();
+                         updateInfo();
                      }
                      isHandled = true;
                  } else if (key == 'S') {
@@ -393,14 +381,14 @@
                      case 38:  // up
                          fr = clamp(fr + 1, 1, 60);
                          if (! window['testlwf_mobile']) {
-                             updateInfo1();
+                             updateInfo();
                          }
                          isHandled = true;
                          break;
                      case 40:  // down
                          fr = clamp(fr - 1, 1, 60);
                          if (! window['testlwf_mobile']) {
-                             updateInfo1();
+                             updateInfo();
                          }
                          isHandled = true;
                          break;
@@ -506,6 +494,17 @@
                  var div = document.createElement('div');
                  div.className = 'info';
                  div.id = 'info2';
+                 var warning = '';
+                 if (window['testlwf_commandline'].match(/ -p /)) {
+                     warning = 'WARNING: using images extracted from the swf.';
+                 }
+                 if (window['testlwf_warn']) {
+                     if (warning != '') {
+                         warning += ' ';
+                     }
+                     warning += '(<a href="index-warn.html" target="_blank">swf2lwf warnings</a>)';
+                 }
+                 div.innerHTML = '<span>(' + window['testlwf_commandline'] + ') </span><span style="background-color:yellow">' + warning + '</span>';
                  lpart.appendChild(div);
              }
              {

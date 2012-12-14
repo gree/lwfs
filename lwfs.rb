@@ -367,7 +367,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
         swfs = Dir.glob("#{folder}/*.swf")
         prefix = ''
         if swfs.count == 0
-          outputNG(folder, name, prefix, [], 'found no swf.')
+          outputNG(folder, name, prefix, '', 'found no swf.', '')
         else
           swf = swfs[0]
           prefix = File.basename(swfs[0], '.swf')
@@ -376,15 +376,31 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
             s.sub!(/.*\.(swf|fla|json)$/, File.basename(s))
             s.sub!(/.*\/swf2lwf.conf$/, 'swf2lwf.conf')
           end
+          commandline = "swf2lwf#{(ret['args'].length > 0) ? ' ' : ''}#{ret['args'].join(' ')}"
+          warnings = getWarnings(folder, name, prefix)
           if not ret['is_error']
-            outputOK(folder, name, prefix, ret['args'])
+            outputOK(folder, name, prefix, commandline, warnings)
           else
-            outputNG(folder, name, prefix, ret['args'], ret['message'])
+            outputNG(folder, name, prefix, commandline, ret['message'], warnings)
           end
         end
       end
       checkInterruption(__LINE__, 0.001)
     end
+  end
+
+  def getWarnings(folder, name, prefix)
+    warnings = ''
+    if File.file?("#{folder}/#{prefix}.lwfdata/#{prefix}.txt")
+      count = 0
+      File.foreach("#{folder}/#{prefix}.lwfdata/#{prefix}.txt") do |line|
+        if count > 0
+          warnings += line
+        end
+        count += 1
+      end
+    end
+    warnings
   end
 
   def outputRaw(folder)
@@ -408,9 +424,37 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     end
   end
 
-  def outputOK(folder, name, prefix, args)
-    if args.include?('-p')
-      status = '(OK)'
+  def outputOK(folder, name, prefix, args, warnings)
+    if warnings != ''
+      content = <<-"EOF"
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <title>WARNINGS: #{name}</title>
+    <link rel="shortcut icon" href="../../img/favicon-yellow.png" />
+    <link rel="icon" href="../../img/favicon-yellow.png" />
+    <link rel="stylesheet" href="../../css/common.css" />
+    <link rel="stylesheet" href="../../css/viewer.css" />
+  </head>
+  <body>
+    <div id="wrapper">
+      <div id="header">
+        <h1>WARNINGS: #{name}</h1>
+        <div class="info">(#{commandline})</div>
+        <div class="info">#{warnings.gsub(/\n/, '<br/>')}</div>
+      </div>
+    </div>
+    <!-- <script type="text/javascript" src="../../js/auto-reloader.js" interval="1" watch_max_time="0"></script> -->
+  </body>
+</html>
+      EOF
+      File.open("#{folder}/index-warn.html", 'w') do |fp|
+        fp.write(content)
+      end
+    end
+    if commandline =~ / -p / or warnings != ''
+      status = (commandline =~ / -p /) ? 'OK??' : 'OK?'
       favicon = 'favicon-yellow.png'
     else
       status = 'OK'
@@ -483,19 +527,20 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     <script type="text/javascript" src="../../js/test-html5.js"></script>
     <script type="text/javascript">
       window["testlwf_html5target"] = "#{target}";
-      window["testlwf_commandline"] = "swf2lwf #{args.join(' ')}";
+      window["testlwf_commandline"] = "#{commandline}";
+      window["testlwf_warn"] = #{warnings != ''};
       window["testlwf_lwf"] = "_/#{prefix}.lwf";
       window["testlwf_lwfjs"] = "#{lwfjs}";
       window["testlwf_rootoffset"] = {
           "x": #{rootoffset[:x]},
           "y": #{rootoffset[:y]},
-      }
+      };
     </script>
 #{userscripts}
 #{birdwatcher}
-    <script type="text/javascript" src="../../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </head>
   <body>
+    <script type="text/javascript" src="../../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
         EOF
@@ -509,7 +554,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     end
   end
 
-  def outputNG(folder, name, prefix, args, msg)
+  def outputNG(folder, name, prefix, commandline, msg, warnings)
     content = <<-"EOF"
 <!DOCTYPE HTML>
 <html>
@@ -522,11 +567,21 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     <link rel="stylesheet" href="../../css/viewer.css" />
   </head>
   <body>
-    <div>
-      <span>ERROR: #{name}</span>
+    <div id="wrapper">
+      <div id="header">
+        <h1>ERROR: #{name}</h1>
+        <div class="info">(#{commandline})</div>
+        <div class="info">#{msg.gsub(/\n/, '<br/>')}</div>
+    EOF
+    if warnings != ''
+      content += <<-"EOF"
+        <h1>WARNINGS: #{name}</h1>
+        <div class="info">#{warnings.gsub(/\n/, '<br/>')}</div>
+      EOF
+    end
+    content += <<-"EOF"
+      </div>
     </div>
-    <p>swf2lwf #{args.join(' ')}</p>
-    <p>#{msg.gsub(/\n/, '<br/>')}</p>
     <script type="text/javascript" src="../../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
