@@ -2971,6 +2971,8 @@ def swf2lwf(*args)
     @textureatlasdicts.push textureatlasdict
   end
 
+  names = {}
+  names[File.basename(@lwfpath, '.*')] = @lwfpath + '.lwf'
   @textures.each_with_index do |texture, i|
     if texture.textureatlas == false and
         (texture.filename.nil? or @use_internal_png)
@@ -2979,6 +2981,11 @@ def swf2lwf(*args)
       texture.need_to_export = true
     end
     texture.name = File.basename(texture.filename)
+
+    name = File.basename(texture.filename, '.*')
+    warn "bitmap #{texture.filename} conflicts #{names[name]}" if names[name]
+    names[name] = texture.filename
+
     if texture.name =~ /(.*)_rgb_[0-9a-f]{6}(.*)/
       origName = $1 + $2
       tinfo = nil
