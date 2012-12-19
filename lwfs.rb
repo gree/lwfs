@@ -757,7 +757,7 @@ server = WEBrick::HTTPServer.new({
           postUpdate();
         end
       else
-        watcher = spawn("ruby #{WATCH_SCRIPT} #{SRC_DIR}")
+        watcher = spawn("ruby", WATCH_SCRIPT, SRC_DIR)
       end
     end
   }
