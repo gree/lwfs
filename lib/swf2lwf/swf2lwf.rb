@@ -21,8 +21,8 @@
 $:.unshift File.dirname(__FILE__) + '/lib'
 require 'yaml'
 require 'zlib'
-require 'nkf'
 require 'kconv'
+require 'uri'
 require 'pp'
 require 'optparse'
 require 'fileutils'
@@ -259,6 +259,13 @@ def swf2lwf_setfuncs
     end
 
   end
+end
+
+def escape(str)
+  return str if str.nil?
+  str = URI.encode(str)
+  str = str.gsub(/(%[\da-fA-F][\da-fA-F])+/) {|m| '__' + m.gsub(/%/, '') + '__'}
+  return str
 end
 
 class LWFData
@@ -1798,6 +1805,7 @@ def parse_action
       target = get_string
       if url =~ /^FSCommand:event$/i
         info "    EVENT " + target
+        error "Invalid event name: #{target}" unless target =~ /^[a-zA-Z0-9_]+$/
         actions.push [:EVENT, target]
         @event_map[target] = true
       elsif url =~ /^FSCommand:skip$/i
@@ -2092,7 +2100,7 @@ def parse_define_edit_text
       "y=#{shadow_offset_y} b=#{shadow_blur}"
   end
   @string_map[name] = true
-  warn("Text('#{name}') is already defined.") unless @text_name_map[name].nil?
+  #warn("Text('#{name}') is already defined.") unless @text_name_map[name].nil?
   @text_name_map[name] = true
   @string_map[text] = true
   @objects[obj_id] = graphic
@@ -2606,6 +2614,19 @@ def create_instance_name(x, y)
     "_y" + y.to_s.sub(/\.0$/, '').sub(/\./, "_")
 end
 
+def check_script(script)
+  if script =~ /fscommand\s*\(([^\)]*)\)/
+    args = $1
+    if args =~ /^\s*["']\s*event\s*["']\s*,\s*["']\s*(\S+)\s*["']\s*$/
+      event = $1
+      error "Invalid event name: #{event}" unless event =~ /^[a-zA-Z0-9_]+$/
+      @event_map[event] = true
+    else
+      error "Invalid fscommand notation [#{args}]"
+    end
+  end
+end
+
 def parse_xflxml(xml, isRootMovie = false)
   return unless xml =~ /\/\*\s*js/
   if defined?(LibXML)
@@ -2633,6 +2654,7 @@ def parse_xflxml(xml, isRootMovie = false)
         lid = item.attributes["linkageIdentifier"]
         linkageName = lid unless lid.nil?
       end
+      linkageName = escape(linkageName)
   
       name = isRootMovie ? "_root" : linkageName
       layerElements = layers.send(elementsMsg)
@@ -2715,6 +2737,7 @@ def parse_xflxml(xml, isRootMovie = false)
 
       scripts.each do |type, script|
         if script =~ /\W/
+          check_script(script)
           if type == "frame"
             @script_map[name] ||= Hash.new
             @script_map[name][index] ||= Hash.new
@@ -2733,21 +2756,24 @@ def parse_xflxml(xml, isRootMovie = false)
       frame = symbol_instance.parent.parent
       layer = frame.parent.parent
       layers = layer.parent
-      timeline = layer.parent.parent
+      item = layer.parent.parent.parent.parent
 
       instance_linkage_name = symbol_instance.attributes["libraryItemName"]
+      instance_linkage_name = escape(instance_linkage_name)
       instance_name = symbol_instance.attributes["name"]
+      instance_name = escape(instance_name)
       if instance_name.nil? or instance_name.empty?
-        em = symbol_instance.send(elementsMsg).find(){|e| e.name == "matrix"}
+        em = symbol_instance.send(elementsMsg).find(){|elm| elm.name == "matrix"}
         if em.nil?
           instance_name = create_instance_name(0, 0)
         else
-          m = em.send(elementsMsg).find(){|e| e.name == "Matrix"}
+          m = em.send(elementsMsg).find(){|elm| elm.name == "Matrix"}
           instance_name =
             create_instance_name(m.attributes["tx"], m.attributes["ty"])
         end
       end
-      name = isRootMovie ? "_root" : timeline.attributes["name"]
+      name = isRootMovie ? "_root" :
+        escape(item.attributes["linkageIdentifier"])
       layerElements = layers.send(elementsMsg)
       layerElements = [nil] +
         layerElements.delete_if{|l| l.name != "DOMLayer"} if defined?(LibXML)
@@ -2775,16 +2801,15 @@ def parse_xflxml(xml, isRootMovie = false)
           event_nest -= 1
           if event_nest == 0
             if script =~ /\W/
+              check_script(script)
               if event == "keyPress"
                 error "doesn't support script in keyPress event"
               else
-                head = tail = script_name = ''
-                if instance_linkage_name =~ /(.+)\/([^\/]+)$/
-                  head = $1
-                  tail = $2
-                  head.gsub!(/\//, '_')
+                tail = script_name = ''
+                if instance_linkage_name =~ /.+\/([^\/]+)$/
+                  tail = $1
                   script_name =
-                    "#{head}_#{name}_#{index}_#{tail}_#{instance_name}"
+                    "#{name}_#{index}_#{tail}_#{instance_name}"
                 else
                   script_name =
                     "#{name}_#{index}_#{instance_linkage_name}_#{instance_name}"
@@ -2911,6 +2936,7 @@ def swf2lwf(*args)
   @instance_script_map = Hash.new
   @script_funcname_map = Hash.new
   @using_script_funcname_map = Hash.new
+  @event_map = Hash.new
   parse_fla(lwfbasedir) unless @fla.nil?
   @lwfpath = lwfbasedir + lwfname
   @logfile = File.open(@lwfpath + '.txt', 'wb')
@@ -2922,7 +2948,6 @@ def swf2lwf(*args)
   @instance_name_map = Hash.new
   @instance_name_map["_root"] = true
   @label_map = Hash.new
-  @event_map = Hash.new
   @particle_name_map = Hash.new
   @program_object_name_map = Hash.new
   @movie_linkage_name_map = Hash.new
@@ -2958,6 +2983,16 @@ def swf2lwf(*args)
       error "can't read #{textureatlasfile}"
       next
     end
+
+    frames = textureatlasdict["frames"]
+    if frames.instance_of?(Array)
+      newFrames = {}
+      textureatlasdict["frames"] = newFrames
+      frames.each do |frame|
+        newFrames[frame["filename"]] = frame
+      end
+    end
+
     meta = textureatlasdict["meta"]
     size = meta["size"]
     textureatlas = Texture.new(size["w"].to_i, size["h"].to_i, nil)
@@ -2973,6 +3008,7 @@ def swf2lwf(*args)
 
   names = {}
   names[File.basename(@lwfpath, '.*')] = @lwfpath + '.lwf'
+  texturenamemap = {}
   @textures.each_with_index do |texture, i|
     if texture.textureatlas == false and
         (texture.filename.nil? or @use_internal_png)
@@ -3007,6 +3043,16 @@ def swf2lwf(*args)
       end
     end
     @texture_filename_map[texture.name] = true
+    texturenamemap[File.basename(texture.name, '.*').downcase] = true
+  end
+
+  @textures.each do |texture|
+    if texture.name =~ /(.*)_rgb_[0-9a-f]{6}(.*)/
+      name = File.basename($1 + $2, '.*')
+      if texturenamemap[name.downcase].nil?
+        error "Texture [#{name}] not found for [#{texture.name}]"
+      end
+    end
   end
 
   @strings = Hash.new
@@ -3647,6 +3693,21 @@ global.LWF.Script["#{lwfname}"] = function() {
 	var Tween = global.LWF.Tween;
 	var _root;
 
+	var fscommand = function(type, arg) {
+		if (type === "event") {
+			var lwf = _root.lwf;
+			var stringId = lwf.getStringId(arg);
+			if (stringId == -1)
+				throw Error("unknown fscommand event string");
+			var eventId = lwf.searchEventId(stringId);
+			if (eventId == -1)
+				throw Error("unknown fscommand event");
+			lwf.dispatchEvent(eventId, this);
+		} else {
+			throw Error("unknown fscommand");
+		}
+	};
+
 	var Script = (function() {function Script() {}
 
 	Script.prototype["init"] = function() {
@@ -3713,7 +3774,7 @@ def swf2lwf_optparse(args)
     opt.on('-i', desc = 'suppress warnings for unknown actions.') {@ignore_unknownaction = true}
     opt.on('-p', desc = 'extract image data from the SWF file.') {@use_internal_png = true}
     opt.on('-k', desc = 'disable extracting image data.') {@disable_exporting_png = true}
-    opt.on('-f FLA', desc = 'specify an FLA file corresponding to the SWF file.') do |fla|
+    opt.on('-f FLA', desc = 'specify an FLA file corresponding to the SWF file. (Required: Ruby 1.9 or later)') do |fla|
       @fla = fla
     end
     opt.parse!(args.empty? ? ['--help'] : args)
