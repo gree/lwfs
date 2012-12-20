@@ -3774,7 +3774,7 @@ def swf2lwf_optparse(args)
     opt.on('-i', desc = 'suppress warnings for unknown actions.') {@ignore_unknownaction = true}
     opt.on('-p', desc = 'extract image data from the SWF file.') {@use_internal_png = true}
     opt.on('-k', desc = 'disable extracting image data.') {@disable_exporting_png = true}
-    opt.on('-f FLA', desc = 'specify an FLA file corresponding to the SWF file. (Required: Ruby 1.9 or later)') do |fla|
+    opt.on('-f FLA', desc = 'specify an FLA file corresponding to the SWF file.') do |fla|
       @fla = fla
     end
     opt.parse!(args.empty? ? ['--help'] : args)
