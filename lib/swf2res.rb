@@ -3,6 +3,7 @@ $:.unshift File.dirname(__FILE__)
 require 'fileutils'
 require 'find'
 require 'swf2lwf/swf2lwf.rb'
+require 'lwf2lwfjs/lwf2lwfjs.rb'
 
 def swf2res(swf)
   return {"is_error" => true, "message" => 'The file is not swf.'} unless swf =~ /\.swf$/
@@ -23,6 +24,7 @@ def swf2res(swf)
   res = dirname + "/_"
   lwf = prefix + ".lwfdata/" + basename + ".lwf"
   js = prefix + ".lwfdata/" + basename + ".js"
+  lwfjs = prefix + ".lwfdata/" + basename + ".lwf.js"
   stat = prefix + ".status.txt"
   logfile = prefix + ".lwfdata/" + basename + ".txt"
   FileUtils.rm_rf res
@@ -61,6 +63,7 @@ def swf2res(swf)
       end
     end
     raise errors unless errors.empty?
+    lwf2lwfjs(lwf)
     t1 = Time.now
     p t1 - t0
   rescue => exception
@@ -119,6 +122,9 @@ def swf2res(swf)
   end
   if File.file?(js)
     FileUtils.cp(js, res)
+  end
+  if File.file?(lwfjs)
+    FileUtils.cp(lwfjs, res)
   end
 
   return {"args" => args0}
