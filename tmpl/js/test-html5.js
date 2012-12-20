@@ -94,18 +94,22 @@
          if (lwf == null) {
              var err = this.error;
              if (err == null) {
-                 err = {
-                     reason: 'N/A',
-                     url: 'N/A'
-                 };
+                 err = [
+                     {
+                         reason: 'N/A',
+                         url: 'N/A'
+                     }
+                 ];
              }
              var elm = document.createElement('div');
              elm.style.fontFamily = 'monospace';
              elm.style.fontSize = 'medium';
-             elm.innerHTML
-                 = '<p>ERROR: failed to load the lwf.</p>'
-                 + '<p>reason: ' + err.reason + '</p>'
-                 + '<p>url: ' + err.url + '</p>';
+             var msg = '<p>ERROR: failed to load the lwf.</p>';
+             for (var i in err) {
+                 var e = err[i];
+                 msg += '<p>reason: ' + e.reason + ' (' + e.url + ')</p>';
+             }
+             elm.innerHTML = msg;
              var lpart = document.getElementById('lpart');
              if (lpart != null) {
                  lpart.appendChild(elm);
@@ -488,6 +492,7 @@
                  var div = document.createElement('div');
                  div.className = 'info';
                  div.id = 'info1';
+                 div.textContent = '(x1)';
                  lpart.appendChild(div);
              }
              {
