@@ -121,10 +121,41 @@ FileUtils.cp_r('tmpl', BASE_DIR) unless File.directory?(BASE_DIR)
 
 $mutex_p = Mutex.new
 
+class MutexFileHandler < WEBrick::HTTPServlet::FileHandler
+  def do_GET(req, res)
+    if req.request_uri.to_s =~ /\.html$/
+      $mutex_p.synchronize do
+        super
+      end
+    else
+      super
+    end
+  end
+end
+
+class LocateServlet < WEBrick::HTTPServlet::AbstractServlet
+  def do_GET(req, res)
+    res.status = 200
+    target = req.request_uri.to_s.sub(/^http:\/\/.*\/locate\//, '')
+    if File.directory?("#{SRC_DIR}/#{target}") or File.file?("#{SRC_DIR}/#{target}")
+      if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
+        path = "#{SRC_DIR}/#{target}"
+        `open -R "#{path}"`
+      elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
+        path = "#{SRC_DIR}/#{target}".gsub(/\//, '\\')
+        `start explorer /select,"#{path}"`
+      else
+        # not supported
+      end
+    end
+  end
+end
+
 class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   @@mutex_i = Mutex.new
   @@is_in_post = false
   @@is_interrupted = false
+  @@is_start = true
 
   def initialize(*args)
     super(*args)
@@ -134,19 +165,8 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     res.status = 200
     res.body = 'OK'
     if req.path == '/update/start'
-      updateTopStatus(true);
+      updateTopStatus(true)
       updateTopIndex(true)
-      if not REMOTE_SERVER.nil?
-        3.times do |i|  # retry three times
-          `rsync -az --exclude='list/*/' --delete --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
-          break if $? == 0
-          sleep(1.0)
-        end
-        sleep(1.0)
-        `#{OPEN_COMMAND} http://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list/`
-      else
-        `#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/#{MY_ID}/list/`
-      end
       return
     end
     @@mutex_i.synchronize do
@@ -156,17 +176,27 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
       end
       @@is_in_post = true
     end
-    t0 = t1 = t2 = t3 = t4 = t5 = t6 = t7 = t8 = Time.now
-    is_in_progress = true
-    updateTopStatus(true);
-    if not REMOTE_SERVER.nil?
-      3.times do |i|  # retry three times
-        `rsync -az --exclude='list/*/' --delete --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
-        break if $? == 0
-        sleep(1.0)
-      end
-    end
     Thread.new do
+      t0 = t1 = t2 = t3 = t4 = t5 = t6 = t7 = t8 = Time.now
+      cmd = nil
+      updateTopStatus(true)
+      if @@is_start
+        @@is_start = false
+        begin
+          updateTopIndex(true)
+        rescue => e
+          p e
+          p e.backtrace
+        end
+        if REMOTE_SERVER.nil?
+          cmd = "#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/#{MY_ID}/list/"
+        else
+          cmd = "#{OPEN_COMMAND} http://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list/"
+        end
+      end
+      rsync() unless REMOTE_SERVER.nil?
+      `#{cmd}` unless cmd.nil?
+      is_in_progress = true
       while is_in_progress
         catch :restart do
           t1 = Time.now
@@ -194,14 +224,12 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
           t5 = Time.now
           checkInterruption(__LINE__, 0.001)
           t6 = Time.now
-          $mutex_p.synchronize do
-            begin
-              updateFolders()
-              updateTopIndex()
-            rescue => e
-              p e
-              p e.backtrace
-            end
+          begin
+            updateFolders()
+            updateTopIndex()
+          rescue => e
+            p e
+            p e.backtrace
           end
           t7 = Time.now
           @@mutex_i.synchronize do
@@ -210,23 +238,15 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
               p "restart at #{__LINE__}"
               throw :restart
             end
-            is_in_progress = false
-            updateTopStatus(false);
-            if not REMOTE_SERVER.nil?
-              3.times do |i|  # retry three times
-                `rsync -az --delete --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
-                break if $? == 0
-                sleep(1.0)
-              end
-            end
             @@is_in_post = false
           end
+          updateTopStatus(false)
+          rsync() unless REMOTE_SERVER.nil?
           t8 = Time.now
-        end
-        if not is_in_progress
-          p "thread finished #{t8 - t0} #{t8 - t1} i #{t2 - t1} s #{t3 - t2} i #{t4 - t3} c #{t5 - t4} i #{t6 - t5} u #{t7 - t6} i #{t8 - t7}"
+          is_in_progress = false
         end
       end
+      p "thread finished #{t8 - t0} #{t8 - t1} i #{t2 - t1} s #{t3 - t2} i #{t4 - t3} c #{t5 - t4} i #{t6 - t5} u #{t7 - t6} i #{t8 - t7}"
     end
   end
 
@@ -377,11 +397,11 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
             s.sub!(/.*\/swf2lwf.conf$/, 'swf2lwf.conf')
           end
           commandline = "swf2lwf#{(ret['args'].length > 0) ? ' ' : ''}#{ret['args'].join(' ')}"
-          warnings = getWarnings(folder, name, prefix)
           if not ret['is_error']
-            outputOK(folder, name, prefix, commandline, warnings)
+            outputOK(folder, name, prefix, commandline, getWarnings(folder, name, prefix))
           else
-            outputNG(folder, name, prefix, commandline, ret['message'], warnings)
+            # ret['message'] contains warnings.
+            outputNG(folder, name, prefix, commandline, ret['message'], '')
           end
         end
       end
@@ -415,12 +435,16 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   </body>
 </html>
       EOF
-      File.open("#{folder}/index-#{target}.html", 'w') do |fp|
-        fp.write(content)
+      $mutex_p.synchronize do
+        File.open("#{folder}/index-#{target}.html", 'w') do |fp|
+          fp.write(content)
+        end
       end
     end
-    File.open("#{folder}/.status", 'w') do |fp|
-      fp.write('as-is')
+    $mutex_p.synchronize do
+      File.open("#{folder}/.status", 'w') do |fp|
+        fp.write('as-is')
+      end
     end
   end
 
@@ -449,8 +473,10 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   </body>
 </html>
       EOF
-      File.open("#{folder}/index-warn.html", 'w') do |fp|
-        fp.write(content)
+      $mutex_p.synchronize do
+        File.open("#{folder}/index-warn.html", 'w') do |fp|
+          fp.write(content)
+        end
       end
     end
     if commandline =~ / -p / or warnings != ''
@@ -495,7 +521,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
         lwfjs = 'lwf.js'
       end
       ['release', 'debug', 'birdwatcher'].each do |rel|
-        birdwatcher = '';
+        birdwatcher = ''
         if rel == 'birdwatcher'
           birdwatcher = <<-"EOF"
     <script type="text/javascript" src="../../js/birdwatcher.js"></script>
@@ -544,13 +570,17 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   </body>
 </html>
         EOF
-        File.open("#{folder}/index-#{target}#{(rel == 'release') ? '' : '-' + rel}.html", 'w') do |fp|
-          fp.write(content)
+        $mutex_p.synchronize do
+          File.open("#{folder}/index-#{target}#{(rel == 'release') ? '' : '-' + rel}.html", 'w') do |fp|
+            fp.write(content)
+          end
         end
       end
     end
-    File.open("#{folder}/.status", 'w') do |fp|
-      fp.write(status)
+    $mutex_p.synchronize do
+      File.open("#{folder}/.status", 'w') do |fp|
+        fp.write(status)
+      end
     end
   end
 
@@ -586,11 +616,15 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   </body>
 </html>
     EOF
-    File.open("#{folder}/index-err.html", 'w') do |fp|
-      fp.write(content)
+    $mutex_p.synchronize do
+      File.open("#{folder}/index-err.html", 'w') do |fp|
+        fp.write(content)
+      end
     end
-    File.open("#{folder}/.status", 'w') do |fp|
-      fp.write('NG')
+    $mutex_p.synchronize do
+      File.open("#{folder}/.status", 'w') do |fp|
+        fp.write('NG')
+      end
     end
   end
 
@@ -618,9 +652,17 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     end
   end
 
+  def rsync()
+#    `rsync -az --delete --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
+    `rsync -az --delete --exclude #{MY_ID}/list/index.html --exclude #{MY_ID}/list/.status --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
+    `rsync -az --delete --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.status rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
+  end
+
   def updateTopStatus(is_in_conversion)
-    File.open("#{DST_DIR}/.status", 'w') do |fp|
-      fp.write("{\"is_in_conversion\":#{is_in_conversion}}");
+    $mutex_p.synchronize do
+      File.open("#{DST_DIR}/.status", 'w') do |fp|
+        fp.write("{\"is_in_conversion\":#{is_in_conversion}}")
+      end
     end
   end
 
@@ -633,13 +675,12 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
         end
       end
     end
-    File.open("#{DST_DIR}/index.html", 'w') do |fp|
-      updated_message = Time.now.strftime('%F %T')
-      if not is_start and $updated_jsfls.length > 0
-        updated_message += ', <b>NOTE: LWF_Publish.jsfl is also updated</b>'
-        $updated_jsfls = []
-      end
-      content = <<-"EOF"
+    updated_message = Time.now.strftime('%F %T')
+    if not is_start and $updated_jsfls.length > 0
+      updated_message += ', <b>NOTE: LWF_Publish.jsfl is also updated</b>'
+      $updated_jsfls = []
+    end
+    content = <<-"EOF"
 <!DOCTYPE HTML>
 <html>
   <head>
@@ -650,6 +691,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     <link rel="stylesheet" href="../css/common.css" />
     <link rel="stylesheet" href="../css/sorter.css" />
     <script type="text/javascript" src="../js/status.js" interval="1"></script>
+    <script type="text/javascript" src="../js/ajax.js"></script>
     <script type="text/javascript" src="../js/sorter.js"></script>
     <script type="text/javascript" src="../js/qrcode.js"></script>
     <script type="text/javascript">
@@ -674,40 +716,40 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
       </div>
       <p>(updated: #{updated_message})</p>
       <table cellpadding="0" cellspacing="0" border="0" class="sortable" id="sorter">
-      EOF
-      content += '        <tr><th>name</th>'
-      ['webkitcss', 'canvas', 'webgl'].each do |target|
-        next unless TARGETS.include?(target)
-        content += "<th>#{target}</th>"
-      end
-      content += "<th>status</th><th>last modified</th></tr>\n"
-      names.each do |name|
-        status = File.read("#{DST_DIR}/#{name}/.status")
-        prefix = ''
-        date = lastModified("#{DST_DIR}/#{name}")
-        date = date.strftime('%F %T')
-        content += "        <tr><td>#{name}</td>"
-        if status != 'NG'
-          ['webkitcss', 'canvas', 'webgl'].each do |target|
-            next unless TARGETS.include?(target)
-            if File.file?("#{DST_DIR}/#{name}/index-#{target}.html")
-              content += "<td><a href=\"#{name}/index-#{target}.html\" target=\"_blank\">#{target}</a></td>"
-            else
-              content += "<td>-</td>"
-            end
-          end
-          content += "<td>#{status}</td>"
-          content += "<td>#{date}</td></tr>\n"
-        else
-          ['webkitcss', 'canvas', 'webgl'].each do |target|
-            next unless TARGETS.include?(target)
+    EOF
+    content += '        <tr><th>name</th>'
+    ['webkitcss', 'canvas', 'webgl'].each do |target|
+      next unless TARGETS.include?(target)
+      content += "<th>#{target}</th>"
+    end
+    content += "<th>status</th><th>last modified</th></tr>\n"
+    names.each do |name|
+      status = File.read("#{DST_DIR}/#{name}/.status")
+      prefix = ''
+      date = lastModified("#{DST_DIR}/#{name}")
+      date = date.strftime('%F %T')
+      content += "        <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('/locate/#{name}'); return false;\">#{name}</a></td>"
+      if status != 'NG'
+        ['webkitcss', 'canvas', 'webgl'].each do |target|
+          next unless TARGETS.include?(target)
+          if File.file?("#{DST_DIR}/#{name}/index-#{target}.html")
+            content += "<td><a href=\"#{name}/index-#{target}.html\" target=\"_blank\">#{target}</a></td>"
+          else
             content += "<td>-</td>"
           end
-          content += "<td><a href=\"#{name}/index-err.html\" target=\"_blank\">#{status}</a></td>"
-          content += "<td>#{date}</td></tr>\n"
         end
+        content += "<td>#{status}</td>"
+        content += "<td>#{date}</td></tr>\n"
+      else
+        ['webkitcss', 'canvas', 'webgl'].each do |target|
+          next unless TARGETS.include?(target)
+          content += "<td>-</td>"
+        end
+        content += "<td><a href=\"#{name}/index-err.html\" target=\"_blank\">#{status}</a></td>"
+        content += "<td>#{date}</td></tr>\n"
       end
-      content += <<-"EOF"
+    end
+    content += <<-"EOF"
       </table>
     </div>
     <script type="text/javascript">
@@ -717,8 +759,11 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     <script type="text/javascript" src="../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
-      EOF
-      fp.write(content)
+    EOF
+    $mutex_p.synchronize do
+      File.open("#{DST_DIR}/index.html", 'w') do |fp|
+        fp.write(content)
+      end
     end
   end
 
@@ -749,12 +794,10 @@ server = WEBrick::HTTPServer.new({
   :StartCallback => Proc.new {
     Thread.new do 
       sleep(0.1)
-      postUpdate('start');
-      sleep(1.0)
-      postUpdate();
+      postUpdate()
       if RUBY_PLATFORM == /java/
         Listen.to(SRC_DIR, :latency => 0.5) do |modified, added, removed|
-          postUpdate();
+          postUpdate()
         end
       else
         watcher = spawn("ruby", WATCH_SCRIPT, SRC_DIR)
@@ -763,7 +806,9 @@ server = WEBrick::HTTPServer.new({
   }
 })
 
+server.mount('/', MutexFileHandler, 'htdocs')
 server.mount('/update', UpdateServlet)
+server.mount('/locate', LocateServlet)
 
 ['INT', 'TERM'].each { |signal|
   Signal.trap(signal) {
