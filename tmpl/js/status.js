@@ -16,22 +16,23 @@
              }
          }
      }
-     setInterval(
-         function() {
-             var xhr = new XMLHttpRequest();
-             xhr.open('GET', location.href + '.status', true);
-             xhr.onreadystatechange = function() {
-                 if(xhr.readyState === 4){
-                     if (xhr.status === 200) {
-                         var res = JSON.parse(xhr.responseText);
-                         var elm = document.getElementById('loading');
-                         if (elm != null) {
-                             elm.style.visibility = (res.is_in_conversion) ? 'visible' : 'hidden';
-                         }
+     var checkStatus = function() {
+         var xhr = new XMLHttpRequest();
+         xhr.open('GET', location.href + '.status', true);
+         xhr.onreadystatechange = function() {
+             if(xhr.readyState === 4){
+                 if (xhr.status === 200) {
+                     var res = JSON.parse(xhr.responseText);
+                     var elm = document.getElementById('loading');
+                     if (elm != null) {
+                         elm.style.visibility = (res.is_in_conversion) ? 'visible' : 'hidden';
                      }
                  }
-             };
-             xhr.send('');
-         },
-         INTERVAL);
+             }
+         };
+         xhr.send('');
+         setTimeout(checkStatus, INTERVAL);
+     };
+     // use large duration initially for avoiding jittered loading display on reload.
+     setTimeout(checkStatus, 2000);
 }).call(this);
