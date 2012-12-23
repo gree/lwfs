@@ -2615,8 +2615,8 @@ def create_instance_name(x, y)
 end
 
 def check_script(script)
-  if script =~ /fscommand\s*\(([^\)]*)\)/
-    args = $1
+  script.scan(/fscommand\s*\(([^\)]*)\)/) do |m|
+    args = m[0]
     if args =~ /^\s*["']\s*event\s*["']\s*,\s*["']\s*(\S+)\s*["']\s*$/
       event = $1
       error "Invalid event name: #{event}" unless event =~ /^[a-zA-Z0-9_]+$/

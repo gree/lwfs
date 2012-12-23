@@ -6075,10 +6075,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           continue;
         }
         settings._textures.push(texture);
-        url = this.getTextureURL(settings, data, texture);
-        m = url.match(/^(.*)_withalpha(.*\.)jpg/i);
-        if (m != null) {
-          pngURL = "" + m[1] + "_alpha" + m[2] + "png";
+        if (texture.filename.match(/_withalpha/i)) {
+          url = this.getTextureURL(settings, data, texture);
+          m = url.match(/^(.*)_withalpha(.*\.)jpg(.*)$/i);
+          pngURL = "" + m[1] + "_alpha" + m[2] + "png" + m[3];
           pm = pngURL.match(/\/([^\/]+)$/);
           pngFilename = pm != null ? pm[1] : pngURL;
           t = new Format.TextureReplacement(pngFilename);
