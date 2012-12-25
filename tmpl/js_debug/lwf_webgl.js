@@ -4354,8 +4354,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.matrixIdentity = new Matrix;
       this.colorTransform = new ColorTransform;
       this.colorTransformIdentity = new ColorTransform;
-      this.init();
       this.setRendererFactory(rendererFactory);
+      this.init();
     }
 
     LWF.prototype.setRendererFactory = function(rendererFactory) {
