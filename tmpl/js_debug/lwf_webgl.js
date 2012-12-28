@@ -2128,6 +2128,51 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       dst.alpha = c.alpha * t.multi.alpha;
     };
 
+    Utility.newIntArray = function() {
+      return [];
+    };
+
+    Utility.insertIntArray = function(array, v) {
+      var i;
+      if (array.length === 0 || v > array[array.length - 1]) {
+        array.push(v);
+        return;
+      }
+      i = this.locationOfIntArray(array, v);
+      if (array[i] !== v) {
+        array.splice(i, 0, v);
+      }
+    };
+
+    Utility.deleteIntArray = function(array, v) {
+      var i;
+      i = this.locationOfIntArray(array, v);
+      if (array[i] === v) {
+        array.splice(i, 1);
+      }
+    };
+
+    Utility.locationOfIntArray = function(array, v, first, last) {
+      var mid;
+      if (first == null) {
+        first = 0;
+      }
+      if (last == null) {
+        last = array.length - 1;
+      }
+      while (first <= last) {
+        mid = ((first + last) / 2) >> 0;
+        if (v > array[mid]) {
+          first = mid + 1;
+        } else if (v < array[mid]) {
+          last = mid - 1;
+        } else {
+          return mid;
+        }
+      }
+      return first;
+    };
+
     return Utility;
 
   })();
@@ -2193,19 +2238,25 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (colorTransformId == null) {
         colorTransformId = 0;
       }
-      this.matrixIdChanged = this.matrixId !== matrixId;
-      this.matrixId = matrixId;
-      this.colorTransformIdChanged = this.colorTransformId !== colorTransformId;
-      this.colorTransformId = colorTransformId;
+      if (this.matrixId !== matrixId) {
+        this.matrixIdChanged = true;
+        this.matrixId = matrixId;
+      }
+      if (this.colorTransformId !== colorTransformId) {
+        this.colorTransformIdChanged = true;
+        this.colorTransformId = colorTransformId;
+      }
     };
 
     LObject.prototype.update = function(m, c) {
       this.updated = true;
       if (m !== null) {
         Utility.calcMatrixId(this.lwf, this.matrix, m, this.dataMatrixId);
+        this.matrixIdChanged = false;
       }
       if (c !== null) {
         Utility.copyColorTransform(this.colorTransform, c);
+        this.colorTransformIdChanged = false;
       }
       this.lwf.renderObject();
     };
@@ -3010,40 +3061,29 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       return new Point(x, y);
     };
 
-    Movie.prototype.shrinkList = function(list) {
-      var i, _i, _ref;
-      for (i = _i = _ref = list.length - 1; _ref <= 0 ? _i <= 0 : _i >= 0; i = _ref <= 0 ? ++_i : --_i) {
-        if (list[i] != null) {
-          if (i === list.length - 1) {
-            return list;
-          } else {
-            return list.slice(0, +i + 1 || 9e9);
-          }
-        }
-      }
-      return [];
+    Movie.prototype.getDepth = function(keys) {
+      var depth;
+      depth = keys.length === 0 ? 0 : keys[keys.length - 1] + 1;
+      return depth;
     };
 
-    Movie.prototype.reorderList = function(reorder, list, index, object, op) {
-      var i, _results;
-      if (!reorder || index >= list.length) {
-        list[index] = object;
-      } else {
-        list.splice(index, 0, object);
-      }
+    Movie.prototype.reorderList = function(reorder, keys, list, index, object, op) {
+      var i, k, newlist, v;
+      Utility.insertIntArray(keys, index);
+      list[index] = object;
       if (reorder) {
         i = 0;
-        _results = [];
-        while (i < list.length) {
-          if (list[i] != null) {
-            op(list[i], i);
-            _results.push(i += 1);
-          } else {
-            _results.push(list.splice(i, 1));
-          }
+        newlist = {};
+        for (k in list) {
+          v = list[k];
+          op(v, i);
+          keys[i] = i;
+          newlist[i] = v;
+          ++i;
         }
-        return _results;
+        list = newlist;
       }
+      return list;
     };
 
     Movie.prototype.deleteAttachedMovie = function(parent, movie, destroy, deleteFromDetachedMovies) {
@@ -3058,11 +3098,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       depth = movie.depth;
       delete parent.attachedMovies[attachName];
       delete parent.attachedMovieList[depth];
+      Utility.deleteIntArray(parent.attachedMovieListKeys, depth);
       if (deleteFromDetachedMovies) {
         delete parent.detachedMovies[attachName];
       }
       delete parent[attachName];
-      parent.attachedMovieList = this.shrinkList(parent.attachedMovieList);
       if (destroy) {
         return movie.destroy();
       }
@@ -3098,7 +3138,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (this.attachedMovies == null) {
         this.attachedMovies = {};
         this.detachedMovies = {};
-        this.attachedMovieList = [];
+        this.attachedMovieList = {};
+        this.attachedMovieListKeys = Utility.newIntArray();
       }
       attachedMovie = this.attachedMovies[attachName];
       if (attachedMovie != null) {
@@ -3123,10 +3164,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
       }
       movie.attachName = attachName;
-      movie.depth = depth != null ? depth : this.attachedMovieList.length;
+      if (depth == null) {
+        depth = this.getDepth(this.attachedMovieListKeys);
+      }
+      movie.depth = depth;
       movie.name = attachName;
       this.attachedMovies[attachName] = movie;
-      this.reorderList(reorder, this.attachedMovieList, movie.depth, movie, function(o, i) {
+      this.attachedMovieList = this.reorderList(reorder, this.attachedMovieListKeys, this.attachedMovieList, movie.depth, movie, function(o, i) {
         return o.depth = i;
       });
       this[attachName] = movie;
@@ -3135,19 +3179,27 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.swapAttachedMovieDepth = function(depth0, depth1) {
       var attachedMovie0, attachedMovie1;
-      if (this.attachedMovies == null) {
+      if (!(this.attachedMovies != null) || depth0 === depth1) {
         return;
       }
       attachedMovie0 = this.attachedMovieList[depth0];
       attachedMovie1 = this.attachedMovieList[depth1];
       if (attachedMovie0 != null) {
         attachedMovie0.depth = depth1;
+        this.attachedMovieList[depth1] = attachedMovie0;
+        Utility.insertIntArray(this.attachedMovieListKeys, depth1);
+      } else {
+        delete this.attachedMovieList[depth1];
+        Utility.deleteIntArray(this.attachedMovieListKeys, depth1);
       }
       if (attachedMovie1 != null) {
         attachedMovie1.depth = depth0;
+        this.attachedMovieList[depth0] = attachedMovie1;
+        Utility.insertIntArray(this.attachedMovieListKeys, depth0);
+      } else {
+        delete this.attachedMovieList[depth0];
+        Utility.deleteIntArray(this.attachedMovieListKeys, depth0);
       }
-      this.attachedMovieList[depth0] = attachedMovie1;
-      this.attachedMovieList[depth1] = attachedMovie0;
     };
 
     Movie.prototype.getAttachedMovie = function(attachName) {
@@ -3247,11 +3299,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       depth = lwfContainer.child.depth;
       delete parent.attachedLWFs[attachName];
       delete parent.attachedLWFList[depth];
+      Utility.deleteIntArray(parent.attachedLWFListKeys, depth);
       if (deleteFromDetachedLWFs) {
         delete parent.detachedLWFs[attachName];
       }
       delete parent[attachName];
-      parent.attachedLWFList = this.shrinkList(parent.attachedLWFList);
       if (destroy) {
         return this.execDetachHandler(lwfContainer);
       }
@@ -3271,7 +3323,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (this.attachedLWFs == null) {
         this.attachedLWFs = {};
         this.detachedLWFs = {};
-        this.attachedLWFList = [];
+        this.attachedLWFList = {};
+        this.attachedLWFListKeys = Utility.newIntArray();
       }
       if (attachLWF.parent != null) {
         lwfContainer = attachLWF.parent.attachedLWFs[attachLWF.attachName];
@@ -3294,9 +3347,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       attachLWF.parent = this;
       attachLWF.detachHandler = detachHandler;
       attachLWF.attachName = attachName;
-      attachLWF.depth = depth != null ? depth : this.attachedLWFList.length;
+      if (depth == null) {
+        depth = this.getDepth(this.attachedLWFListKeys);
+      }
+      attachLWF.depth = depth;
       this.attachedLWFs[attachName] = lwfContainer;
-      this.reorderList(reorder, this.attachedLWFList, attachLWF.depth, lwfContainer, function(o, i) {
+      this.attachedLWFList = this.reorderList(reorder, this.attachedLWFListKeys, this.attachedLWFList, attachLWF.depth, lwfContainer, function(o, i) {
         return o.child.depth = i;
       });
       this[attachName] = attachLWF.rootMovie;
@@ -3305,19 +3361,27 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Movie.prototype.swapAttachedLWFDepth = function(depth0, depth1) {
       var attachedLWF0, attachedLWF1;
-      if (this.attachedLWFs == null) {
+      if (!(this.attachedLWFs != null) || depth0 === depth1) {
         return;
       }
       attachedLWF0 = this.attachedLWFList[depth0];
       attachedLWF1 = this.attachedLWFList[depth1];
       if (attachedLWF0 != null) {
         attachedLWF0.child.depth = depth1;
+        this.attachedLWFList[depth1] = attachedLWF0;
+        Utility.insertIntArray(this.attachedLWFListKeys, depth1);
+      } else {
+        delete this.attachedLWFList[depth1];
+        Utility.deleteIntArray(this.attachedLWFListKeys, depth1);
       }
       if (attachedLWF1 != null) {
         attachedLWF1.child.depth = depth0;
+        this.attachedLWFList[depth0] = attachedLWF1;
+        Utility.insertIntArray(this.attachedLWFListKeys, depth0);
+      } else {
+        delete this.attachedLWFList[depth0];
+        Utility.deleteIntArray(this.attachedLWFListKeys, depth0);
       }
-      this.attachedLWFList[depth0] = attachedLWF1;
-      this.attachedLWFList[depth1] = attachedLWF0;
     };
 
     Movie.prototype.getAttachedLWF = function(attachName) {
@@ -3468,7 +3532,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.postExec = function(progressing) {
-      var animationPlayed, attachName, control, controlAnimationOffset, ctrl, data, depth, frame, i, instance, movie, obj, p, postExeced, v, _i, _j, _k, _l, _len, _len1, _m, _n, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6;
+      var animationPlayed, attachName, control, controlAnimationOffset, ctrl, data, depth, frame, i, instance, k, movie, obj, p, postExeced, v, _i, _j, _k, _l, _len, _len1, _m, _n, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6;
       this.hasButton = false;
       if (!this.active) {
         return;
@@ -3570,12 +3634,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
         this.attachMovieExeced = true;
         if (this.attachedMovies != null) {
-          _ref3 = this.attachedMovieList;
+          _ref3 = this.attachedMovieListKeys;
           for (_l = 0, _len = _ref3.length; _l < _len; _l++) {
-            movie = _ref3[_l];
-            if (movie != null) {
-              movie.exec();
-            }
+            k = _ref3[_l];
+            movie = this.attachedMovieList[k];
+            movie.exec();
           }
         }
         instance = this.instanceHead;
@@ -3600,14 +3663,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             }
           }
           this.detachedMovies = {};
-          _ref5 = this.attachedMovieList;
+          _ref5 = this.attachedMovieListKeys;
           for (_m = 0, _len1 = _ref5.length; _m < _len1; _m++) {
-            movie = _ref5[_m];
-            if (movie != null) {
-              movie.postExec(progressing);
-              if (!this.hasButton && movie.hasButton) {
-                this.hasButton = true;
-              }
+            k = _ref5[_m];
+            movie = this.attachedMovieList[k];
+            movie.postExec(progressing);
+            if (!this.hasButton && movie.hasButton) {
+              this.hasButton = true;
             }
           }
         }
@@ -3667,7 +3729,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.update = function(m, c) {
-      var attachName, colorTransformChanged, depth, lwfContainer, matrixChanged, movie, obj, v, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2, _ref3;
+      var attachName, colorTransformChanged, depth, k, lwfContainer, matrixChanged, movie, obj, v, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2, _ref3;
       if (!this.active) {
         return;
       }
@@ -3701,12 +3763,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       if ((this.attachedMovies != null) || (this.attachedLWFs != null)) {
         if (this.attachedMovies != null) {
-          _ref1 = this.attachedMovieList;
+          _ref1 = this.attachedMovieListKeys;
           for (_j = 0, _len = _ref1.length; _j < _len; _j++) {
-            movie = _ref1[_j];
-            if (movie != null) {
-              this.updateObject(movie, m, c, matrixChanged, colorTransformChanged);
-            }
+            k = _ref1[_j];
+            movie = this.attachedMovieList[k];
+            this.updateObject(movie, m, c, matrixChanged, colorTransformChanged);
           }
         }
         if (this.attachedLWFs != null) {
@@ -3719,36 +3780,35 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             }
           }
           this.detachedLWFs = {};
-          _ref3 = this.attachedLWFList;
+          _ref3 = this.attachedLWFListKeys;
           for (_k = 0, _len1 = _ref3.length; _k < _len1; _k++) {
-            lwfContainer = _ref3[_k];
-            if (lwfContainer != null) {
-              this.lwf.renderObject(lwfContainer.child.exec(this.lwf.thisTick, m, c));
-            }
+            k = _ref3[_k];
+            lwfContainer = this.attachedLWFList[k];
+            this.lwf.renderObject(lwfContainer.child.exec(this.lwf.thisTick, m, c));
           }
         }
       }
     };
 
     Movie.prototype.linkButton = function() {
-      var depth, lwfContainer, movie, obj, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2;
+      var depth, k, lwfContainer, movie, obj, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2;
       if (!this.visible || !this.active || !this.hasButton) {
         return;
       }
       if (this.attachedLWFs != null) {
-        _ref = this.attachedLWFList;
+        _ref = this.attachedLWFListKeys;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          lwfContainer = _ref[_i];
-          if (lwfContainer != null) {
-            lwfContainer.linkButton();
-          }
+          k = _ref[_i];
+          lwfContainer = this.attachedLWFList[k];
+          lwfContainer.linkButton();
         }
       }
       if (this.attachedMovies != null) {
-        _ref1 = this.attachedMovieList;
+        _ref1 = this.attachedMovieListKeys;
         for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-          movie = _ref1[_j];
-          if (movie != null ? movie.hasButton : void 0) {
+          k = _ref1[_j];
+          movie = this.attachedMovieList[k];
+          if (movie.hasButton) {
             movie.linkButton();
           }
         }
@@ -3768,7 +3828,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.render = function(v, rOffset) {
-      var attachedMovie, child, depth, lwfContainer, obj, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2;
+      var attachedMovie, child, depth, k, lwfContainer, obj, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2;
       if (!this.visible || !this.active) {
         v = false;
       }
@@ -3789,29 +3849,27 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
       }
       if (this.attachedMovies != null) {
-        _ref1 = this.attachedMovieList;
+        _ref1 = this.attachedMovieListKeys;
         for (_j = 0, _len = _ref1.length; _j < _len; _j++) {
-          attachedMovie = _ref1[_j];
-          if (attachedMovie != null) {
-            attachedMovie.render(v, rOffset);
-          }
+          k = _ref1[_j];
+          attachedMovie = this.attachedMovieList[k];
+          attachedMovie.render(v, rOffset);
         }
       }
       if (this.attachedLWFs != null) {
-        _ref2 = this.attachedLWFList;
+        _ref2 = this.attachedLWFListKeys;
         for (_k = 0, _len1 = _ref2.length; _k < _len1; _k++) {
-          lwfContainer = _ref2[_k];
-          if (lwfContainer != null) {
-            child = lwfContainer.child;
-            child.setAttachVisible(v);
-            this.lwf.renderObject(child.render(this.lwf.renderingIndex, this.lwf.renderingCount, rOffset));
-          }
+          k = _ref2[_k];
+          lwfContainer = this.attachedLWFList[k];
+          child = lwfContainer.child;
+          child.setAttachVisible(v);
+          this.lwf.renderObject(child.render(this.lwf.renderingIndex, this.lwf.renderingCount, rOffset));
         }
       }
     };
 
     Movie.prototype.inspect = function(inspector, hierarchy, depth) {
-      var attachedMovie, child, d, lwfContainer, obj, rOffset, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2;
+      var attachedMovie, child, d, k, lwfContainer, obj, rOffset, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2;
       if (this.property.hasRenderingOffset) {
         this.lwf.renderOffset();
         rOffset = this.property.renderingOffset;
@@ -3828,22 +3886,20 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
       }
       if (this.attachedMovies != null) {
-        _ref1 = this.attachedMovieList;
+        _ref1 = this.attachedMovieListKeys;
         for (_j = 0, _len = _ref1.length; _j < _len; _j++) {
-          attachedMovie = _ref1[_j];
-          if (attachedMovie != null) {
-            attachedMovie.inspect(inspector, hierarchy, d++, rOffset);
-          }
+          k = _ref1[_j];
+          attachedMovie = this.attachedMovieList[k];
+          attachedMovie.inspect(inspector, hierarchy, d++, rOffset);
         }
       }
       if (this.attachedLWFs != null) {
-        _ref2 = this.attachedLWFList;
+        _ref2 = this.attachedLWFListKeys;
         for (_k = 0, _len1 = _ref2.length; _k < _len1; _k++) {
-          lwfContainer = _ref2[_k];
-          if (lwfContainer != null) {
-            child = lwfContainer.child;
-            this.lwf.renderObject(child.inspect(inspector, hierarchy, d++, rOffset));
-          }
+          k = _ref2[_k];
+          lwfContainer = this.attachedLWFList[k];
+          child = lwfContainer.child;
+          this.lwf.renderObject(child.inspect(inspector, hierarchy, d++, rOffset));
         }
       }
     };
@@ -3866,6 +3922,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.attachedMovies = null;
         this.detachedMovies = null;
         this.attachedMovieList = null;
+        this.attachedMovieListKeys = null;
       }
       if (this.attachedLWFs != null) {
         _ref2 = this.attachedLWFs;
@@ -3876,6 +3933,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.attachedLWFs = null;
         this.detachedLWFs = null;
         this.attachedLWFList = null;
+        this.attachedLWFListKeys = null;
       }
       if (this.unloadFunc != null) {
         this.unloadFunc.call(this);
@@ -4336,6 +4394,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.pointY = Number.MIN_VALUE;
       this.pressing = false;
       this.buttonHead = null;
+      this._tweens = null;
       if (!this.interactive && this.data.frames.length === 1) {
         this.disableExec();
       }
@@ -4343,6 +4402,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.instances = [];
       this.execHandlers = null;
       this.eventHandlers = [];
+      this.genericEventHandlers = [];
       this.movieEventHandlers = [];
       this.buttonEventHandlers = [];
       this.movieCommands = {};
@@ -4490,7 +4550,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       execed = false;
       currentProgress = this.progress;
-      if (this.isExecDisabled) {
+      if (this.isExecDisabled && this._tweens === null) {
         if (!this.executedForExecDisabled) {
           ++this.execCount;
           this.rootMovie.exec();
@@ -4676,6 +4736,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.instances = null;
       this.execHandlers = null;
       this.eventHandlers = null;
+      this.genericEventHandlers = null;
       this.movieEventHandlers = null;
       this.buttonEventHandlers = null;
       this.movieCommands = null;
@@ -4919,50 +4980,65 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.addExecHandler(execHandler);
     };
 
-    LWF.prototype.addEventHandler = function(eventId, eventHandler) {
-      var _base, _ref;
-      if (typeof eventId === "string") {
-        eventId = this.searchEventId(eventId);
-      }
+    LWF.prototype.addEventHandler = function(e, eventHandler) {
+      var eventId, _base, _base1, _ref, _ref1;
+      eventId = typeof e === "string" ? this.searchEventId(e) : e;
       if (eventId < 0 || eventId >= this.data.events.length) {
-        return;
+        if ((_ref = (_base = this.genericEventHandlers)[e]) == null) {
+          _base[e] = [];
+        }
+        this.genericEventHandlers[e].push(eventHandler);
+      } else {
+        if ((_ref1 = (_base1 = this.eventHandlers)[eventId]) == null) {
+          _base1[eventId] = [];
+        }
+        this.eventHandlers[eventId].push(eventHandler);
       }
-      if ((_ref = (_base = this.eventHandlers)[eventId]) == null) {
-        _base[eventId] = [];
-      }
-      this.eventHandlers[eventId].push(eventHandler);
     };
 
-    LWF.prototype.removeEventHandler = function(eventId, eventHandler) {
-      var handlers, i;
-      if (typeof eventId === "string") {
-        eventId = this.searchEventId(eventId);
-      }
+    LWF.prototype.removeEventHandler = function(e, eventHandler) {
+      var eventId, handlers, i, k, keys, v, _i, _len;
+      eventId = typeof e === "string" ? this.searchEventId(e) : e;
       if (eventId < 0 || eventId >= this.data.events.length) {
-        return;
-      }
-      handlers = this.eventHandlers[eventId];
-      if (handlers == null) {
-        return;
-      }
-      i = 0;
-      while (i < handlers.length) {
-        if (handlers[i] === eventHandler) {
-          handlers.splice(i, 1);
-        } else {
-          ++i;
+        handlers = this.genericEventHandlers[e];
+        if (handlers == null) {
+          return;
+        }
+        keys = [];
+        for (k in handlers) {
+          v = handlers[k];
+          if (v === eventHandler) {
+            keys.push(k);
+          }
+        }
+        for (_i = 0, _len = keys.length; _i < _len; _i++) {
+          k = keys[_i];
+          delete handlers[k];
+        }
+      } else {
+        handlers = this.eventHandlers[eventId];
+        if (handlers == null) {
+          return;
+        }
+        i = 0;
+        while (i < handlers.length) {
+          if (handlers[i] === eventHandler) {
+            handlers.splice(i, 1);
+          } else {
+            ++i;
+          }
         }
       }
     };
 
-    LWF.prototype.clearEventHandler = function(eventId) {
-      if (typeof eventId === "string") {
-        eventId = this.searchEventId(eventId);
-      }
+    LWF.prototype.clearEventHandler = function(e) {
+      var eventId;
+      eventId = typeof e === "string" ? this.searchEventId(e) : e;
       if (eventId < 0 || eventId >= this.data.events.length) {
-        return;
+        this.genericEventHandlers[e] = null;
+      } else {
+        this.eventHandlers[eventId] = null;
       }
-      this.eventHandlers[eventId] = null;
     };
 
     LWF.prototype.setEventHandler = function(eventId, eventHandler) {
@@ -5296,7 +5372,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWF.prototype.playAnimation = function(animationId, movie, button) {
-      var a, animations, count, eventId, func, i, instId, j, stringId, target, _i, _ref;
+      var a, animations, count, eventId, func, handler, handlers, i, instId, j, stringId, target, _i, _j, _len, _ref;
       i = 0;
       animations = this.data.animations[animationId];
       target = movie;
@@ -5350,7 +5426,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             break;
           case Animation.EVENT:
             eventId = animations[i++];
-            this.dispatchEvent(eventId, movie, button);
+            handlers = this.eventHandlers[eventId];
+            if (handlers != null) {
+              for (_j = 0, _len = handlers.length; _j < _len; _j++) {
+                handler = handlers[_j];
+                handler(movie, button);
+              }
+            }
             break;
           case Animation.CALL:
             stringId = animations[i++];
@@ -5362,15 +5444,20 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
     };
 
-    LWF.prototype.dispatchEvent = function(eventId, movie, button) {
-      var handler, handlers, _i, _len;
+    LWF.prototype.dispatchEvent = function(e, movie, button) {
+      var eventId, handler, handlers, _i, _len;
       if (movie == null) {
         movie = this.rootMovie;
       }
       if (button == null) {
         button = null;
       }
-      handlers = this.eventHandlers[eventId];
+      eventId = typeof e === "string" ? this.searchEventId(e) : e;
+      if (eventId < 0 || eventId >= this.data.events.length) {
+        handlers = this.genericEventHandlers[e];
+      } else {
+        handlers = this.eventHandlers[eventId];
+      }
       if (handlers == null) {
         return false;
       }
@@ -5507,6 +5594,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   LWF.prototype["denyAllButtons"] = LWF.prototype.denyAllButtons;
 
   LWF.prototype["destroy"] = LWF.prototype.destroy;
+
+  LWF.prototype["dispatchEvent"] = LWF.prototype.dispatchEvent;
 
   LWF.prototype["exec"] = LWF.prototype.exec;
 
@@ -6027,7 +6116,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.checkTextures = function(settings, data) {
-      var h, m, ma, orig, pm, pngFilename, pngURL, re, rgb, rotated, t, texture, u, url, v, w, x, y, _base, _i, _len, _ref1, _ref2;
+      var h, m, ma, orig, pngFilename, re, rgb, rotated, t, texture, u, v, w, x, y, _base, _i, _len, _ref1, _ref2;
       settings._alphaMap = {};
       settings._rgbMap = {};
       settings._textures = [];
@@ -6075,14 +6164,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           continue;
         }
         settings._textures.push(texture);
-        if (texture.filename.match(/_withalpha/i)) {
-          url = this.getTextureURL(settings, data, texture);
-          m = url.match(/^(.*)_withalpha(.*\.)jpg(.*)$/i);
-          pngURL = "" + m[1] + "_alpha" + m[2] + "png" + m[3];
-          pm = pngURL.match(/\/([^\/]+)$/);
-          pngFilename = pm != null ? pm[1] : pngURL;
+        m = texture.filename.match(/^(.*)_withalpha(.*\.)jpg(.*)$/i);
+        if (m != null) {
+          pngFilename = "" + m[1] + "_alpha" + m[2] + "png" + m[3];
           t = new Format.TextureReplacement(pngFilename);
-          t.url = pngURL;
           settings._textures.push(t);
           settings._alphaMap[texture.filename] = [texture, t];
           settings._alphaMap[t.filename] = [texture, t];
@@ -6479,11 +6564,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       };
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
         texture = _ref1[_i];
-        if (texture.url != null) {
-          url = texture.url;
-        } else {
-          url = this.getTextureURL(settings, data, texture);
-        }
+        url = this.getTextureURL(settings, data, texture);
         _fn(texture, url);
       }
     };
@@ -7289,7 +7370,7 @@ TWEENLWF.Tween = function ( movie ) {
 	this.onUpdateCallback = null;
 	this.onCompleteCallback = null;
 
-	if ( typeof this.lwf._tweens === "undefined" ) {
+	if ( this.lwf._tweens === null ) {
 
 		this.lwf._tweens = [];
 
@@ -7902,9 +7983,9 @@ lwfPrototype[ "setTweenMode" ] = function( mode ) {
 
 lwfPrototype.stopTweens = function() {
 
-	if ( typeof this._tweens !== "undefined" ) {
+	if ( this._tweens !== null ) {
 
-		this._tweens = undefined;
+		this._tweens = null;
 
 		this.removeExecHandler( TWEENLWF._tweenExecHandler );
 		this.removeMovieEventHandler( "_root", {
@@ -7973,8 +8054,7 @@ moviePrototype[ "addTween" ] = function() {
 moviePrototype[ "stopTweens" ] = function() {
 
 	if ( typeof this.lwf === "undefined" || this.lwf === null ||
-			typeof this.lwf._tweens === "undefined" ||
-				this.lwf._tweens === null ) {
+			this.lwf._tweens === null ) {
 
 		return this;
 
