@@ -23,7 +23,7 @@ require 'zlib'
 
 def lwf2lwfjs(*args)
   lwf = args[0]
-  lwf =~ /([^\/]*)\.lwf/
+  lwf =~ /([^\/]*)\.lwf$/
   lwfname = $1.downcase
 
   str = Base64.encode64(Zlib::Deflate.deflate(File.read(lwf), 9))
