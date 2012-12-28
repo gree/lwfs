@@ -2614,19 +2614,6 @@ def create_instance_name(x, y)
     "_y" + y.to_s.sub(/\.0$/, '').sub(/\./, "_")
 end
 
-def check_script(script)
-  script.scan(/fscommand\s*\(([^\)]*)\)/) do |m|
-    args = m[0]
-    if args =~ /^\s*["']\s*event\s*["']\s*,\s*["']\s*(\S+)\s*["']\s*$/
-      event = $1
-      error "Invalid event name: #{event}" unless event =~ /^[a-zA-Z0-9_]+$/
-      @event_map[event] = true
-    else
-      error "Invalid fscommand notation [#{args}]"
-    end
-  end
-end
-
 def parse_xflxml(xml, isRootMovie = false)
   return unless xml =~ /\/\*\s*js/
   if defined?(LibXML)
@@ -2737,7 +2724,6 @@ def parse_xflxml(xml, isRootMovie = false)
 
       scripts.each do |type, script|
         if script =~ /\W/
-          check_script(script)
           if type == "frame"
             @script_map[name] ||= Hash.new
             @script_map[name][index] ||= Hash.new
@@ -2801,7 +2787,6 @@ def parse_xflxml(xml, isRootMovie = false)
           event_nest -= 1
           if event_nest == 0
             if script =~ /\W/
-              check_script(script)
               if event == "keyPress"
                 error "doesn't support script in keyPress event"
               else
@@ -3698,14 +3683,7 @@ global.LWF.Script["#{lwfname}"] = function() {
 
 	var fscommand = function(type, arg) {
 		if (type === "event") {
-			var lwf = _root.lwf;
-			var stringId = lwf.getStringId(arg);
-			if (stringId == -1)
-				throw Error("unknown fscommand event string");
-			var eventId = lwf.searchEventId(stringId);
-			if (eventId == -1)
-				throw Error("unknown fscommand event");
-			lwf.dispatchEvent(eventId, this);
+			_root.lwf.dispatchEvent(arg, this);
 		} else {
 			throw Error("unknown fscommand");
 		}
