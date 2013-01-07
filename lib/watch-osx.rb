@@ -9,7 +9,7 @@ timer = nil
 
 fsevent = FSEvent.new
 fsevent.watch [ARGV[0]] do |directories|
-  postUpdate()
+  postUpdate(ARGV[1])
 end
 
 ['INT', 'TERM'].each do |signal|

@@ -9,7 +9,7 @@ timer = nil
 
 notifier = INotify::Notifier.new
 notifier.watch(ARGV[0], :modify, :recursive) do |directories|
-  postUpdate()
+  postUpdate(ARGV[1])
 end
 
 ['INT', 'TERM'].each do |signal|

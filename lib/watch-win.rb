@@ -9,7 +9,7 @@ timer = nil
 
 fchange = FChange::Notifier.new
 fchange.watch(ARGV[0], :all_events, :recursive) do |event|
-  postUpdate()
+  postUpdate(ARGV[1])
 end
 
 ['INT', 'TERM'].each do |signal|
