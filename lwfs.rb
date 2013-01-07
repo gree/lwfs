@@ -123,7 +123,7 @@ $mutex_p = Mutex.new
 
 class MutexFileHandler < WEBrick::HTTPServlet::FileHandler
   def do_GET(req, res)
-    if req.request_uri.to_s =~ /\.html$/
+    if req.request_uri.to_s =~ /\.(html|status)$/
       $mutex_p.synchronize do
         super
       end
@@ -164,11 +164,6 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   def do_POST(req, res)
     res.status = 200
     res.body = 'OK'
-    if req.path == '/update/start'
-      updateTopStatus(true)
-      updateTopIndex(true)
-      return
-    end
     @@mutex_i.synchronize do
       if @@is_in_post
         @@is_interrupted = true
@@ -178,7 +173,6 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     end
     Thread.new do
       t0 = t1 = t2 = t3 = t4 = t5 = t6 = t7 = t8 = Time.now
-      cmd = nil
       updateTopStatus(true)
       if @@is_start
         @@is_start = false
@@ -188,14 +182,15 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
           p e
           p e.backtrace
         end
+        rsync() unless REMOTE_SERVER.nil?
         if REMOTE_SERVER.nil?
-          cmd = "#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/#{MY_ID}/list/"
+          `#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/#{MY_ID}/list/`
         else
-          cmd = "#{OPEN_COMMAND} http://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list/"
+          `#{OPEN_COMMAND} http://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list/`
         end
+      else
+        rsync() unless REMOTE_SERVER.nil?
       end
-      rsync() unless REMOTE_SERVER.nil?
-      `#{cmd}` unless cmd.nil?
       is_in_progress = true
       while is_in_progress
         catch :restart do
@@ -794,13 +789,13 @@ server = WEBrick::HTTPServer.new({
   :StartCallback => Proc.new {
     Thread.new do 
       sleep(0.1)
-      postUpdate()
+      postUpdate(10080)
       if RUBY_PLATFORM == /java/
         Listen.to(SRC_DIR, :latency => 0.5) do |modified, added, removed|
-          postUpdate()
+          postUpdate(10080)
         end
       else
-        watcher = spawn("ruby", WATCH_SCRIPT, SRC_DIR)
+        watcher = spawn("ruby", WATCH_SCRIPT, SRC_DIR, '10080')
       end
     end
   }
