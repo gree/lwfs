@@ -2787,8 +2787,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     Property.prototype.setScaleAndRotation = function() {
       var c, radian, s;
       radian = this.rotation * Math.PI / 180;
-      c = Math.cos(radian);
-      s = Math.sin(radian);
+      if (radian === 0) {
+        c = 1;
+        s = 0;
+      } else {
+        c = Math.cos(radian);
+        s = Math.sin(radian);
+      }
       this.matrix.scaleX = this.scaleX * c;
       this.matrix.skew0 = this.scaleY * -s;
       this.matrix.skew1 = this.scaleX * s;
@@ -6798,13 +6803,18 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.generateImages = function(settings, imageCache, texture, image) {
-      var canvas, ctx, d, h, m, name, o, w, _i, _len, _ref1, _ref2;
+      var canvas, ctx, d, h, m, name, o, scale, u, v, w, x, y, _i, _len, _ref1, _ref2;
       d = settings._rgbMap[texture.filename];
       if (d != null) {
+        scale = image.width / texture.width;
         for (_i = 0, _len = d.length; _i < _len; _i++) {
           o = d[_i];
-          w = (_ref1 = o.w) != null ? _ref1 : image.width;
-          h = (_ref2 = o.h) != null ? _ref2 : image.height;
+          x = Math.round(o.x * scale);
+          y = Math.round(o.y * scale);
+          u = Math.round(o.u * scale);
+          v = Math.round(o.v * scale);
+          w = Math.round(((_ref1 = o.w) != null ? _ref1 : image.width) * scale);
+          h = Math.round(((_ref2 = o.h) != null ? _ref2 : image.height) * scale);
           if (this.constructor === WebkitCSSResourceCache) {
             name = "canvas_" + o.filename.replace(/[\.-]/g, "_");
             ctx = document.getCSSCanvasContext("2d", name, w, h);
@@ -6821,14 +6831,14 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           ctx.globalCompositeOperation = 'destination-in';
           if (o.rotated) {
             m = new Matrix();
-            Utility.rotateMatrix(m, new Matrix(), 1, o.x, o.y + h);
+            Utility.rotateMatrix(m, new Matrix(), 1, x, y + h);
             ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
-          } else if (o.x !== 0 || o.y !== 0) {
+          } else if (x !== 0 || y !== 0) {
             m = new Matrix();
-            Utility.scaleMatrix(m, new Matrix(), 1, o.x, o.yy);
+            Utility.scaleMatrix(m, new Matrix(), 1, x, yy);
             ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
           }
-          ctx.drawImage(image, o.u, o.v, w, h, 0, 0, w, h);
+          ctx.drawImage(image, u, v, w, h, 0, 0, w, h);
           imageCache[o.filename] = canvas;
         }
       }
