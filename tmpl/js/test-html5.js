@@ -15,6 +15,7 @@
              height: 24
          }
      };
+     var event_receiver = null;
 
      window.performance = window.performance || {};
      window.performance.now
@@ -74,19 +75,17 @@
          div.className = 'info';
          div.style.backgroundColor = '#ffffff';
          div.style.opacity = '1';
-         if (! window['testlwf_mobile'] || mode == 'debug') {
-             var canvas = document.createElement('canvas');
-             canvas.width = fps.graph.width;
-             canvas.height = fps.graph.height;
-             canvas.style.width = '' + fps.graph.width + 'px';
-             canvas.style.height = '' + fps.graph.height + 'px';
-             fps.graph.ctx = canvas.getContext('2d');
-             div.appendChild(canvas);
-             fps.txt = document.createElement('span');
-             fps.txt.style.width = '' + (320 - fps.graph.width) + 'px';
-             fps.txt.style.height = '' + fps.graph.height + 'px';
-             div.appendChild(fps.txt);
-         }
+         var canvas = document.createElement('canvas');
+         canvas.width = fps.graph.width;
+         canvas.height = fps.graph.height;
+         canvas.style.width = '' + fps.graph.width + 'px';
+         canvas.style.height = '' + fps.graph.height + 'px';
+         fps.graph.ctx = canvas.getContext('2d');
+         div.appendChild(canvas);
+         fps.txt = document.createElement('span');
+         fps.txt.style.width = '' + (320 - fps.graph.width) + 'px';
+         fps.txt.style.height = '' + fps.graph.height + 'px';
+         div.appendChild(fps.txt);
          return div;
      };
 
@@ -331,7 +330,7 @@
              var r = (bgColor >> 16) & 0xff;
              var g = (bgColor >> 8) & 0xff;
              var b = (bgColor >> 0) & 0xff;
-             stage.style.backgroundColor = 'rgb(' + r + ',' + g + ',' + b + ')';
+             stage.style.backgroundColor = 'rgba(' + r + ',' + g + ',' + b + ',1)';
          }
          document.onkeydown = function(e) {
              if (! lwf) {
@@ -429,10 +428,10 @@
          };
          requestAnimationFrame(onexec);
          if (window['testlwf_mobile']) {
-             stage.addEventListener('gestureend', ongestureend, false);
-             stage.addEventListener('touchmove', onmove, false);
-             stage.addEventListener('touchstart', onpress, false);
-             stage.addEventListener('touchend', onrelease, false);
+             event_receiver.addEventListener('gestureend', ongestureend, false);
+             event_receiver.addEventListener('touchmove', onmove, false);
+             event_receiver.addEventListener('touchstart', onpress, false);
+             event_receiver.addEventListener('touchend', onrelease, false);
          } else {
              stage.addEventListener('mousemove', onmove, false);
              stage.addEventListener('mousedown', onpress, false);
@@ -451,19 +450,28 @@
          }
          if (/iPhone/.test(ua) || /iPad/.test(ua) || /Android/.test(ua)) {
              window['testlwf_mobile'] = true;
+             event_receiver = document.createElement('div');
+             event_receiver.style.position = 'fixed';
+             event_receiver.style.left = '0px';
+             event_receiver.style.top = '0px';
+             event_receiver.style.right = '0px';
+             event_receiver.style.bottom = '0px';
+             document.body.appendChild(event_receiver);
              stage = createStage();
              stage.style.position = 'fixed';
              stage.style.left = '0px';
              stage.style.top = '0px';
              stage.style.right = '0px';
              stage.style.bottom = '0px';
-             document.body.appendChild(stage);
-             var fps_display = createFPSDisplay();
-             fps_display.style.position = 'fixed';
-             fps_display.style.left = '0px';
-             fps_display.style.top = '32px';
-             fps_display.style.zIndex = 10000;
-             document.body.appendChild(fps_display);
+             event_receiver.appendChild(stage);
+             if (mode == 'debug') {
+                 var fps_display = createFPSDisplay();
+                 fps_display.style.position = 'fixed';
+                 fps_display.style.left = '0px';
+                 fps_display.style.top = '32px';
+                 fps_display.style.zIndex = 10000;
+                 document.body.appendChild(fps_display);
+             }
          } else {
              window['testlwf_mobile'] = false;
              var wrapper = document.createElement('div');
