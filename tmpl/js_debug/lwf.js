@@ -2164,13 +2164,19 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         mid = ((first + last) / 2) >> 0;
         if (v > array[mid]) {
           first = mid + 1;
+          mid = first;
         } else if (v < array[mid]) {
           last = mid - 1;
+          mid = last;
         } else {
           return mid;
         }
       }
-      return first;
+      if (mid >= 0) {
+        return mid;
+      } else {
+        return 0;
+      }
     };
 
     return Utility;
@@ -7170,7 +7176,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         _ref1 = this.commands;
         for (rIndex in _ref1) {
           cmd = _ref1[rIndex];
-          f.addCommand(rIndex, cmd);
+          f.addCommand(parseInt(rIndex, 10), cmd);
         }
         this.initCommands();
         return;

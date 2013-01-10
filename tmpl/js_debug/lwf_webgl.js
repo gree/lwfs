@@ -2164,13 +2164,19 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         mid = ((first + last) / 2) >> 0;
         if (v > array[mid]) {
           first = mid + 1;
+          mid = first;
         } else if (v < array[mid]) {
           last = mid - 1;
+          mid = last;
         } else {
           return mid;
         }
       }
-      return first;
+      if (mid >= 0) {
+        return mid;
+      } else {
+        return 0;
+      }
     };
 
     return Utility;
