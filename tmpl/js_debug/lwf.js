@@ -6839,6 +6839,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
           }
           ctx.drawImage(image, u, v, w, h, 0, 0, w, h);
+          ctx.globalCompositeOperation = 'source-over';
           imageCache[o.filename] = canvas;
         }
       }
@@ -6896,6 +6897,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
               ctx.drawImage(jpgImg, 0, 0, jpgImg.width, jpgImg.height);
               ctx.globalCompositeOperation = 'destination-in';
               ctx.drawImage(alphaImg, 0, 0, jpgImg.width, jpgImg.height);
+              ctx.globalCompositeOperation = 'source-over';
               delete imageCache[jpg.filename];
               delete imageCache[alpha.filename];
               imageCache[jpg.filename] = canvas;
@@ -7174,7 +7176,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         return;
       }
       if (this.needsClear) {
-        ctx.globalAlpha = 1;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.clearColor != null) {
           ctx.fillStyle = this.clearColor;
@@ -7196,6 +7197,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         h = cmd.h;
         ctx.drawImage(cmd.image, u, v, w, h, 0, 0, w, h);
       }
+      ctx.globalAlpha = 1;
       this.initCommands();
     };
 

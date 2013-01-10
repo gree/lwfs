@@ -6502,6 +6502,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
           }
           ctx.drawImage(image, u, v, w, h, 0, 0, w, h);
+          ctx.globalCompositeOperation = 'source-over';
           imageCache[o.filename] = canvas;
         }
       }
@@ -6559,6 +6560,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
               ctx.drawImage(jpgImg, 0, 0, jpgImg.width, jpgImg.height);
               ctx.globalCompositeOperation = 'destination-in';
               ctx.drawImage(alphaImg, 0, 0, jpgImg.width, jpgImg.height);
+              ctx.globalCompositeOperation = 'source-over';
               delete imageCache[jpg.filename];
               delete imageCache[alpha.filename];
               imageCache[jpg.filename] = canvas;
