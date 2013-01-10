@@ -439,7 +439,13 @@
          }
      };
 
-     window.onload = function() {
+     window.onpagehide = function() {
+         if (! stage || ! stage.lwf) {
+             return;
+         }
+         stage.lwf.destroy();
+     };
+     window.onpageshow = function() {
          var ua = navigator.userAgent;
          var stage;
          mode = 'release';
