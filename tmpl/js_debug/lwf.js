@@ -1300,7 +1300,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWFLoader.prototype.load = function(d) {
-      var a, animationBytes, animations, c, c2, c3, code, data, eventMap, header, i, instanceNameMap, l, labelMap, m, map, movieLinkageMap, movieLinkageNameMap, o, programObjectMap, s, str, stringBytes, stringDatas, stringMap, t, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _m, _n, _o, _p, _q, _r, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8;
+      var a, animationBytes, animations, c, c2, c3, code, data, eventMap, header, i, instanceNameMap, l, labelMap, m, map, movieLinkageMap, movieLinkageNameMap, o, programObjectMap, s, str, stringBytes, stringDatas, stringMap, t, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _len5, _m, _n, _o, _p, _q, _r, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _s;
       this.d = d;
       this.index = 0;
       header = this.loadHeader();
@@ -1633,32 +1633,30 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         movieLinkageNameMap[data.movieLinkages[i].movieId] = data.movieLinkages[i].stringId;
       }
       programObjectMap = data.programObjectMap;
-      _ref4 = data.programObjects;
-      for (i in _ref4) {
-        o = _ref4[i];
-        programObjectMap[o.stringId] = i;
+      for (i = _o = 0, _ref4 = data.programObjects.length; 0 <= _ref4 ? _o < _ref4 : _o > _ref4; i = 0 <= _ref4 ? ++_o : --_o) {
+        programObjectMap[data.programObjects[i].stringId] = i;
       }
       labelMap = data.labelMap;
       _ref5 = data.movies;
-      for (_o = 0, _len2 = _ref5.length; _o < _len2; _o++) {
-        m = _ref5[_o];
+      for (_p = 0, _len2 = _ref5.length; _p < _len2; _p++) {
+        m = _ref5[_p];
         o = m.labelOffset;
         map = {};
         _ref6 = data.labels.slice(o, o + m.labels);
-        for (_p = 0, _len3 = _ref6.length; _p < _len3; _p++) {
-          l = _ref6[_p];
+        for (_q = 0, _len3 = _ref6.length; _q < _len3; _q++) {
+          l = _ref6[_q];
           map[l.stringId] = l.frameNo;
         }
         labelMap.push(map);
       }
       _ref7 = data.textures;
-      for (_q = 0, _len4 = _ref7.length; _q < _len4; _q++) {
-        t = _ref7[_q];
+      for (_r = 0, _len4 = _ref7.length; _r < _len4; _r++) {
+        t = _ref7[_r];
         t.setFilename(data);
       }
       _ref8 = data.textureFragments;
-      for (_r = 0, _len5 = _ref8.length; _r < _len5; _r++) {
-        t = _ref8[_r];
+      for (_s = 0, _len5 = _ref8.length; _s < _len5; _s++) {
+        t = _ref8[_s];
         t.setFilename(data);
       }
       return data;
@@ -2164,19 +2162,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         mid = ((first + last) / 2) >> 0;
         if (v > array[mid]) {
           first = mid + 1;
-          mid = first;
         } else if (v < array[mid]) {
           last = mid - 1;
-          mid = last;
         } else {
           return mid;
         }
       }
-      if (mid >= 0) {
-        return mid;
-      } else {
-        return 0;
-      }
+      return first;
     };
 
     return Utility;
@@ -6636,7 +6628,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.loadLWFData = function(settings, url) {
-      var head, m, name, onload, script, useArrayBuffer, useWorker, useWorkerWithArrayBuffer, xhr,
+      var head, m, name, onload, script, useArrayBuffer, useWorker, useWorkerWithArrayBuffer, xhr, _base, _ref1,
         _this = this;
       onload = settings["onload"];
       useWorker = false;
@@ -6693,6 +6685,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         };
         script.src = url;
         head.appendChild(script);
+        if ((_ref1 = (_base = this.cache[lwfUrl]).scripts) == null) {
+          _base.scripts = [];
+        }
+        this.cache[lwfUrl].scripts.push(script);
         return;
       }
       xhr = new XMLHttpRequest;
@@ -6721,11 +6717,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         return onload.call(settings, null);
       };
       xhr.onreadystatechange = function() {
-        var data, _ref1;
+        var data, _ref2;
         if (xhr.readyState !== 4) {
           return;
         }
-        if (!((_ref1 = xhr.status) === 0 || _ref1 === 200)) {
+        if (!((_ref2 = xhr.status) === 0 || _ref2 === 200)) {
           return;
         }
         if (useArrayBuffer) {
@@ -6746,7 +6742,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.loadJS = function(settings, data) {
-      var head, lwfUrl, onload, onprogress, script, url, _ref1, _ref2,
+      var head, lwfUrl, onload, onprogress, script, url, _base, _ref1, _ref2, _ref3,
         _this = this;
       lwfUrl = settings["lwf"];
       url = (_ref1 = settings["js"]) != null ? _ref1 : lwfUrl.replace(/\.lwf(\.js)?/i, ".js");
@@ -6781,13 +6777,16 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         if (onprogress != null) {
           onprogress.call(settings, settings.loadedCount, settings.total);
         }
-        _this.cache[lwfUrl].script = script;
         script = script.onload = script.onabort = script.onerror = null;
         return _this.loadImages(settings, data);
       };
       script.src = url;
       head = document.getElementsByTagName('head')[0];
       head.appendChild(script);
+      if ((_ref3 = (_base = this.cache[lwfUrl]).scripts) == null) {
+        _base.scripts = [];
+      }
+      this.cache[lwfUrl].scripts.push(script);
     };
 
     WebkitCSSResourceCache.prototype.loadImagesCallback = function(settings, imageCache, data) {
@@ -6968,11 +6967,19 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.unloadLWF = function(lwf) {
-      var cache, head;
+      var cache, head, script, _i, _len, _ref1;
       cache = this.cache[lwf.url];
       if ((cache != null) && --cache.instances <= 0) {
-        head = document.getElementsByTagName('head')[0];
-        head.removeChild(cache.script);
+        try {
+          head = document.getElementsByTagName('head')[0];
+          _ref1 = cache.scripts;
+          for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+            script = _ref1[_i];
+            head.removeChild(script);
+          }
+        } catch (e) {
+
+        }
         delete this.cache[lwf.url];
       }
     };
