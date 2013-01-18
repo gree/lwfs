@@ -1,4 +1,9 @@
 (function() {
+     var ua = navigator.userAgent;
+     var isPreventDefaultEnabled = /(iPhone|iPad)/.test(ua) || /Android *(4|3)\..*/.test(ua);
+     var isIOS = /(iPhone|iPad)/.test(ua);
+     var isAndroid = /Android/.test(ua);
+     var isMobile = isIOS || isAndroid;
      var isFinishing = false;
      var clamp, createStage, createFPSDisplay, playLWF, inPlay, fr, fr0;
      var mode = 'release';
@@ -15,7 +20,8 @@
              height: 24
          }
      };
-     var event_receiver = null;
+     var stage = null;
+     var stageEventReceiver = null;
 
      window.performance = window.performance || {};
      window.performance.now
@@ -120,9 +126,7 @@
          var exec_count = 0;
          var t0 = window.performance.now();
          var t0_60 = t0;
-         // var t0_tapped = 0;
-         // var t1_tapped = window.performance.now();
-         var destroy, onexec, onmove, onpress, onrelease, ongestureend, stage;
+         var destroy, onexec, onmove, onpress, onrelease, ongestureend;
          var updateInfo;
          var iw0 = 0;
          var stage_scale = 1;
@@ -155,7 +159,7 @@
                      dpr = 1;
                  }
                  var iw;
-                 if (window['testlwf_mobile']) {
+                 if (isMobile) {
                      iw = window.innerWidth;
                  } else {
                      iw = window.innerWidth - 36;
@@ -173,13 +177,13 @@
                      stage.style.height = stage_h + 'px';
                      stage.width = ~~(stage_w * dpr);
                      stage.height = ~~(stage_h * dpr);
-                     stage_scale = stage_w / (lwf.width * dpr);
+                     stage_scale = stage_w / stage.width;
                      lwf.property.clear();
                      lwf.fitForWidth(stage.width, stage.height);
                      iw0 = iw;
                  }
              }
-             if (! window['testlwf_mobile']) {
+             if (! isMobile) {
                  updateInfo();
              }
              lwf.setFrameRate(fr);
@@ -199,7 +203,7 @@
                  lwf.exec(lwf_dt);
                  lwf.render();
              }
-             if (! window['testlwf_mobile'] || mode == 'debug') {
+             if (! isMobile || mode == 'debug') {
                  fps.num01 = Math.round(1000.0 / dt);
                  if (++exec_count % 60 == 0) {
                      fps.num60 = Math.round(60000.0 / (t1 - t0_60));
@@ -231,11 +235,14 @@
              }
          };
          onmove = function(e) {
+             if (isPreventDefaultEnabled) {
+                 e.preventDefault();
+             }
              if (! lwf) {
                  return;
              }
              var x, y;
-             if (window['testlwf_mobile']) {
+             if (isMobile) {
                  var t = e.touches[0];
                  x = t.pageX;
                  y = t.pageY;
@@ -248,16 +255,16 @@
              x /= stage_scale;
              y /= stage_scale;
              lwf.inputPoint(x, y);
-             if (window['testlwf_mobile']) {
-                 e.preventDefault();
-             }
          };
          onpress = function(e) {
+             if (isPreventDefaultEnabled) {
+                 e.preventDefault();
+             }
              if (! lwf) {
                  return;
              }
              var x, y;
-             if (window['testlwf_mobile']) {
+             if (isMobile) {
                  var t = e.touches[0];
                  x = t.pageX;
                  y = t.pageY;
@@ -271,24 +278,15 @@
              y /= stage_scale;
              lwf.inputPoint(x, y);
              lwf.inputPress();
-             if (window['testlwf_mobile']) {
-                 e.preventDefault();
-             }
          };
          onrelease = function(e) {
+             if (isPreventDefaultEnabled) {
+                 e.preventDefault();
+             }
              if (! lwf) {
                  return;
              }
              lwf.inputRelease();
-             if (window['testlwf_mobile']) {
-                 e.preventDefault();
-             }
-             // var t2_tapped = window.performance.now();
-             // if (t2_tapped - t1_tapped < 300 && t1_tapped - t0_tapped < 300) {
-             //     ongestureend();
-             // }
-             // t0_tapped = t1_tapped;
-             // t1_tapped = t2_tapped;
          };
          ongestureend = function(e) {
              if (! lwf) {
@@ -322,7 +320,6 @@
              }
              elm.textContent = info;
          };
-         stage = this['stage'];
          stage.lwf = lwf;
          fr = lwf.frameRate;
          {
@@ -350,7 +347,7 @@
                  var key = String.fromCharCode(e.which).toUpperCase();
                  if (key == '0') {
                      fr = fr0;
-                     if (! window['testlwf_mobile']) {
+                     if (! isMobile) {
                          updateInfo();
                      }
                      isHandled = true;
@@ -383,14 +380,14 @@
                          break;
                      case 38:  // up
                          fr = clamp(fr + 1, 1, 60);
-                         if (! window['testlwf_mobile']) {
+                         if (! isMobile) {
                              updateInfo();
                          }
                          isHandled = true;
                          break;
                      case 40:  // down
                          fr = clamp(fr - 1, 1, 60);
-                         if (! window['testlwf_mobile']) {
+                         if (! isMobile) {
                              updateInfo();
                          }
                          isHandled = true;
@@ -427,51 +424,62 @@
              birdwatcher['iid'] = setInterval(function() {bw.reportRemote();}, 1000);
          };
          requestAnimationFrame(onexec);
-         if (window['testlwf_mobile']) {
-             event_receiver.addEventListener('gestureend', ongestureend, false);
-             event_receiver.addEventListener('touchmove', onmove, false);
-             event_receiver.addEventListener('touchstart', onpress, false);
-             event_receiver.addEventListener('touchend', onrelease, false);
+         if (isMobile) {
+             if (isIOS) {
+                 stageEventReceiver.addEventListener('gestureend', ongestureend, false);
+             }
+             stageEventReceiver.addEventListener('touchmove', onmove, false);
+             stageEventReceiver.addEventListener('touchstart', onpress, false);
+             stageEventReceiver.addEventListener('touchend', onrelease, false);
          } else {
-             stage.addEventListener('mousemove', onmove, false);
-             stage.addEventListener('mousedown', onpress, false);
-             stage.addEventListener('mouseup', onrelease, false);
+             stageEventReceiver.addEventListener('mousemove', onmove, false);
+             stageEventReceiver.addEventListener('mousedown', onpress, false);
+             stageEventReceiver.addEventListener('mouseup', onrelease, false);
          }
      };
 
      window.onpagehide = function() {
-         if (! stage || ! stage.lwf) {
-             return;
+         if (stage != null) {
+             if (stage.lwf != null) {
+                 stage.lwf.destroy();
+             }
          }
-         stage.lwf.destroy();
+         var names = ['fps', ((isMobile) ? 'stage' : 'wrapper')];
+         for (var i in names) {
+             var elm = document.getElementById(names[i]);
+             if (elm != null) {
+                 elm.parentNode.removeChild(elm);
+                 elm = null;
+             }
+         }
      };
      window.onpageshow = function() {
-         var ua = navigator.userAgent;
-         var stage;
          mode = 'release';
          if (window.location.pathname.match(/-debug\.html$/)) {
              mode = 'debug';
          } else if (window.location.pathname.match(/-birdwatcher\.html$/)) {
              mode = 'birdwatcher';
          }
-         if (/iPhone/.test(ua) || /iPad/.test(ua) || /Android/.test(ua)) {
-             window['testlwf_mobile'] = true;
-             event_receiver = document.createElement('div');
-             event_receiver.style.position = 'fixed';
-             event_receiver.style.left = '0px';
-             event_receiver.style.top = '0px';
-             event_receiver.style.right = '0px';
-             event_receiver.style.bottom = '0px';
-             document.body.appendChild(event_receiver);
+         if (isMobile) {
              stage = createStage();
              stage.style.position = 'fixed';
              stage.style.left = '0px';
              stage.style.top = '0px';
              stage.style.right = '0px';
              stage.style.bottom = '0px';
-             event_receiver.appendChild(stage);
+             stage.style.zIndex = 0;
+             document.body.appendChild(stage);
+             stageEventReceiver = document.createElement('div');
+             stageEventReceiver.style.position = 'fixed';
+             stageEventReceiver.style.left = '0px';
+             stageEventReceiver.style.top = '0px';
+             stageEventReceiver.style.right = '0px';
+             stageEventReceiver.style.bottom = '0px';
+             stageEventReceiver.style.zIndex = 10;
+             document.body.appendChild(stageEventReceiver);
              if (mode == 'debug') {
                  var fps_display = createFPSDisplay();
+                 fps_display.id = 'fps';
                  fps_display.style.position = 'fixed';
                  fps_display.style.left = '0px';
                  fps_display.style.top = '32px';
@@ -479,7 +487,6 @@
                  document.body.appendChild(fps_display);
              }
          } else {
-             window['testlwf_mobile'] = false;
              var wrapper = document.createElement('div');
              wrapper.id = 'wrapper';
              var header = document.createElement('div');
@@ -564,7 +571,7 @@
              wrapper.appendChild(header);
              var fps_display = createFPSDisplay();
              wrapper.appendChild(fps_display);
-             stage = createStage();
+             stageEventReceiver = stage = createStage();
              wrapper.appendChild(stage);
              document.body.appendChild(wrapper);
          }
