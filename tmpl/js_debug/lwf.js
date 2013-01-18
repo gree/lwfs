@@ -2589,6 +2589,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Button.prototype.destroy = function() {
       this.lwf.clearFocus(this);
+      this.lwf.clearPressed(this);
       if (this.handler != null) {
         this.handler.call("unload", this);
       }
@@ -2649,7 +2650,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.playAnimation(Condition.RELEASE);
     };
 
-    Button.prototype.keyPress = function() {
+    Button.prototype.keyPress = function(code) {
       if (this.handler != null) {
         this.handler.call("keyPress", this);
       }
@@ -4493,6 +4494,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
     };
 
+    LWF.prototype.clearPressed = function(button) {
+      if (this.pressed === button) {
+        this.pressed = null;
+      }
+    };
+
     LWF.prototype.clearIntercepted = function() {
       this.intercepted = false;
     };
@@ -4502,6 +4509,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.progress = 0;
       this.instances = [];
       this.focus = null;
+      this.pressed = null;
       this.movieCommands = {};
       this.rootMovieStringId = this.getStringId("_root");
       if (this.rootMovie != null) {
@@ -5529,6 +5537,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       this.pressing = true;
       if (this.focus != null) {
+        this.pressed = this.focus;
         this.focus.press();
       }
     };
@@ -5538,8 +5547,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         return;
       }
       this.pressing = false;
-      if (this.focus != null) {
+      if ((this.focus != null) && this.pressed === this.focus) {
         this.focus.release();
+        this.pressed = null;
       }
     };
 
@@ -5775,7 +5785,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   WebkitCSSRendererFactory = (function() {
 
     function WebkitCSSRendererFactory(data, resourceCache, cache, stage, textInSubpixel, use3D) {
-      var bitmap, bitmapEx, computedStyle, h, style, text, w, _i, _j, _k, _len, _len1, _len2, _ref1, _ref2, _ref3;
+      var bitmap, bitmapEx, h, style, text, w, _i, _j, _k, _len, _len1, _len2, _ref1, _ref2, _ref3, _ref4;
       this.resourceCache = resourceCache;
       this.cache = cache;
       this.stage = stage;
@@ -5821,10 +5831,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         style.webkitTransform = "translateZ(0)";
         style.webkitTransformStyle = "preserve-3d";
       }
-      computedStyle = window.getComputedStyle(this.stage, "");
-      h = computedStyle.getPropertyValue("height");
-      w = computedStyle.getPropertyValue("width");
-      if (h === "0px" && w === "0px") {
+      _ref4 = this.getStageSize(), w = _ref4[0], h = _ref4[1];
+      if (w === 0 && h === 0) {
         style.width = "" + data.header.width + "px";
         style.height = "" + data.header.height + "px";
       }
@@ -5968,11 +5976,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSRendererFactory.prototype.getStageSize = function() {
-      var computedStyle, h, w;
-      computedStyle = window.getComputedStyle(this.stage, "");
-      w = parseInt(computedStyle.getPropertyValue("width").replace("px", ""), 10);
-      h = parseInt(computedStyle.getPropertyValue("height").replace("px", ""), 10);
-      return [w, h];
+      var r;
+      r = this.stage.getBoundingClientRect();
+      return [r.width, r.height];
     };
 
     WebkitCSSRendererFactory.prototype.fitForHeight = function(lwf) {
@@ -6007,13 +6013,30 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
     };
 
-    WebkitCSSRendererFactory.prototype.setBackgroundColor = function(lwf) {
-      var b, bgColor, g, r;
-      bgColor = lwf.backgroundColor;
+    WebkitCSSRendererFactory.prototype.parseBackgroundColor = function(v) {
+      var a, b, bgColor, g, lwf, r;
+      if (typeof v === "number") {
+        bgColor = v;
+      } else if (typeof v === "string") {
+        bgColor = parseInt(v, 16);
+      } else if (v instanceof LWF) {
+        lwf = v;
+        bgColor = lwf.data.header.backgroundColor;
+        bgColor |= 0xff << 24;
+      } else {
+        return [255, 255, 255, 255];
+      }
+      a = (bgColor >> 24) & 0xff;
       r = (bgColor >> 16) & 0xff;
       g = (bgColor >> 8) & 0xff;
       b = (bgColor >> 0) & 0xff;
-      this.stage.style.backgroundColor = "rgb(" + r + "," + g + "," + b + ")";
+      return [r, g, b, a];
+    };
+
+    WebkitCSSRendererFactory.prototype.setBackgroundColor = function(v) {
+      var a, b, g, r, _ref1;
+      _ref1 = this.parseBackgroundColor(v), r = _ref1[0], g = _ref1[1], b = _ref1[2], a = _ref1[3];
+      this.stage.style.backgroundColor = "rgba(" + r + "," + g + "," + b + "," + (a / 255) + ")";
     };
 
     return WebkitCSSRendererFactory;
@@ -6528,7 +6551,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       settings["name"] = data.name();
       this.checkTextures(settings, data);
       lwfUrl = settings["lwf"];
-      this.cache[lwfUrl] = {};
       this.cache[lwfUrl].data = data;
       settings.total = settings._textures.length + 1;
       if (data.useScript) {
@@ -6567,6 +6589,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           return;
         }
       }
+      this.cache[lwfUrl] = {};
       this.loadLWFData(settings, url);
     };
 
@@ -6628,7 +6651,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.loadLWFData = function(settings, url) {
-      var head, m, name, onload, script, useArrayBuffer, useWorker, useWorkerWithArrayBuffer, xhr, _base, _ref1,
+      var head, lwfUrl, m, name, onload, script, useArrayBuffer, useWorker, useWorkerWithArrayBuffer, xhr, _base, _ref1,
         _this = this;
       onload = settings["onload"];
       useWorker = false;
@@ -6685,6 +6708,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         };
         script.src = url;
         head.appendChild(script);
+        lwfUrl = settings["lwf"];
         if ((_ref1 = (_base = this.cache[lwfUrl]).scripts) == null) {
           _base.scripts = [];
         }
@@ -6931,7 +6955,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     WebkitCSSResourceCache.prototype.onloadLWF = function(settings, lwf) {
       var factory;
       factory = lwf.rendererFactory;
-      if (settings["useBackgroundColor"]) {
+      if (settings["setBackgroundColor"] != null) {
+        factory.setBackgroundColor(settings["setBackgroundColor"]);
+      } else if (settings["useBackgroundColor"]) {
         factory.setBackgroundColor(lwf);
       }
       if (settings["fitForHeight"]) {
@@ -7191,6 +7217,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (this.needsClear) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.clearColor != null) {
+          if (this.clearColor[3] === 'a') {
+            ctx.clearRect(0, 0, this.stage.width, this.stage.height);
+          }
           ctx.fillStyle = this.clearColor;
           ctx.fillRect(0, 0, this.stage.width, this.stage.height);
         } else {
@@ -7251,13 +7280,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       return [this.stage.width, this.stage.height];
     };
 
-    CanvasRendererFactory.prototype.setBackgroundColor = function(lwf) {
-      var b, bgColor, g, r;
-      bgColor = lwf.data.header.backgroundColor;
-      r = (bgColor >> 16) & 0xff;
-      g = (bgColor >> 8) & 0xff;
-      b = (bgColor >> 0) & 0xff;
-      this.clearColor = "rgb(" + r + ", " + g + ", " + b + ")";
+    CanvasRendererFactory.prototype.setBackgroundColor = function(v) {
+      var a, b, g, r, _ref1;
+      _ref1 = this.parseBackgroundColor(v), r = _ref1[0], g = _ref1[1], b = _ref1[2], a = _ref1[3];
+      this.clearColor = "rgba(" + r + "," + g + "," + b + "," + (a / 255) + ")";
     };
 
     return CanvasRendererFactory;
