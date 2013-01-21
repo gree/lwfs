@@ -6247,6 +6247,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.node.style.width = "" + width + "px";
       this.node.style.height = "" + (text.height * scale) + "px";
       this.node.style.position = "absolute";
+      this.node.style.overflow = "hidden";
       this.node.style.textAlign = this.context.align;
       this.node.style.textIndent = "" + (textProperty.indent * scale) + "px";
       this.node.style.lineHeight = "" + ((textProperty.fontHeight + textProperty.leading) * scale) + "pt";
@@ -7425,19 +7426,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.shadowColor = this.data.colors[this.textProperty.shadowColorId];
       }
       this.fontName = "\"" + this.data.strings[font.stringId] + "\",sans-serif";
-      switch (this.textProperty.align & Align.ALIGN_MASK) {
-        case Align.RIGHT:
-          this.align = "right";
-          this.offsetX = this.text.width;
-          break;
-        case Align.CENTER:
-          this.align = "center";
-          this.offsetX = this.text.width / 2;
-          break;
-        default:
-          this.align = "left";
-          this.offsetX = 0;
-      }
     }
 
     CanvasTextContext.prototype.destruct = function() {};
@@ -7449,7 +7437,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   CanvasTextRenderer = (function() {
 
     function CanvasTextRenderer(lwf, context, textObject) {
-      var canvas, ctx, fontHeight, scale, _ref1;
+      var align, canvas, ctx, leftMargin, property, rightMargin, rm, scale, sw, text, _ref1;
       this.lwf = lwf;
       this.context = context;
       this.textObject = textObject;
@@ -7460,13 +7448,44 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.matrixForScale = new Matrix();
       this.color = new Color;
       scale = this.lwf.scaleByStage;
+      property = this.context.textProperty;
+      this.fontHeight = property.fontHeight * scale;
+      leftMargin = property.leftMargin / this.fontHeight;
+      rightMargin = property.rightMargin / this.fontHeight;
+      rm = 0;
+      if (this.context.strokeColor != null) {
+        if (property.strokeWidth > rm) {
+          rm = property.strokeWidth;
+        }
+      }
+      if (this.context.shadowColor != null) {
+        sw = property.shadowOffsetX + property.shadowBlur;
+        if (sw > rm) {
+          rm = sw;
+        }
+      }
+      rightMargin += rm;
+      text = this.context.text;
+      switch (property.align & Align.ALIGN_MASK) {
+        case Align.RIGHT:
+          align = "right";
+          this.offsetX = text.width - rightMargin;
+          break;
+        case Align.CENTER:
+          align = "center";
+          this.offsetX = text.width / 2;
+          break;
+        default:
+          align = "left";
+          this.offsetX = leftMargin;
+      }
       canvas = document.createElement("canvas");
       canvas.width = this.context.text.width * scale;
       canvas.height = this.context.text.height * scale;
+      this.maxWidth = canvas.width - (leftMargin + rightMargin);
       ctx = canvas.getContext("2d");
-      fontHeight = this.context.textProperty.fontHeight * scale;
-      ctx.font = "" + fontHeight + "px " + this.context.fontName;
-      ctx.textAlign = this.context.align;
+      ctx.font = "" + this.fontHeight + "px " + this.context.fontName;
+      ctx.textAlign = align;
       this.canvas = canvas;
       this.canvasContext = ctx;
       this.textRendered = false;
@@ -7516,17 +7535,94 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       });
     };
 
-    CanvasTextRenderer.prototype.renderText = function(c) {
-      var canvas, ctx, fontHeight, h, i, leading, line, lines, offsetY, property, scale, shadowColor, useStroke, x, y, _i, _ref1;
+    CanvasTextRenderer.prototype.fit = function(line, words, lineStart, imin, imax) {
+      var imid, start, str, w;
+      if (imax < imin) {
+        return;
+      }
+      imid = ((imin + imax) / 2) >> 0;
+      start = lineStart === 0 ? 0 : words[lineStart - 1];
+      str = line.slice(start, words[imid]);
+      w = this.canvasContext.measureText(str).width;
+      if (w <= this.maxWidth) {
+        if (w > this.lineWidth) {
+          this.index = imid;
+          this.lineWidth = w;
+        }
+        this.fit(line, words, lineStart, imid + 1, imax);
+      }
+      if (w >= this.lineWidth) {
+        return this.fit(line, words, lineStart, imin, imid - 1);
+      }
+    };
+
+    CanvasTextRenderer.prototype.renderText = function(textColor) {
+      var c, canvas, ctx, h, i, imax, imin, leading, line, lines, newlines, offsetY, prev, property, scale, shadowColor, start, str, to, useStroke, word, words, x, y, _i, _j, _k, _l, _len, _len1, _ref1, _ref2;
       this.textRendered = true;
       canvas = this.canvas;
       ctx = this.canvasContext;
       lines = this.str.split("\n");
       scale = this.lwf.scaleByStage;
       property = this.context.textProperty;
-      fontHeight = property.fontHeight * scale;
       leading = property.leading * scale;
-      h = (fontHeight * lines.length + leading * (lines.length - 1)) * 96 / 72;
+      newlines = [];
+      for (_i = 0, _len = lines.length; _i < _len; _i++) {
+        line = lines[_i];
+        words = line.split(" ");
+        line = "";
+        for (_j = 0, _len1 = words.length; _j < _len1; _j++) {
+          word = words[_j];
+          if (word.length > 0) {
+            if (line.length > 0) {
+              line += " ";
+            }
+            line += word;
+          }
+        }
+        if (ctx.measureText(line).width > this.maxWidth) {
+          words = [];
+          prev = 0;
+          for (i = _k = 1, _ref1 = line.length; 1 <= _ref1 ? _k < _ref1 : _k > _ref1; i = 1 <= _ref1 ? ++_k : --_k) {
+            c = line.charCodeAt(i);
+            if (c === 0x20 || c >= 0x80 || prev >= 0x80) {
+              words.push(i);
+            }
+            prev = c;
+          }
+          words.push(line.length);
+          imin = 0;
+          imax = words.length - 1;
+          while (true) {
+            this.index = null;
+            this.lineWidth = 0;
+            this.fit(line, words, imin, imin, imax);
+            if (this.index === null) {
+              break;
+            }
+            start = imin === 0 ? 0 : words[imin - 1];
+            if (line.charCodeAt(start) === 0x20) {
+              ++start;
+            }
+            to = words[this.index];
+            str = line.slice(start, to);
+            if (this.index === imax) {
+              line = str;
+              break;
+            }
+            newlines.push(str);
+            start = to + (line.charCodeAt(to) === 0x20 ? 1 : 0);
+            str = line.slice(start);
+            if (ctx.measureText(str).width <= this.maxWidth) {
+              line = str;
+              break;
+            }
+            imin = this.index + 1;
+          }
+        }
+        newlines.push(line);
+      }
+      lines = newlines;
+      h = (this.fontHeight * lines.length + leading * (lines.length - 1)) * 96 / 72;
       switch (property.align & Align.VERTICAL_MASK) {
         case Align.VERTICAL_BOTTOM:
           offsetY = canvas.height - h;
@@ -7538,7 +7634,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           offsetY = 0;
       }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "rgb(" + c.red + "," + c.green + "," + c.blue + ")";
+      ctx.fillStyle = "rgb(" + textColor.red + "," + textColor.green + "," + textColor.blue + ")";
       useStroke = false;
       if (this.context.strokeColor != null) {
         ctx.strokeStyle = this.context.factory.convertRGB(this.context.strokeColor);
@@ -7551,12 +7647,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         ctx.shadowOffsetY = property.shadowOffsetY;
         ctx.shadowBlur = property.shadowBlur;
       }
-      for (i = _i = 0, _ref1 = lines.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; i = 0 <= _ref1 ? ++_i : --_i) {
+      for (i = _l = 0, _ref2 = lines.length; 0 <= _ref2 ? _l < _ref2 : _l > _ref2; i = 0 <= _ref2 ? ++_l : --_l) {
         line = lines[i];
-        x = this.context.offsetX * scale;
-        y = fontHeight + offsetY;
+        x = this.offsetX * scale;
+        y = this.fontHeight + offsetY;
         if (i > 0) {
-          y += (fontHeight + leading) * i * 96 / 72;
+          y += (this.fontHeight + leading) * i * 96 / 72;
         }
         if (this.context.shadowColor != null) {
           ctx.shadowColor = shadowColor;
