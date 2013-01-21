@@ -2136,7 +2136,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         array.push(v);
         return;
       }
-      i = this.locationOfIntArray(array, v);
+      i = this.locationOfIntArray(array, v, 0, array.length - 1);
       if (array[i] !== v) {
         array.splice(i, 0, v);
       }
@@ -2144,7 +2144,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Utility.deleteIntArray = function(array, v) {
       var i;
-      i = this.locationOfIntArray(array, v);
+      i = this.locationOfIntArray(array, v, 0, array.length - 1);
       if (array[i] === v) {
         array.splice(i, 1);
       }
@@ -2152,12 +2152,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     Utility.locationOfIntArray = function(array, v, first, last) {
       var mid;
-      if (first == null) {
-        first = 0;
-      }
-      if (last == null) {
-        last = array.length - 1;
-      }
       while (first <= last) {
         mid = ((first + last) / 2) >> 0;
         if (v > array[mid]) {
