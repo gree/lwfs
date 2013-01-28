@@ -6489,7 +6489,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.generateImages = function(settings, imageCache, texture, image) {
-      var canvas, ctx, d, h, m, name, o, scale, u, v, w, x, y, _i, _len, _ref1, _ref2;
+      var canvas, ctx, d, h, ih, iw, m, name, o, scale, u, v, w, x, y, _i, _len, _ref1, _ref2;
       d = settings._rgbMap[texture.filename];
       if (d != null) {
         scale = image.width / texture.width;
@@ -6501,6 +6501,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           v = Math.round(o.v * scale);
           w = Math.round(((_ref1 = o.w) != null ? _ref1 : image.width) * scale);
           h = Math.round(((_ref2 = o.h) != null ? _ref2 : image.height) * scale);
+          if (o.rotated) {
+            iw = h;
+            ih = w;
+          } else {
+            iw = w;
+            ih = h;
+          }
           if (this.constructor === WebkitCSSResourceCache) {
             name = "canvas_" + o.filename.replace(/[\.-]/g, "_");
             ctx = document.getCSSCanvasContext("2d", name, w, h);
@@ -6524,7 +6531,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             Utility.scaleMatrix(m, new Matrix(), 1, x, yy);
             ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
           }
-          ctx.drawImage(image, u, v, w, h, 0, 0, w, h);
+          ctx.drawImage(image, u, v, iw, ih, 0, 0, iw, ih);
           ctx.globalCompositeOperation = 'source-over';
           imageCache[o.filename] = canvas;
         }

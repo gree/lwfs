@@ -6222,7 +6222,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   WebkitCSSTextRenderer = (function() {
 
     function WebkitCSSTextRenderer(lwf, context, textObject) {
-      var scale, text, textProperty, width, _ref1;
+      var canvas, ctx, fontHeight, leftMargin, lm, property, rightMargin, rm, scale, sw, text, _ref1;
       this.lwf = lwf;
       this.context = context;
       this.textObject = textObject;
@@ -6235,18 +6235,37 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.color = new Color;
       scale = this.lwf.scaleByStage;
       text = this.context.text;
-      textProperty = this.context.textProperty;
-      width = (text.width - textProperty.leftMargin - textProperty.rightMargin) * scale;
+      property = this.context.textProperty;
+      fontHeight = property.fontHeight * scale;
+      leftMargin = property.leftMargin / fontHeight;
+      rightMargin = property.rightMargin / fontHeight;
+      lm = 0;
+      rm = 0;
+      if (this.context.strokeColor != null) {
+        lm = rm = property.strokeWidth / 2 * scale;
+      }
+      if (this.context.shadowColor != null) {
+        sw = (property.shadowBlur - property.shadowOffsetX) * scale;
+        if (sw > lm) {
+          lm = sw;
+        }
+        sw = (property.shadowOffsetX + property.shadowBlur) * scale;
+        if (sw > rm) {
+          rm = sw;
+        }
+      }
+      leftMargin += lm;
+      rightMargin += rm;
+      this.maxWidth = text.width * scale - (leftMargin + rightMargin);
       this.node = document.createElement('div');
-      this.node.style.width = "" + width + "px";
+      this.node.style.width = "" + (text.width * scale) + "px";
       this.node.style.height = "" + (text.height * scale) + "px";
       this.node.style.position = "absolute";
       this.node.style.overflow = "hidden";
       this.node.style.textAlign = this.context.align;
-      this.node.style.textIndent = "" + (textProperty.indent * scale) + "px";
-      this.node.style.lineHeight = "" + ((textProperty.fontHeight + textProperty.leading) * scale) + "pt";
-      this.node.style.marginLeft = "" + (textProperty.leftMargin * scale) + "px";
-      this.node.style.fontSize = "" + (textProperty.fontHeight * scale) + "px";
+      this.node.style.paddingLeft = "" + leftMargin + "px";
+      this.node.style.fontSize = "" + fontHeight + "px";
+      this.node.style.lineHeight = "" + (fontHeight + property.leading * scale) + "pt";
       this.node.style.fontFamily = this.context.fontName;
       this.node.style.display = "block";
       this.node.style.pointerEvents = "none";
@@ -6254,16 +6273,22 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.node.style.webkitUserSelect = "none";
       if (this.context.strokeColor != null) {
         this.node.style.webkitTextStrokeColor = this.context.factory.convertRGB(this.context.strokeColor);
-        this.node.style.webkitTextStrokeWidth = "" + textProperty.strokeWidth + "px";
+        this.node.style.webkitTextStrokeWidth = "" + (property.strokeWidth * scale) + "px";
       }
       if (this.context.shadowColor != null) {
-        this.node.style.textShadow = ("" + textProperty.shadowOffsetX + "px ") + ("" + textProperty.shadowOffsetY + "px ") + ("" + textProperty.shadowBlur + "px ") + this.context.factory.convertRGB(this.context.shadowColor);
+        this.node.style.textShadow = ("" + (property.shadowOffsetX * scale) + "px ") + ("" + (property.shadowOffsetY * scale) + "px ") + ("" + (property.shadowBlur * scale) + "px ") + this.context.factory.convertRGB(this.context.shadowColor);
       }
       this.context.factory.stage.appendChild(this.node);
       this.matrix = new Matrix(0, 0, 0, 0, 0, 0);
       this.alpha = -1;
       this.zIndex = -1;
       this.visible = true;
+      canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      ctx = canvas.getContext("2d");
+      ctx.font = "" + fontHeight + "px " + this.context.fontName;
+      this.canvasContext = ctx;
       this.textRendered = false;
     }
 
@@ -6317,6 +6342,27 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       });
     };
 
+    WebkitCSSTextRenderer.prototype.fit = function(line, words, lineStart, imin, imax) {
+      var imid, start, str, w;
+      if (imax < imin) {
+        return;
+      }
+      imid = ((imin + imax) / 2) >> 0;
+      start = lineStart === 0 ? 0 : words[lineStart - 1];
+      str = line.slice(start, words[imid]);
+      w = this.canvasContext.measureText(str).width;
+      if (w <= this.maxWidth) {
+        if (w > this.lineWidth) {
+          this.index = imid;
+          this.lineWidth = w;
+        }
+        this.fit(line, words, lineStart, imid + 1, imax);
+      }
+      if (w >= this.lineWidth) {
+        return this.fit(line, words, lineStart, imin, imid - 1);
+      }
+    };
+
     WebkitCSSTextRenderer.prototype.clearTextNodes = function() {
       this.textNodes = [];
       while (this.node.firstChild) {
@@ -6325,21 +6371,79 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSTextRenderer.prototype.renderText = function() {
-      var fontHeight, h, i, leading, lines, offsetY, property, scale, textNode, _i, _j, _ref1, _ref2;
+      var c, ctx, fontHeight, h, i, imax, imin, leading, len, line, lines, newlines, offsetY, prev, property, scale, start, str, textNode, to, word, words, _i, _j, _k, _l, _len, _len1, _m, _ref1, _ref2, _ref3;
       this.textRendered = true;
       lines = this.str.split("\n");
+      ctx = this.canvasContext;
+      newlines = [];
+      for (_i = 0, _len = lines.length; _i < _len; _i++) {
+        line = lines[_i];
+        words = line.split(" ");
+        line = "";
+        for (_j = 0, _len1 = words.length; _j < _len1; _j++) {
+          word = words[_j];
+          if (word.length > 0) {
+            if (line.length > 0) {
+              line += " ";
+            }
+            line += word;
+          }
+        }
+        if (ctx.measureText(line).width > this.maxWidth) {
+          words = [];
+          prev = 0;
+          for (i = _k = 1, _ref1 = line.length; 1 <= _ref1 ? _k < _ref1 : _k > _ref1; i = 1 <= _ref1 ? ++_k : --_k) {
+            c = line.charCodeAt(i);
+            if (c === 0x20 || c >= 0x80 || prev >= 0x80) {
+              words.push(i);
+            }
+            prev = c;
+          }
+          words.push(line.length);
+          imin = 0;
+          imax = words.length - 1;
+          while (true) {
+            this.index = null;
+            this.lineWidth = 0;
+            this.fit(line, words, imin, imin, imax);
+            if (this.index === null) {
+              break;
+            }
+            start = imin === 0 ? 0 : words[imin - 1];
+            if (line.charCodeAt(start) === 0x20) {
+              ++start;
+            }
+            to = words[this.index];
+            str = line.slice(start, to);
+            if (this.index === imax) {
+              line = str;
+              break;
+            }
+            newlines.push(str);
+            start = to + (line.charCodeAt(to) === 0x20 ? 1 : 0);
+            str = line.slice(start);
+            if (ctx.measureText(str).width <= this.maxWidth) {
+              line = str;
+              break;
+            }
+            imin = this.index + 1;
+          }
+        }
+        newlines.push(line);
+      }
+      lines = newlines;
       if (lines.length === 0) {
         this.clearTextNodes();
         return;
       }
       if (lines.length === this.textNodes.length) {
-        for (i = _i = 0, _ref1 = lines.length; 0 <= _ref1 ? _i < _ref1 : _i > _ref1; i = 0 <= _ref1 ? ++_i : --_i) {
+        for (i = _l = 0, _ref2 = lines.length; 0 <= _ref2 ? _l < _ref2 : _l > _ref2; i = 0 <= _ref2 ? ++_l : --_l) {
           this.textNodes[i].textContent = lines[i];
         }
       } else {
         this.clearTextNodes();
         if (lines.length > 1) {
-          for (i = _j = 0, _ref2 = lines.length; 0 <= _ref2 ? _j < _ref2 : _j > _ref2; i = 0 <= _ref2 ? ++_j : --_j) {
+          for (i = _m = 0, _ref3 = lines.length; 0 <= _ref3 ? _m < _ref3 : _m > _ref3; i = 0 <= _ref3 ? ++_m : --_m) {
             if (i > 0) {
               this.node.appendChild(document.createElement('br'));
             }
@@ -6357,18 +6461,21 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       property = this.context.textProperty;
       fontHeight = property.fontHeight * scale;
       leading = property.leading * scale;
-      h = fontHeight * lines.length + leading * (lines.length - 1);
       switch (property.align & Align.VERTICAL_MASK) {
         case Align.VERTICAL_BOTTOM:
-          offsetY = this.context.text.height - h;
+          len = lines.length;
+          h = (fontHeight * len + leading * (len - 1)) * 96 / 72;
+          offsetY = this.context.text.height * scale - h;
           break;
         case Align.VERTICAL_MIDDLE:
-          offsetY = (this.context.text.height - h) / 2;
+          len = lines.length + 1;
+          h = (fontHeight * len + leading * (len - 1)) * 96 / 72;
+          offsetY = (this.context.text.height * scale - h) / 2;
           break;
         default:
           offsetY = 0;
       }
-      this.node.style.marginTop = "" + offsetY + "px";
+      this.node.style.paddingTop = "" + offsetY + "px";
     };
 
     return WebkitCSSTextRenderer;
@@ -6827,7 +6934,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.generateImages = function(settings, imageCache, texture, image) {
-      var canvas, ctx, d, h, m, name, o, scale, u, v, w, x, y, _i, _len, _ref1, _ref2;
+      var canvas, ctx, d, h, ih, iw, m, name, o, scale, u, v, w, x, y, _i, _len, _ref1, _ref2;
       d = settings._rgbMap[texture.filename];
       if (d != null) {
         scale = image.width / texture.width;
@@ -6839,6 +6946,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           v = Math.round(o.v * scale);
           w = Math.round(((_ref1 = o.w) != null ? _ref1 : image.width) * scale);
           h = Math.round(((_ref2 = o.h) != null ? _ref2 : image.height) * scale);
+          if (o.rotated) {
+            iw = h;
+            ih = w;
+          } else {
+            iw = w;
+            ih = h;
+          }
           if (this.constructor === WebkitCSSResourceCache) {
             name = "canvas_" + o.filename.replace(/[\.-]/g, "_");
             ctx = document.getCSSCanvasContext("2d", name, w, h);
@@ -6862,7 +6976,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             Utility.scaleMatrix(m, new Matrix(), 1, x, yy);
             ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
           }
-          ctx.drawImage(image, u, v, w, h, 0, 0, w, h);
+          ctx.drawImage(image, u, v, iw, ih, 0, 0, iw, ih);
           ctx.globalCompositeOperation = 'source-over';
           imageCache[o.filename] = canvas;
         }
@@ -7431,7 +7545,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   CanvasTextRenderer = (function() {
 
     function CanvasTextRenderer(lwf, context, textObject) {
-      var align, canvas, ctx, leftMargin, property, rightMargin, rm, scale, sw, text, _ref1;
+      var align, canvas, ctx, leftMargin, lm, property, rightMargin, rm, scale, sw, text, _ref1;
       this.lwf = lwf;
       this.context = context;
       this.textObject = textObject;
@@ -7446,18 +7560,21 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.fontHeight = property.fontHeight * scale;
       leftMargin = property.leftMargin / this.fontHeight;
       rightMargin = property.rightMargin / this.fontHeight;
-      rm = 0;
+      lm = rm = 0;
       if (this.context.strokeColor != null) {
-        if (property.strokeWidth > rm) {
-          rm = property.strokeWidth;
-        }
+        lm = rm = property.strokeWidth / 2 * scale;
       }
       if (this.context.shadowColor != null) {
-        sw = property.shadowOffsetX + property.shadowBlur;
+        sw = (property.shadowBlur - property.shadowOffsetX) * scale;
+        if (sw > lm) {
+          lm = sw;
+        }
+        sw = (property.shadowOffsetX + property.shadowBlur) * scale;
         if (sw > rm) {
           rm = sw;
         }
       }
+      leftMargin += lm;
       rightMargin += rm;
       text = this.context.text;
       switch (property.align & Align.ALIGN_MASK) {
@@ -7551,7 +7668,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     CanvasTextRenderer.prototype.renderText = function(textColor) {
-      var c, canvas, ctx, h, i, imax, imin, leading, line, lines, newlines, offsetY, prev, property, scale, shadowColor, start, str, to, useStroke, word, words, x, y, _i, _j, _k, _l, _len, _len1, _ref1, _ref2;
+      var c, canvas, ctx, h, i, imax, imin, leading, len, line, lines, newlines, offsetY, prev, property, scale, shadowColor, start, str, to, useStroke, word, words, x, y, _i, _j, _k, _l, _len, _len1, _ref1, _ref2;
       this.textRendered = true;
       canvas = this.canvas;
       ctx = this.canvasContext;
@@ -7616,12 +7733,15 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         newlines.push(line);
       }
       lines = newlines;
-      h = (this.fontHeight * lines.length + leading * (lines.length - 1)) * 96 / 72;
       switch (property.align & Align.VERTICAL_MASK) {
         case Align.VERTICAL_BOTTOM:
+          len = lines.length;
+          h = (this.fontHeight * len + leading * (len - 1)) * 96 / 72;
           offsetY = canvas.height - h;
           break;
         case Align.VERTICAL_MIDDLE:
+          len = lines.length + 1;
+          h = (this.fontHeight * len + leading * (len - 1)) * 96 / 72;
           offsetY = (canvas.height - h) / 2;
           break;
         default:
@@ -7632,14 +7752,14 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       useStroke = false;
       if (this.context.strokeColor != null) {
         ctx.strokeStyle = this.context.factory.convertRGB(this.context.strokeColor);
-        ctx.lineWidth = property.strokeWidth;
+        ctx.lineWidth = property.strokeWidth * scale;
         useStroke = true;
       }
       if (this.context.shadowColor != null) {
         shadowColor = this.context.factory.convertRGB(this.context.shadowColor);
-        ctx.shadowOffsetX = property.shadowOffsetX;
-        ctx.shadowOffsetY = property.shadowOffsetY;
-        ctx.shadowBlur = property.shadowBlur;
+        ctx.shadowOffsetX = property.shadowOffsetX * scale;
+        ctx.shadowOffsetY = property.shadowOffsetY * scale;
+        ctx.shadowBlur = property.shadowBlur * scale;
       }
       for (i = _l = 0, _ref2 = lines.length; 0 <= _ref2 ? _l < _ref2 : _l > _ref2; i = 0 <= _ref2 ? ++_l : --_l) {
         line = lines[i];
