@@ -18,7 +18,7 @@
      }
      var checkStatus = function() {
          var xhr = new XMLHttpRequest();
-         xhr.open('GET', location.href + '.status', true);
+         xhr.open('GET', location.href + '.status?' + Date.now, true);
          xhr.onreadystatechange = function() {
              if(xhr.readyState === 4){
                  if (xhr.status === 200) {
