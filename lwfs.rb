@@ -114,8 +114,30 @@ if OUT_DIR.nil?
 else
   FileUtils.rm_rf(Dir.glob('htdocs/lwfs/*'))  # clear everything so that we can update OUT_DIR adequately.
   FileUtils.mkdir_p(OUT_DIR) unless File.directory?(OUT_DIR)
-  FileUtils.mkdir_p("#{OUT_DIR}/for-html5") unless File.directory?("#{OUT_DIR}/for-html5")
-  FileUtils.mkdir_p("#{OUT_DIR}/for-unity") unless File.directory?("#{OUT_DIR}/for-unity")
+  FileUtils.mkdir_p("#{OUT_DIR}/html5") unless File.directory?("#{OUT_DIR}/html5")
+  FileUtils.mkdir_p("#{OUT_DIR}/unity") unless File.directory?("#{OUT_DIR}/unity")
+  # css
+  FileUtils.rm_rf("#{OUT_DIR}/html5/css")
+  FileUtils.cp_r('tmpl/css', "#{OUT_DIR}/html5/css")
+  # img
+  FileUtils.rm_rf("#{OUT_DIR}/html5/img")
+  FileUtils.cp_r('tmpl/img', "#{OUT_DIR}/html5/img")
+  # js
+  FileUtils.rm_rf("#{OUT_DIR}/html5/js")
+  FileUtils.mkdir_p("#{OUT_DIR}/html5/js")
+  FileUtils.cp_r('tmpl/js/auto-reloader.js', "#{OUT_DIR}/html5/js")
+  FileUtils.cp_r('tmpl/js/birdwatcher.js', "#{OUT_DIR}/html5/js")
+  FileUtils.cp_r('tmpl/js/qrcode.js', "#{OUT_DIR}/html5/js")
+  FileUtils.cp_r('tmpl/js/test-html5.js', "#{OUT_DIR}/html5/js")
+  Dir.glob('tmpl/js/lwf*.js') do |f|
+    FileUtils.cp(f, "#{OUT_DIR}/html5/js") unless f =~ /(cocos2d|unity)/i
+  end
+  # js_debug
+  FileUtils.rm_rf("#{OUT_DIR}/html5/js_debug")
+  FileUtils.mkdir_p("#{OUT_DIR}/html5/js_debug")
+  Dir.glob('tmpl/js_debug/lwf*') do |f|
+    FileUtils.cp(f, "#{OUT_DIR}/html5/js_debug") unless f =~ /(cocos2d|unity)/i
+  end
 end
 FileUtils.cp_r('tmpl', BASE_DIR) unless File.directory?(BASE_DIR)
 
@@ -633,15 +655,22 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
       if not OUT_DIR.nil?
         if File.read("#{DST_DIR}/#{name}/.status") =~ /OK/
           # html5
-          FileUtils.rm_rf("#{OUT_DIR}/for-html5/#{name}")
-          FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/for-html5/#{name}")
+          FileUtils.rm_rf("#{OUT_DIR}/html5/list/#{name}")
+          FileUtils.mkdir_p("#{OUT_DIR}/html5/list/#{name}")
+          FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/html5/list/#{name}/_")
+          Dir.glob("#{DST_DIR}/#{name}/index-*.html") do |f|
+            FileUtils.cp_r(f, "#{OUT_DIR}/html5/list/#{name}") unless f =~ /(cocos2d|unity)/i
+          end
+          Dir.glob("#{DST_DIR}/#{name}/*.js") do |f|
+            FileUtils.cp_r(f, "#{OUT_DIR}/html5/list/#{name}") unless f =~ /(cocos2d|unity)/i
+          end
           # unity
-          FileUtils.rm_rf("#{OUT_DIR}/for-unity/#{name}")
-          FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/for-unity/#{name}")
-          Dir.glob("#{OUT_DIR}/for-unity/#{name}/*.lwf") do |f|
+          FileUtils.rm_rf("#{OUT_DIR}/unity/#{name}")
+          FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/unity/#{name}")
+          Dir.glob("#{OUT_DIR}/unity/#{name}/*.lwf") do |f|
             FileUtils.mv(f, f.sub(/\.lwf$/, '.bytes'))
           end
-          FileUtils.rm_rf(Dir.glob("#{OUT_DIR}/for-unity/#{name}/*.js"))
+          FileUtils.rm_rf(Dir.glob("#{OUT_DIR}/unity/#{name}/*.js"))
         end
       end
     end
@@ -723,7 +752,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
       prefix = ''
       date = lastModified("#{DST_DIR}/#{name}")
       date = date.strftime('%F %T')
-      content += "        <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('/locate/#{name}'); return false;\">#{name}</a></td>"
+      content += "        <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td>"
       if status != 'NG'
         ['webkitcss', 'canvas', 'webgl'].each do |target|
           next unless TARGETS.include?(target)
