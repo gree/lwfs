@@ -69,8 +69,12 @@ Ruby
   https://github.com/ffi/ffi/blob/master/LICENSE
   (LGPL3)
 
+* wdm
+  https://github.com/Maher4Ever/wdm/blob/master/LICENSE
+  (MIT)
+
 * listen
-  https://github.com/guard/listen/blob/master/LICENSE
+  https://github.com/KojiNakamaru/listen/blob/fix/wdm_version/LICENSE
   (MIT)
 
 * libxml-ruby
