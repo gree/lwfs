@@ -71,7 +71,7 @@ if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
     OUT_DIR = nil
   end
   OPEN_COMMAND = 'open'
-  WATCH_SCRIPT = 'lib/watch-osx.rb'
+  WATCH_SCRIPT = 'lib/watch.rb'
   LOG_FILE = '/dev/null'
 elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
   prefix = ENV['USERPROFILE'].gsub(/\\/, '/')
@@ -84,7 +84,7 @@ elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
     OUT_DIR = nil
   end
   OPEN_COMMAND = 'start'
-  WATCH_SCRIPT = 'lib/watch-win.rb'
+  WATCH_SCRIPT = 'lib/watch.rb'
   LOG_FILE = 'NUL'
 elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
   prefix = ENV['HOME']
@@ -95,7 +95,7 @@ elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
     OUT_DIR = nil
   end
   OPEN_COMMAND = 'echo' # dummy
-  WATCH_SCRIPT = 'lib/watch-linux.rb'
+  WATCH_SCRIPT = 'lib/watch.rb'
   LOG_FILE = '/dev/null'
 else
   abort('this platform is not supported.')
@@ -175,6 +175,7 @@ end
 
 class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   @@mutex_i = Mutex.new
+  @@changes = []
   @@is_in_post = false
   @@is_interrupted = false
   @@is_start = true
@@ -187,6 +188,11 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     res.status = 200
     res.body = 'OK'
     @@mutex_i.synchronize do
+      if req.query.key?('arg')
+        @@changes += req.query['arg'].split("\n")
+        @@changes.sort!
+        @@changes.uniq!
+      end
       if @@is_in_post
         @@is_interrupted = true
         return
@@ -255,6 +261,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
               p "restart at #{__LINE__}"
               throw :restart
             end
+            @@changes = []
             @@is_in_post = false
           end
           updateTopStatus(false)
@@ -313,7 +320,16 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     end
     t2 = Time.now
     # added/updated folders
-    Dir.glob("#{SRC_DIR}/*").each do |file|
+    updates = []
+    if @@changes.length > 0
+      @@changes.each do |name|
+        updates.push(SRC_DIR + '/' + name)
+      end
+    else
+      updates = Dir.glob("#{SRC_DIR}/*")
+    end
+    updates.each do |file|
+      next unless FileTest.exists?(file)
       next if File.file?(file) and not (/\.swf$/ =~ file)
       name = File.basename(file)
       src = "#{SRC_DIR}/#{name}"
@@ -356,6 +372,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
                 "#{src}/**/*.js"]).each do |src_file|
         file = src_file.sub(/#{src}\//, '')
         dst_file = "#{dst}/#{file}"
+        next if excludes =~ dst_file
         return true unless File.exists?(dst_file)
       end
       Dir.glob(["#{dst}/*.swf",
@@ -377,6 +394,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
                 "#{src}/**/*.jpeg"]).each do |src_file|
         file = src_file.sub(/#{src}\//, '')
         dst_file = "#{dst}/#{file}"
+        next if excludes =~ dst_file
         return true unless File.exists?(dst_file)
       end
       Dir.glob(["#{dst}/**/*.png",
@@ -820,8 +838,14 @@ server = WEBrick::HTTPServer.new({
       sleep(0.1)
       postUpdate(10080)
       if RUBY_PLATFORM == /java/
-        Listen.to(SRC_DIR, :latency => 0.5) do |modified, added, removed|
-          postUpdate(10080)
+        Listen.to(SRC_DIR, :relative_paths => true) do |modified, added, removed|
+          changes = []
+          (modified + added + removed).each do |e|
+            changes.push(e.sub(/\/.*$/, ''))
+          end
+          changes.sort!
+          changes.uniq!
+          postUpdate('10080', changes.join("\n"))
         end
       else
         watcher = spawn("ruby", WATCH_SCRIPT, SRC_DIR, '10080')
