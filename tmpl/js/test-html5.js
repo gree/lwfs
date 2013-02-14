@@ -1,9 +1,21 @@
 (function() {
      var ua = navigator.userAgent;
-     var isPreventDefaultEnabled = /(iPhone|iPad)/.test(ua) || /Android *(4|3)\..*/.test(ua);
      var isIOS = /(iPhone|iPad)/.test(ua);
      var isAndroid = /Android/.test(ua);
+     var osVersion = 'unknown';
+     if (isIOS) {
+         var i = ua.indexOf('OS ');
+         if (i > -1) {
+             osVersion = ua.substr(i + 3, 3).replace( '_', '.' );
+         }
+     } else if (isAndroid) {
+         var i = ua.indexOf('Android ');
+         if (i > -1) {
+             osVersion = ua.substr(i + 8, 3);
+         }
+     }
      var isMobile = isIOS || isAndroid;
+     var isPreventDefaultEnabled = isIOS || (isAndroid && /^[43]\.0/.test(osVersion));
      var isFinishing = false;
      var clamp, createStage, createFPSDisplay, playLWF, inPlay, fr, fr0;
      var mode = 'release';
@@ -107,6 +119,7 @@
                  ];
              }
              var elm = document.createElement('div');
+             elm.style.color = 'red';
              elm.style.fontFamily = 'monospace';
              elm.style.fontSize = 'medium';
              var msg = '<p>ERROR: failed to load the lwf.</p>';
@@ -459,9 +472,9 @@
      };
      window.onpageshow = function() {
          mode = 'release';
-         if (window.location.pathname.match(/-debug\.html$/)) {
+         if (/-debug\.html$/.test(window.location.pathname)) {
              mode = 'debug';
-         } else if (window.location.pathname.match(/-birdwatcher\.html$/)) {
+         } else if (/-birdwatcher\.html$/.test(window.location.pathname)) {
              mode = 'birdwatcher';
          }
          if (isMobile) {
@@ -525,7 +538,7 @@
                  div.className = 'info';
                  div.id = 'info2';
                  var warning = '';
-                 if (window['testlwf_commandline'].match(/ -p /)) {
+                 if (/ -p /.test(window['testlwf_commandline'])) {
                      warning = 'WARNING: using images extracted from the swf.';
                  }
                  if (window['testlwf_warn']) {
@@ -589,14 +602,15 @@
              LWF.useWebGLRenderer();
          }
          cache = LWF.ResourceCache.get();
-         window['testlwf_lwf'].match(/(.*\/)([^\/]+)/);
+         /(.*\/)([^\/]+)/.test(window['testlwf_lwf']);
          var params = {
              'prefix': RegExp.$1,
              'lwf': RegExp.$2,
              'stage': stage,
              'onload': playLWF,
              'useBackgroundColor': true,
-             'fitForWidth': true
+             'fitForWidth': true,
+             'worker': ! (isAndroid && /^4\.0/.test(osVersion))
          };
          if (window['testlwf_settings'] != null) {
              var settings = window['testlwf_settings'];
