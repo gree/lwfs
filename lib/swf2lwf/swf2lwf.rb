@@ -3705,14 +3705,34 @@ global.LWF.Script["#{lwfname}"] = function() {
 
 	Script.prototype["#{k}"] = function() {
       EOL
-      # TODO
-      # parser = RKelly::Parser.new
-      # parser.parse(v[:script])
-      v[:script].each_line do |line|
-        f.write "\t\t"
-        line = line.gsub(/@\s*([a-zA-Z_])/, "this.\\1").gsub(/@\s*\[/, "this[").gsub(/@/, "this").gsub(/\$\s*([a-zA-Z_])/, "_root.\\1").gsub(/\$\s*\[/, "_root[").gsub(/\$/, "_root")
-        f.puts line
+      script = v[:script]
+      offset = 0
+      RKelly::Tokenizer.new.raw_tokens(script).each do |token|
+        next if token.name != :RAW_IDENT and token.name != :SINGLE_CHAR
+        case token.value
+        when /^@([a-zA-Z_])/
+          script[token.offset + offset, 2] = "this.#{$1}"
+          offset += 4
+        when /^@\[/
+          script[token.offset + offset, 2] = "this["
+          offset += 3
+        when /^@$/
+          script[token.offset + offset, 1] = "this"
+          offset += 3
+        when /^\$([a-zA-Z_])/
+          script[token.offset + offset, 2] = "_root.#{$1}"
+          offset += 5
+        when /^\$\[/
+          script[token.offset + offset, 2] = "_root["
+          offset += 4
+        when /^\$$/
+          script[token.offset + offset, 1] = "_root"
+          offset += 4
+        end
       end
+      f.write "\t\t"
+      f.write script
+      f.write "\n"
       f.write <<-EOL
 	};
       EOL
