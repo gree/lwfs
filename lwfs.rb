@@ -116,18 +116,15 @@ else
   abort('this platform is not supported.')
 end
 MY_ID = UUIDTools::UUID.sha1_create(UUIDTools::UUID_DNS_NAMESPACE, Socket.gethostname).to_s
-BASE_DIR = "htdocs/lwfs/#{MY_ID}"
+BASE_DIR = "htdocs/lwfs"
 DST_DIR = "#{BASE_DIR}/list"
 
 if not File.directory?(SRC_DIR)
   FileUtils.mkdir_p(SRC_DIR)
 end
-if OUT_DIR.nil?
-  Dir.glob('htdocs/lwfs/*') do |d|
-    FileUtils.rm_rf(d) if d != BASE_DIR
-  end
-else
-  FileUtils.rm_rf(Dir.glob('htdocs/lwfs/*'))  # clear everything so that we can update OUT_DIR adequately.
+FileUtils.rm_rf(Dir.glob('htdocs/lwfs/*'))
+FileUtils.cp_r(Dir.glob('tmpl/*'), BASE_DIR)
+if not OUT_DIR.nil?
   FileUtils.mkdir_p(OUT_DIR) unless File.directory?(OUT_DIR)
   FileUtils.mkdir_p("#{OUT_DIR}/html5") unless File.directory?("#{OUT_DIR}/html5")
   FileUtils.mkdir_p("#{OUT_DIR}/unity") unless File.directory?("#{OUT_DIR}/unity")
@@ -154,7 +151,6 @@ else
     FileUtils.cp(f, "#{OUT_DIR}/html5/js_debug") unless f =~ /(cocos2d|unity)/i
   end
 end
-FileUtils.cp_r('tmpl', BASE_DIR) unless File.directory?(BASE_DIR)
 
 $mutex_p = Mutex.new
 
@@ -227,7 +223,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
         end
         rsync() unless REMOTE_SERVER.nil?
         if REMOTE_SERVER.nil?
-          `#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/#{MY_ID}/list/`
+          `#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/list/`
         else
           `#{OPEN_COMMAND} http://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list/`
         end
@@ -715,8 +711,7 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   end
 
   def rsync()
-#    `rsync -az --delete --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
-    `rsync -az --delete --exclude #{MY_ID}/list/index.html --exclude #{MY_ID}/list/.status --chmod=ugo=rX #{BASE_DIR} rsync://#{REMOTE_SERVER}/lwfs`
+    `rsync -az --delete --exclude #{DST_DIR}/index.html --exclude #{DST_DIR}/.status --chmod=ugo=rX #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
     `rsync -az --delete --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.status rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
   end
 
