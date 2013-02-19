@@ -17,7 +17,12 @@
      var isMobile = isIOS || isAndroid;
      var isPreventDefaultEnabled = isIOS || (isAndroid && /^[43]\.0/.test(osVersion));
      var isFinishing = false;
-     var clamp, createStage, createFPSDisplay, playLWF, inPlay, fr, fr0;
+     var isRewinding = false;
+     var clamp, createStage, createFPSDisplay, playLWF, inPlay;
+     var fr, fr0;
+     var fs = 1;
+     var ds = 1.0;
+     var config = null;
      var mode = 'release';
      var fps = {
          num01: 0,
@@ -136,6 +141,8 @@
              }
              return;
          }
+         var frame_dt = 0;
+         var frame_count = 0;
          var exec_count = 0;
          var t0 = window.performance.now();
          var t0_60 = t0;
@@ -147,7 +154,7 @@
          var stage_h = 0;
          inPlay = true;
          fr0 = lwf.frameRate;
-         lwf.rootMovie.moveTo(window['testlwf_rootoffset']['x'], window['testlwf_rootoffset']['y']);
+         lwf.rootMovie.moveTo(config.rootoffset.x, config.rootoffset.y);
          destroy = function() {
              if (! lwf) {
                  return;
@@ -166,6 +173,13 @@
                  destroy();
                  return;
              }
+             if (isRewinding) {
+                 isRewinding = false;
+                 lwf.init();
+                 lwf.rootMovie.moveTo(config.rootoffset.x, config.rootoffset.y);
+                 lwf.rootMovie.gotoAndPlay(1);
+                 iw0 = 0;
+             }
              {
                  var dpr = window.devicePixelRatio;
                  if (window['testlwf_html5target'] == 'webkitcss') {
@@ -183,6 +197,7 @@
                          iw = lwf.width;
                      }
                  }
+                 iw *= ((config.ds) ? config.ds : ds);
                  if (iw0 != iw) {
                      stage_w = Math.round(iw);
                      stage_h = Math.round(iw * lwf.height / lwf.width);
@@ -208,17 +223,27 @@
              var dt = t1 - t0;
              t0 = t1;
              if (inPlay) {
-                 var lwf_dt = dt;
-                 lwf.exec(lwf_dt / 1000);
-                 lwf.render();
+                 frame_dt += dt;
+                 if (frame_count % fs == 0) {
+                     lwf.exec(frame_dt / 1000);
+                     lwf.render();
+                     frame_dt = 0;
+                 }
+                 frame_count++;
                  requestAnimationFrame(onexec);
              } else {
-                 var lwf_dt = ~~((lwf.time + lwf.tick * 1.001) / lwf.tick) * lwf.tick - lwf.time;
-                 if (lwf_dt == 0) {
-                     lwf_dt = lwf.tick * 1.001;
+                 frame_dt = ~~((lwf.time + lwf.tick * 1.001) / lwf.tick) * lwf.tick - lwf.time;
+                 if (frame_dt == 0) {
+                     frame_dt = lwf.tick * 1.001;
                  }
-                 lwf.exec(lwf_dt);
-                 lwf.render();
+                 frame_dt += lwf.tick * (fs - 1);
+                 frame_dt *= 1000;
+                 {
+                     lwf.exec(frame_dt / 1000);
+                     lwf.render();
+                     frame_dt = 0;
+                 }
+                 frame_count += fs;
              }
              if (! isMobile || mode == 'debug') {
                  fps.num01 = Math.round(1000.0 / dt);
@@ -309,14 +334,12 @@
              if (! lwf) {
                  return;
              }
-             lwf.init();
-             lwf.rootMovie.moveTo(window['testlwf_rootoffset']['x'], window['testlwf_rootoffset']['y']);
-             lwf.rootMovie.gotoAndPlay(1);
+             isRewinding = true;
          };
          updateInfo = function() {
              var info = '';
              var elm = document.getElementById('info1');
-             info = '(x' + (~~(stage_scale * 1000) / 1000) + ', ' + stage_w + 'x' + stage_h + ', ' + fr + 'fps)';
+             info = '(x' + (~~(stage_scale * 1000) / 1000) + ', ' + stage_w + 'x' + stage_h + ', ' + fr + 'fps, ' + fs + 'fs)';
              if (mode == 'debug') {
                  var stats = {
                      max_depth: 0,
@@ -338,7 +361,8 @@
              elm.textContent = info;
          };
          stage.lwf = lwf;
-         fr = lwf.frameRate;
+         fr = (config.fr) ? config.fr : lwf.frameRate;
+         fs = (config.fs) ? config.fs : 1;
          {
              var bgColor = lwf.backgroundColor;
              var r = (bgColor >> 16) & 0xff;
@@ -371,14 +395,26 @@
                  } else if (key == 'S') {
                      inPlay = ! inPlay;
                      if (inPlay) {
+                         frame_dt = 0;
+                         frame_count = 0;
                          t0 = window.performance.now();
                          requestAnimationFrame(onexec);
                      }
                      isHandled = true;
                  } else if (key == 'F') {
                      if (! inPlay) {
-                         t0 = window.performance.now() - 1000 / 60;
+                         t0 = window.performance.now() - 1000 / 60 * fs;
                          requestAnimationFrame(onexec);
+                     }
+                     isHandled = true;
+                 } else if (key == 'D') {
+                     if (! config.ds) {
+                         if (ds < 1.0) {
+                             ds += 0.25;
+                         } else {
+                             ds = 0.25;
+                         }
+                         isRewinding = true;
                      }
                      isHandled = true;
                  } else {
@@ -390,22 +426,40 @@
                          }
                          break;
                      case 32:  // space
-                         lwf.init();
-                         lwf.rootMovie.moveTo(window['testlwf_rootoffset']['x'], window['testlwf_rootoffset']['y']);
-                         lwf.rootMovie.gotoAndPlay(1);
+                         isRewinding = true;
                          isHandled = true;
                          break;
+                     case 37:  // left
+                         if (! config.fs) {
+                             fs = clamp(fs - 1, 1, 60);
+                             if (! isMobile) {
+                                 updateInfo();
+                             }
+                         }
+                         break;
+                     case 39:  // right
+                         if (! config.fs) {
+                             fs = clamp(fs + 1, 1, 60);
+                             if (! isMobile) {
+                                 updateInfo();
+                             }
+                         }
+                         break;
                      case 38:  // up
-                         fr = clamp(fr + 1, 1, 60);
-                         if (! isMobile) {
-                             updateInfo();
+                         if (! config.fr) {
+                             fr = clamp(fr + 1, 1, 60);
+                             if (! isMobile) {
+                                 updateInfo();
+                             }
                          }
                          isHandled = true;
                          break;
                      case 40:  // down
-                         fr = clamp(fr - 1, 1, 60);
-                         if (! isMobile) {
-                             updateInfo();
+                         if (! config.fr) {
+                             fr = clamp(fr - 1, 1, 60);
+                             if (! isMobile) {
+                                 updateInfo();
+                             }
                          }
                          isHandled = true;
                          break;
@@ -471,6 +525,20 @@
          }
      };
      window.onpageshow = function() {
+         config = {
+             'fr': window['testlwf_config']['fr'],
+             'ds': window['testlwf_config']['ds'],
+             'rootoffset': window['testlwf_config']['rootoffset']
+         };
+         if (/fr=([0-9]+)/.test(window.location.search)) {
+             config.fr = parseInt(RegExp.$1, 10);
+         }
+         if (/fs=([0-9]+)/.test(window.location.search)) {
+             config.fs = parseInt(RegExp.$1, 10);
+         }
+         if (/ds=([0-9.]+)/.test(window.location.search)) {
+            config.ds = parseFloat(RegExp.$1);
+         }
          mode = 'release';
          if (/-debug\.html$/.test(window.location.pathname)) {
              mode = 'debug';
@@ -529,8 +597,27 @@
              {
                  var div = document.createElement('div');
                  div.className = 'info';
-                 div.id = 'info1';
-                 div.textContent = '(x1)';
+                 {
+                     var span = document.createElement('span');
+                     span.id = 'info1';
+                     span.textContent = '(x1)';
+                     div.appendChild(span);
+                 }
+                 if (! config.fr || ! config.ds) {
+                     var a = document.createElement('a');
+                     a.textContent = '(open with current settings)';
+                     a.href = 'javascript:void(0)';
+                     a.onclick = function() {
+                         window.open(
+                             window.location.origin + window.location.pathname
+                                 + '?fr=' + fr
+                                 + '?fs=' + fs
+                                 + '&ds=' + ds,
+                             '_blank');
+                         return false;
+                     };
+                     div.appendChild(a);
+                 }
                  lpart.appendChild(div);
              }
              {
@@ -556,11 +643,11 @@
                  div.id = 'info3';
                  var href = decodeURI(window.location.href);
                  if (mode == 'release') {
-                     href = href.replace(/\.html$/, '-debug.html');
+                     href = href.replace(/\.html(|\?.*)$/, '-debug.html$1');
                  } else if (mode == 'debug') {
-                     href = href.replace(/-debug\.html$/, '-birdwatcher.html');
+                     href = href.replace(/-debug\.html(|\?.*)$/, '-birdwatcher.html$1');
                  } else {
-                     href = href.replace(/-birdwatcher\.html$/, '.html');
+                     href = href.replace(/-birdwatcher\.html(|\?.*)$/, '.html$1');
                  }
                  var bw = '';
                  if (window['testlwf_birdwatcher']) {
@@ -575,9 +662,12 @@
                  }
                  div.innerHTML
                      = '<div id="info3sub">'
-                     + 'SPACE: rewind, S: pause/resume, F: step, UP: increase fps, DOWN: decrease fps, 0: reset fps, ESC: destroy.'
+                     + 'SPACE: rewind, S: pause/resume, F: step, '
+                     + ((config.fr) ? '' : 'DOWN/UP/0: frame rate, ')
+                     + ((config.fs) ? '' : 'LEFT/RIGHT: frame step, ')
+                     + ((config.ds) ? '' : 'D: scale, ')
+                     + 'ESC: destroy.'
                      + '</div>'
-                     + '<div>'
                      + '<div>current mode: <a href="' + href + '">' + mode + '</a>.'
                      + bw
                      + '</div>';

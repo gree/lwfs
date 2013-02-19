@@ -54,6 +54,21 @@ if File.file?('lib/LWFS_VERSION')
 else
   VERSION = 'development'
 end
+if ENV['LWFS_FRAME_RATE'].nil?
+  FRAME_RATE = 0
+else
+  FRAME_RATE = ENV['LWFS_FRAME_RATE'].to_i
+end
+if ENV['LWFS_FRAME_STEP'].nil?
+  FRAME_STEP = 0
+else
+  FRAME_STEP = ENV['LWFS_FRAME_STEP'].to_i
+end
+if ENV['LWFS_DISPLAY_SCALE'].nil?
+  DISPLAY_SCALE = 0
+else
+  DISPLAY_SCALE = ENV['LWFS_DISPLAY_SCALE'].to_f
+end
 REMOTE_SERVER = ENV['LWFS_REMOTE_SERVER']
 BIRD_WATCHER_SERVER = ENV['LWFS_BIRD_WATCHER_SERVER']
 if ENV['LWFS_TARGETS'].nil?
@@ -592,9 +607,14 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
       window["testlwf_warn"] = #{warnings != ''};
       window["testlwf_lwf"] = "_/#{prefix}.lwf";
       window["testlwf_lwfjs"] = "#{lwfjs}";
-      window["testlwf_rootoffset"] = {
-          "x": #{rootoffset[:x]},
-          "y": #{rootoffset[:y]},
+      window["testlwf_config"] = {
+          "fr": #{FRAME_RATE},
+          "fs": #{FRAME_STEP},
+          "ds": #{DISPLAY_SCALE},
+          "rootoffset": {
+              "x": #{rootoffset[:x]},
+              "y": #{rootoffset[:y]}
+          }
       };
     </script>
 #{userscripts}
