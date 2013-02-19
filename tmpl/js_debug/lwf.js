@@ -3354,6 +3354,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         return o.child.depth = i;
       });
       this[attachName] = attachLWF.rootMovie;
+      if (attachLWF.lwfInstanceId != null) {
+        delete this.lwf.loadedLWFs[attachLWF.lwfInstanceId];
+      }
       this.lwf.isLWFAttached = true;
     };
 
@@ -4374,6 +4377,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.name = this.data.strings[this.data.header.nameStringId];
       this.interactive = this.data.buttonConditions.length > 0;
       this.url = null;
+      this.lwfInstanceId = null;
       this.frameRate = this.data.header.frameRate;
       this.execLimit = 3;
       this.tick = 1.0 / this.frameRate;
@@ -4405,6 +4409,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.buttonEventHandlers = [];
       this.movieCommands = {};
       this.programObjectConstructors = [];
+      this.loadedLWFs = {};
       this.parent = null;
       this.attachName = null;
       this.depth = null;
@@ -4553,6 +4558,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (colorTransform == null) {
         colorTransform = null;
       }
+      if (this.rootMovie == null) {
+        return;
+      }
       execed = false;
       currentProgress = this.progress;
       if (this.isExecDisabled && this._tweens === null) {
@@ -4667,6 +4675,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (rOffset == null) {
         rOffset = Number.MIN_VALUE;
       }
+      if (this.rootMovie == null) {
+        return;
+      }
       renderingCountBackup = this.renderingCount;
       if (rCount > 0) {
         this.renderingCount = rCount;
@@ -4717,13 +4728,22 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWF.prototype.destroy = function() {
-      var func, resourceCache, _ref;
+      var func, k, lwfInstance, resourceCache, _ref, _ref1;
+      if (this.rootMovie == null) {
+        return;
+      }
       if (this.stopTweens != null) {
         this.stopTweens();
       }
+      _ref = this.loadedLWFs;
+      for (k in _ref) {
+        lwfInstance = _ref[k];
+        lwfInstance.destroy();
+      }
+      this.loadedLWFs = null;
       this.rootMovie.destroy();
       this.rootMovie = null;
-      func = (_ref = this.functions) != null ? _ref['destroy'] : void 0;
+      func = (_ref1 = this.functions) != null ? _ref1['destroy'] : void 0;
       if (func != null) {
         func.call(this);
       }
@@ -5475,6 +5495,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     LWF.prototype.inputPoint = function(x, y) {
       var button, found;
+      if (this.rootMovie == null) {
+        return null;
+      }
       this.intercepted = false;
       if (!this.interactive) {
         return null;
@@ -5526,6 +5549,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWF.prototype.inputPress = function() {
+      if (this.rootMovie == null) {
+        return;
+      }
       if (!this.interactive) {
         return;
       }
@@ -5537,6 +5563,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWF.prototype.inputRelease = function() {
+      if (this.rootMovie == null) {
+        return;
+      }
       if (!this.interactive) {
         return;
       }
@@ -5549,6 +5578,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     LWF.prototype.inputKeyPress = function(code) {
       var button;
+      if (this.rootMovie == null) {
+        return;
+      }
       if (!this.interactive) {
         return;
       }
@@ -6721,9 +6753,20 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     function WebkitCSSResourceCache() {
       this.cache = {};
+      this.lwfInstanceIndex = 0;
     }
 
     WebkitCSSResourceCache.prototype.clear = function() {
+      var cache, k, kk, lwfInstance, _ref1, _ref2;
+      _ref1 = this.cache;
+      for (k in _ref1) {
+        cache = _ref1[k];
+        _ref2 = cache.instances;
+        for (kk in _ref2) {
+          lwfInstance = _ref2[kk];
+          lwfInstance.destroy();
+        }
+      }
       return this.cache = {};
     };
 
@@ -7255,19 +7298,24 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.newLWF = function(settings, imageCache, data) {
-      var cache, embeddedScript, factory, lwf, lwfUrl, _ref1, _ref2, _ref3;
+      var cache, embeddedScript, factory, lwf, lwfUrl, parentLWF, _ref1, _ref2, _ref3;
       lwfUrl = settings["lwf"];
       cache = this.cache[lwfUrl];
-      if ((_ref1 = cache.instances) == null) {
-        cache.instances = 0;
-      }
-      cache.instances++;
       factory = this.newFactory(settings, imageCache, data);
       if (data.useScript) {
-        embeddedScript = (_ref2 = global["LWF"]) != null ? (_ref3 = _ref2["Script"]) != null ? _ref3[data.name()] : void 0 : void 0;
+        embeddedScript = (_ref1 = global["LWF"]) != null ? (_ref2 = _ref1["Script"]) != null ? _ref2[data.name()] : void 0 : void 0;
       }
       lwf = new LWF(data, factory, embeddedScript, settings["privateData"]);
       lwf.url = settings["lwf"];
+      lwf.lwfInstanceId = ++this.lwfInstanceIndex;
+      if ((_ref3 = cache.instances) == null) {
+        cache.instances = {};
+      }
+      cache.instances[lwf.lwfInstanceId] = lwf;
+      parentLWF = settings["parentLWF"];
+      if (parentLWF != null) {
+        parentLWF.loadedLWFs[lwf.lwfInstanceId] = lwf;
+      }
       if (settings["preferredFrameRate"] != null) {
         if (settings["execLimit"] != null) {
           lwf.setPreferredFrameRate(settings["preferredFrameRate"], settings["execLimit"]);
@@ -7279,20 +7327,32 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.unloadLWF = function(lwf) {
-      var cache, head, script, _i, _len, _ref1;
+      var cache, empty, head, k, script, v, _i, _len, _ref1, _ref2;
       cache = this.cache[lwf.url];
-      if ((cache != null) && --cache.instances <= 0) {
-        try {
-          head = document.getElementsByTagName('head')[0];
-          _ref1 = cache.scripts;
-          for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-            script = _ref1[_i];
-            head.removeChild(script);
-          }
-        } catch (e) {
-
+      if (cache != null) {
+        if (lwf.lwfInstanceId) {
+          delete cache.instances[lwf.lwfInstanceId];
         }
-        delete this.cache[lwf.url];
+        empty = true;
+        _ref1 = cache.instances;
+        for (k in _ref1) {
+          v = _ref1[k];
+          empty = false;
+          break;
+        }
+        if (empty) {
+          try {
+            head = document.getElementsByTagName('head')[0];
+            _ref2 = cache.scripts;
+            for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
+              script = _ref2[_i];
+              head.removeChild(script);
+            }
+          } catch (e) {
+
+          }
+          delete this.cache[lwf.url];
+        }
       }
     };
 
