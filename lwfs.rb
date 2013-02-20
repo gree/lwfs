@@ -711,8 +711,8 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
   end
 
   def rsync()
-    `rsync -az --delete --exclude #{DST_DIR}/index.html --exclude #{DST_DIR}/.status --chmod=ugo=rX #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
-    `rsync -az --delete --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.status rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
+    `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude list/index.html --exclude list/.status #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
+    `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.status rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
   end
 
   def updateTopStatus(is_in_conversion)
