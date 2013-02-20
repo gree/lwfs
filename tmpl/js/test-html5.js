@@ -1,4 +1,5 @@
 (function() {
+     var isFile = /^file:/.test(window.location.href);
      var ua = navigator.userAgent;
      var isIOS = /(iPhone|iPad)/.test(ua);
      var isAndroid = /Android/.test(ua);
@@ -682,8 +683,46 @@
              wrapper.appendChild(stage);
              document.body.appendChild(wrapper);
          }
-         var LWF, cache;
+         var LWF;
          LWF = window['LWF'];
+         /(.*\/)([^\/]+)/.test(window['testlwf_lwf']);
+         var params = {
+             'prefix': RegExp.$1,
+             'lwf': RegExp.$2 + ((isFile) ? '.js' : ''),
+             'stage': stage,
+             'onload': playLWF,
+             'useBackgroundColor': true,
+             'fitForWidth': true
+         };
+         if (! (isAndroid && /^4\.0/.test(osVersion)) && ! isFile) {
+             params['worker'] = true;
+         } else {
+             params['worker'] = false;
+             var defs = [
+                 'WebkitCSSResourceCache',
+                 'CanvasResourceCache',
+                 'WebGLResourceCache'
+             ];
+             for (var i in defs) {
+                 var c = LWF[defs[i]];
+                 if (c) {
+                     var loadLWF = c.prototype.loadLWF;
+                     c.prototype.loadLWF = function(settings) {
+                         settings['worker'] = false;
+                         if (isFile) {
+                             settings['lwf'] = settings['lwf'].replace(/\.lwf$/, '.lwf.js');
+                         }
+                         loadLWF.call(this, settings);
+                     };
+                 }
+             }
+         }
+         if (window['testlwf_settings'] != null) {
+             var settings = window['testlwf_settings'];
+             for (var i in settings) {
+                 params[i] = settings[i];
+             }
+         }
          if (window['testlwf_html5target'] == 'webkitcss') {
              LWF.useWebkitCSSRenderer();
          } else if (window['testlwf_html5target'] == 'canvas') {
@@ -691,23 +730,6 @@
          } else if (window['testlwf_html5target'] == 'webgl') {
              LWF.useWebGLRenderer();
          }
-         cache = LWF.ResourceCache.get();
-         /(.*\/)([^\/]+)/.test(window['testlwf_lwf']);
-         var params = {
-             'prefix': RegExp.$1,
-             'lwf': RegExp.$2,
-             'stage': stage,
-             'onload': playLWF,
-             'useBackgroundColor': true,
-             'fitForWidth': true,
-             'worker': ! (isAndroid && /^4\.0/.test(osVersion))
-         };
-         if (window['testlwf_settings'] != null) {
-             var settings = window['testlwf_settings'];
-             for (var i in settings) {
-                 params[i] = settings[i];
-             }
-         }
-         return cache.loadLWF(params);
+         return LWF.ResourceCache.get().loadLWF(params);
      };
  }).call(this);
