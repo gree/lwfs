@@ -315,7 +315,8 @@ function setLinkageName(lib, name)
 function StartPublish()
 {
 	doc.save();
-	doc.publish();
+	//doc.publish();
+        fl.publishDocument(doc.pathURI, doc.currentPublishProfile);
 }	
 
 function SetLog(s)
