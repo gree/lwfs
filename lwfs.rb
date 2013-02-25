@@ -119,11 +119,13 @@ MY_ID = UUIDTools::UUID.sha1_create(UUIDTools::UUID_DNS_NAMESPACE, Socket.gethos
 BASE_DIR = "htdocs/lwfs"
 DST_DIR = "#{BASE_DIR}/list"
 
-if not File.directory?(SRC_DIR)
-  FileUtils.mkdir_p(SRC_DIR)
-end
-FileUtils.rm_rf(Dir.glob('htdocs/lwfs/*'))
+# ~/Desktop/LWFS_work
+FileUtils.mkdir_p(SRC_DIR) unless File.directory?(SRC_DIR)
+# htdocs/lwfs
+FileUtils.mv('htdocs/lwfs', '.htdocs_lwfs.' + (Time.now - Time.at(0)).to_s) if File.directory?('htdocs/lwfs')
+FileUtils.mkdir_p(BASE_DIR)
 FileUtils.cp_r(Dir.glob('tmpl/*'), BASE_DIR)
+# ~/Desktop/LWFS_work_output
 if not OUT_DIR.nil?
   FileUtils.mkdir_p(OUT_DIR) unless File.directory?(OUT_DIR)
   FileUtils.mkdir_p("#{OUT_DIR}/html5") unless File.directory?("#{OUT_DIR}/html5")
@@ -221,14 +223,19 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
           p e
           p e.backtrace
         end
-        rsync() unless REMOTE_SERVER.nil?
+        rsync(true) unless REMOTE_SERVER.nil?
         if REMOTE_SERVER.nil?
           `#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/list/`
         else
           `#{OPEN_COMMAND} http://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list/`
         end
+        # delete old htdocs/lwfs backups
+        Thread.new do
+          sleep(0.1)
+          FileUtils.rm_rf(Dir.glob('.htdocs_lwfs.*'))
+        end
       else
-        rsync() unless REMOTE_SERVER.nil?
+        rsync(true) unless REMOTE_SERVER.nil?
       end
       is_in_progress = true
       while is_in_progress
@@ -710,8 +717,10 @@ class UpdateServlet < WEBrick::HTTPServlet::AbstractServlet
     end
   end
 
-  def rsync()
-    `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude list/index.html --exclude list/.status #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
+  def rsync(is_top_only = false)
+    if not is_top_only
+      `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude list/index.html --exclude list/.status #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
+    end
     `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.status rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
   end
 
