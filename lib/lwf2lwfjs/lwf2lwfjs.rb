@@ -26,7 +26,7 @@ def lwf2lwfjs(*args)
   lwf =~ /([^\/]*)\.lwf$/
   lwfname = $1.downcase
 
-  str = Base64.encode64(Zlib::Deflate.deflate(File.read(lwf), 9))
+  str = Base64.encode64(Zlib::Deflate.deflate(File.binread(lwf), 9))
 
   f = File.open(lwf.sub(/\.lwf$/, '.lwf.js'), "wb")
   f.print <<-EOL
