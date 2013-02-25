@@ -7,10 +7,10 @@ var base = fso.GetFile(WScript.ScriptFullName).ParentFolder.Path;
     for (var e = new Enumerator(objs); !e.atEnd(); e.moveNext()) {
         var item = e.item();
         if (item.CommandLine) {
-            if (item.CommandLine.match(/ruby(.exe)? .*lib\/watch-win.rb/)) {
+            if (item.CommandLine.match(/ruby(.exe)? .*lib\/watch.*\.rb/)) {
                 item.Terminate();
             }
-            if (item.CommandLine.match(/ruby(.exe)? .*lwfs.rb/)) {
+            if (item.CommandLine.match(/ruby(.exe)? .*lwfs\.rb/)) {
                 item.Terminate();
             }
         }
