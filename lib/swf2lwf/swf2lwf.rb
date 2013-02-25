@@ -2655,71 +2655,62 @@ def parse_xflxml(xml, isRootMovie = false)
       script_nest = 0
       i = 0
       nest = 0
-      text = e.send(textMsg)
+      text = e.send(textMsg).strip.gsub(/\n/, "\001")
       while i < text.length
-        s = text[i, text.length - i].gsub(/\n/, ' ')
+        s = text[i, text.length - i]
+        pos = (/(\/\*\s*|\*\/\s*)/ =~ s)
+        if pos
+          i += pos
+        else
+          break
+        end
+        s = text[i, text.length - i]
+        skip = 0
         case s
-        when /^\/\*/
+        when /^(\/\*\s*)/
+          skip += $1.length
           if script_index.nil?
             case s
-            when /^(\/\*\s*js\s+)/i
+            when /^(\/\*\s*)(js|js_load|js_postLoad|js_enterFrame|js_unload)(\s*\001|\s+)/i
               lang = :JavaScript
-              type = "frame"
-              script_index = i + $1.length
-              script_nest = nest
-            when /^(\/\*\s*js_load\s+)/i
-              if index != 0
-                error "#{name}:frame #{index+1}: " +
-                  "js_load should be in the first frame of the movie"
-              else
-                lang = :JavaScript
+              case $2.downcase
+              when "js"
+                type = "frame"
+              when "js_load"
                 type = "load"
-                script_index = i + $1.length
-                script_nest = nest
-              end
-            when /^(\/\*\s*js_postLoad\s+)/i
-              if index != 0
-                error "#{name}:frame #{index+1}: " +
-                  "js_postLoad should be in the first frame of the movie"
-              else
-                lang = :JavaScript
+              when "js_postload"
                 type = "postLoad"
-                script_index = i + $1.length
-                script_nest = nest
-              end
-            when /^(\/\*\s*js_enterFrame\s+)/i
-              if index != 0
-                error "#{name}:frame #{index+1}: " +
-                  "js_enterFrame should be in the first frame of the movie"
-              else
-                lang = :JavaScript
+              when "js_enterframe"
                 type = "enterFrame"
-                script_index = i + $1.length
-                script_nest = nest
+              when "js_unload"
+                type = "unload"
               end
-            when /^(\/\*\s*js_unload\s+)/i
-              if index != 0
+              if type != "frame" and index != 0
                 error "#{name}:frame #{index+1}: " +
-                  "js_unload should be in the first frame of the movie"
+                  "js_#{type} should be in the first frame of the movie"
               else
                 lang = :JavaScript
-                type = "unload"
-                script_index = i + $1.length
+                script_index = i + $1.length + $2.length + $3.length
+                skip += $2.length + $3.length
                 script_nest = nest
               end
             end
           end
           nest += 1
-        when /^\*\//
+        when /^(\*\/\s*)/
+          skip += $1.length
           nest -= 1
           if !script_index.nil? and nest == script_nest
             scripts[type] ||= ""
-            scripts[type] +=
-              text[script_index, i - script_index].sub(/\s*$/, '')
+            tmp = text[script_index, i - script_index]
+            tmp.sub!(/^[\s\001]*\001/, '')
+            tmp.sub!(/[\s\001]+$/, '')
+            tmp.gsub!(/\001/, "\n")
+            scripts[type] += tmp
             script_index = nil
           end
         end
-        i += 1
+        i += skip
       end
 
       scripts.each do |type, script|
@@ -2773,17 +2764,29 @@ def parse_xflxml(xml, isRootMovie = false)
       script_nest = 0
       i = 0
       nest = 0
-      text = e.send(textMsg)
+      text = e.send(textMsg).strip.gsub(/\n/, "\001")
       while i < text.length
-        s = text[i, text.length - i].gsub(/\n/, ' ')
+        s = text[i, text.length - i]
+        pos = (/((on|onClipEvent)([\s\001]*)(\([\s\001]*)([a-zA-Z]+)([\s\001]*\))|on[\s\001]*\([\s\001]*keyPress[\s\001]*".*"[\s\001]*\)|\{\s*|\}\s*|\/\*\s*|\*\/\s*)/ =~ s)
+        if pos
+          i += pos
+        else
+          break
+        end
+        s = text[i, text.length - i]
+        skip = 0
         case s
-        when /^(on|onClipEvent)\s*\(\s*([a-zA-Z]+)\s*\)/
-          event = $2 if event_nest == 0
-        when /^on\s*\(\s*keyPress\s*".*"\s*\)/
+        when /^(on|onClipEvent)([\s\001]*)(\([\s\001]*)([a-zA-Z]+)([\s\001]*\))/
+          skip += $1.length + $2.length + $3.length + $4.length + $5.length
+          event = $4 if event_nest == 0
+        when /^(on[\s\001]*\([\s\001]*keyPress[\s\001]*".*"[\s\001]*\))/
+          skip += $1.length
           event = "keyPress"
-        when /^\{/
+        when /^(\{\s*)/
+          skip += $1.length
           event_nest += 1
-        when /^\}/
+        when /^(\}\s*)/
+          skip += $1.length
           event_nest -= 1
           if event_nest == 0
             if script =~ /\W/
@@ -2810,24 +2813,31 @@ def parse_xflxml(xml, isRootMovie = false)
             event = nil
             script = ""
           end
-        when /^\/\*/
+        when /^(\/\*\s*)/
+          skip += $1.length
           if script_index.nil?
             case s
-            when /^(\/\*\s*js\s+)/i
+            when /^(\/\*\s*)(js)(\s*\001|\s+)/i
               lang = :JavaScript
-              script_index = i + $1.length
+              script_index = i + $1.length + $2.length + $3.length
+              skip += $2.length + $3.length
               script_nest = nest
             end
           end
           nest += 1
-        when /^\*\//
+        when /^(\*\/\s*)/
+          skip += $1.length
           nest -= 1
           if !script_index.nil? and nest == script_nest
-            script += text[script_index, i - script_index].sub(/\s*$/, '')
+            tmp = text[script_index, i - script_index].sub(/\s*$/, '')
+            tmp.sub!(/^[\s\001]*\001/, '')
+            tmp.sub!(/[\s\001]+$/, '')
+            tmp.gsub!(/\001/, "\n")
+            script += tmp
             script_index = nil
           end
         end
-        i += 1
+        i += skip
       end
     end
   end
@@ -3730,8 +3740,7 @@ global.LWF.Script["#{lwfname}"] = function() {
           offset += 4
         end
       end
-      f.write "\t\t"
-      f.write script
+      f.write script.gsub(/^/, "\t\t")
       f.write "\n"
       f.write <<-EOL
 	};
