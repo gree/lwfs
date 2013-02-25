@@ -4,7 +4,8 @@ build: testtag clean
 	cp -a README*.txt *.app tmp/LWFS
 	unzip -q ruby19.zip -d tmp/LWFS/LWFS/.a
 	mkdir -p tmp/LWFS/LWFS/.a/lwfs
-	cp -a ../../{htdocs,lib,lwfs.rb,tmpl} tmp/LWFS/LWFS/.a/lwfs
+	cp -a ../../{lib,lwfs.rb,tmpl} tmp/LWFS/LWFS/.a/lwfs
+	mkdir -p tmp/LWFS/LWFS/.a/lwfs/htdocs/lwfs
 	find tmp/LWFS | grep '/\.git' | xargs rm -rf
 	find tmp/LWFS | grep '/\.DS_Store' | xargs rm -rf
 	chmod -R 755 tmp/LWFS

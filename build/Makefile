@@ -9,4 +9,3 @@ clean:
 	cd osx; make clean
 	cd win; make clean
 	cd ex; make clean
-	rm -rf ../htdocs/lwfs/*
