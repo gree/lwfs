@@ -3,5 +3,16 @@ h1 {
 }
 div.info {
     font-family: monospace;
+    white-space: pre;
     font-size: medium;
+    margin: 1px;
+}
+div.info_wrapped {
+    font-family: monospace;
+    font-size: medium;
+    margin: 1px;
+}
+#fps_canvas {
+    padding: 5px;
+    vertical-align: middle;
 }
