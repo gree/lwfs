@@ -1,12 +1,14 @@
 unalias -a
-export PATH=`pwd`:/usr/local/rvm/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export PATH=`pwd`:/usr/local/rvm/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 if [ -f /usr/local/rvm/bin/rvm ]; then
    source /usr/local/rvm/scripts/rvm
    rvm reload
 fi
-cat > gcc <<EOF
-#!/bin/sh
-/usr/bin/gcc-4.2 -I`pwd`/opt/include -I/usr/include -L`pwd`/opt/lib -L/usr/lib "\$@"
-EOF
-chmod 755 gcc
-export CC=`pwd`/gcc
+# cat > gcc <<EOF
+# #!/bin/sh
+# /usr/bin/cc -I`pwd`/opt/include -L`pwd`/opt/lib "\$@"
+# EOF
+# chmod 755 gcc
+# export CC=`pwd`/gcc
+export CFLAGS="-I`pwd`/opt/include"
+export LDFLAGS="-L`pwd`/opt/lib"

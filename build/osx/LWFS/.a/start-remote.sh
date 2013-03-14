@@ -4,7 +4,7 @@ BASE=`dirname $0`
 
 # ruby environment
 RBH=$BASE/ruby19
-export PATH=$RBH/bin:$RBH/lib/ruby/gems/1.9/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export PATH=$RBH/bin:$RBH/lib/ruby/gems/1.9.1/bin:/usr/bin:/bin:/usr/sbin:/sbin
 if [ -n "$DYLD_LIBRARY_PATH" ]; then
   export DYLD_LIBRARY_PATH=$RBH/lib:$DYLD_LIBRARY_PATH
 else
@@ -24,4 +24,5 @@ export LWFS_REMOTE_SERVER
 # app
 cd $BASE/lwfs
 chmod a+rwx htdocs/lwfs
-ruby lwfs.rb
+#ruby lwfs.rb
+ruby $RBH/lib/ruby/gems/1.9.1/bin/rackup lwfs.ru

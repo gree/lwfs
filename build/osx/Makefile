@@ -4,7 +4,7 @@ build: testtag clean
 	cp -a README*.txt *.app tmp/LWFS
 	unzip -q ruby19.zip -d tmp/LWFS/LWFS/.a
 	mkdir -p tmp/LWFS/LWFS/.a/lwfs
-	cp -a ../../{lib,lwfs.rb,tmpl} tmp/LWFS/LWFS/.a/lwfs
+	cp -a ../../{lib,lwfs.rb,lwfs.ru,tmpl} tmp/LWFS/LWFS/.a/lwfs
 	mkdir -p tmp/LWFS/LWFS/.a/lwfs/htdocs/lwfs
 	find tmp/LWFS | grep '/\.git' | xargs rm -rf
 	find tmp/LWFS | grep '/\.DS_Store' | xargs rm -rf
@@ -20,4 +20,4 @@ testtag:
 	test -f ../TAG
 
 clean:
-	rm -rf LWFS-osx* LWFS-osx*.zip
+	rm -rf LWFS-osx* LWFS-osx*.zip tmp

@@ -45,37 +45,29 @@ Ruby
   https://github.com/oneclick/rubyinstaller/blob/master/LICENSE.txt
   (3-clause BSD)
 
-* httpclient
-  https://github.com/nahi/httpclient/blob/master/README.txt
+* bundler
+  https://github.com/carlhuda/bundler/blob/master/LICENSE.md
+  (MIT)
+
+* daemons
+  https://github.com/ghazel/daemons/blob/master/LICENSE
   (Ruby)
 
-* uuidtools
-  https://github.com/sporkmonger/uuidtools/blob/master/LICENSE.txt
-  (Apache 2.0)
-
-* rb-fsevent
-  https://github.com/thibaudgg/rb-fsevent/blob/master/LICENSE
-  (MIT)
-
-* rb-fchange
-  https://github.com/stereobooster/rb-fchange/blob/master/LICENSE.md
-  (MIT)
-
-* rb-inotify
-  https://github.com/nex3/rb-inotify/blob/master/MIT-LICENSE
-  (MIT)
+* eventmachine
+  https://github.com/eventmachine/eventmachine/blob/master/LICENSE
+  (Ruby)
 
 * ffi
   https://github.com/ffi/ffi/blob/master/LICENSE
   (LGPL3)
 
-* wdm
-  https://github.com/Maher4Ever/wdm/blob/master/LICENSE
-  (MIT)
+* json
+  https://github.com/flori/json/blob/master/COPYING
+  (Ruby)
 
-* listen
-  https://github.com/KojiNakamaru/listen/blob/fix/wdm_version/LICENSE
-  (MIT)
+* httpclient
+  https://github.com/nahi/httpclient/blob/master/README.txt
+  (Ruby)
 
 * libxml-ruby
   https://github.com/KojiNakamaru/libxml-ruby/blob/develop/LICENSE
@@ -90,8 +82,64 @@ Ruby
         http://www.gnu.org/software/libiconv/
         (LGPL)
 
+* listen
+  https://github.com/KojiNakamaru/listen/blob/fix/wdm_version/LICENSE
+  (MIT)
+
+* minitest
+  https://github.com/seattlerb/minitest/blob/master/README.txt
+  (MIT)
+
+* rack
+  http://opensource.org/licenses/mit-license.php
+  (MIT)
+
+* rack-protection
+  https://github.com/rkh/rack-protection/blob/master/License
+  (MIT)
+
+* rake
+  http://rake.rubyforge.org/MIT-LICENSE.html
+  (MIT)
+
+* rb-fchange
+  https://github.com/stereobooster/rb-fchange/blob/master/LICENSE.md
+  (MIT)
+
+* rb-fsevent
+  https://github.com/thibaudgg/rb-fsevent/blob/master/LICENSE
+  (MIT)
+
 * rb-img
   gems/rb-img-0.0.5/LICENSE
   (zLib)
     * rb-img depends on 3rd party software The following contains details.
       gems/rb-img-0.0.5/LICENSE.3RDPARTY
+
+* rb-inotify
+  https://github.com/nex3/rb-inotify/blob/master/MIT-LICENSE
+  (MIT)
+
+* rdoc
+  https://github.com/rdoc/rdoc/blob/master/LICENSE.rdoc
+  (GPL2)
+
+* sinatra
+  https://github.com/sinatra/sinatra/blob/master/LICENSE
+  (MIT)
+
+* thin
+  https://github.com/macournoyer/thin/blob/master/README.md
+  (Ruby)
+
+* tilt
+  https://github.com/rtomayko/tilt/blob/master/README.md
+  (MIT)
+
+* uuidtools
+  https://github.com/sporkmonger/uuidtools/blob/master/LICENSE.txt
+  (Apache 2.0)
+
+* wdm
+  https://github.com/Maher4Ever/wdm/blob/master/LICENSE
+  (MIT)

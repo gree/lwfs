@@ -4,6 +4,8 @@ source "https://rubygems.org"
 gem "httpclient"
 gem "listen"
 gem "ruby-lzma"
+gem "sinatra"
+gem "thin"
 gem "uuidtools"
 platforms :ruby, :mingw do
   if RUBY_PLATFORM =~ /darwin/

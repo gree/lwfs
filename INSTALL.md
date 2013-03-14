@@ -77,20 +77,20 @@ server running on node.js. Please check the following steps.
 
 Invoke the following.
 
-    ruby lwfs.rb
+    rackup lwfs.ru
 
 Invoke the following if you use the remote server.
 
-    env LWFS_REMOTE_SERVER=rsyncd-server-hostname ruby lwfs.rb
+    env LWFS_REMOTE_SERVER=rsyncd-server-hostname rackup lwfs.ru
 
 Invoke the following if you want to make LWFS copy resulting lwf and
 image files to LWFS\_work\_output.
 
-    env LWFS_USE_OUTPUT_FOLDER=1 ruby lwfs.rb
+    env LWFS_USE_OUTPUT_FOLDER=1 rackup lwfs.ru
 
 Invoke the following if you want to specify the BirdWatcher server.
 
-    env LWFS_BIRD_WATCHER_SERVER=birdwacher-server-hostname:port ruby lwfs.rb
+    env LWFS_BIRD_WATCHER_SERVER=birdwacher-server-hostname:port rackup lwfs.ru
 
 You can also specifiy multiple environment variables.
 

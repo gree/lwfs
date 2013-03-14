@@ -28,6 +28,8 @@ gems:
 	sudo bash -c 'source _bashrc; gem install httpclient'
 	sudo bash -c 'source _bashrc; gem install ../../../vendor/cache/listen-*[0-9].gem'
 	sudo bash -c 'source _bashrc; gem install rb-fsevent'
+	sudo bash -c 'source _bashrc; gem install sinatra'
+	sudo bash -c 'source _bashrc; gem install thin'
 	sudo bash -c 'source _bashrc; gem install uuidtools'
 	sudo bash -c 'source _bashrc; gem install ../../../vendor/cache/libxml-ruby-*[0-9].gem'
 	sudo bash -c 'source _bashrc; gem install ../../../vendor/cache/rb-img-*[0-9].gem'
@@ -63,7 +65,6 @@ clean:
 	rm -rf zlib-*
 	rm -rf libpng-*
 	rm -rf jpeg-*
-	rm -f gcc
 
 updateruby:
 	rm -f ../ruby19.zip
