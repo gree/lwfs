@@ -145,11 +145,14 @@ function CheckLibraryAndElement()
 			CheckPngLinkage(lib, item, name);
 		}
 		
-		if ('bitmap' == lib.getItemType(name)) {
+		switch (lib.getItemType(name)) {
+		case 'bitmap':
 			continue;
-		} else if ('movie clip' == lib.getItemType(name)) {
+		case 'movie clip':
+		case 'button':
 			lib.selectItem(name);
 			setLinkageName(lib, name.split("/").join("_"));
+			break;
 		}
 
 		for (var i = 0, layers = tl.layers, il = layers.length; i < il; i++) {
@@ -315,8 +318,7 @@ function setLinkageName(lib, name)
 function StartPublish()
 {
 	doc.save();
-	//doc.publish();
-        fl.publishDocument(doc.pathURI, doc.currentPublishProfile);
+	doc.publish();
 }	
 
 function SetLog(s)

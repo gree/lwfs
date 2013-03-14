@@ -2736,7 +2736,7 @@ def parse_xflxml(xml, isRootMovie = false)
       item = layer.parent.parent.parent.parent
 
       instance_linkage_name = symbol_instance.attributes["libraryItemName"]
-      instance_linkage_name = escape(instance_linkage_name)
+      instance_linkage_name = escape(instance_linkage_name).gsub(/(\/|%2F)/, '_')
       instance_name = symbol_instance.attributes["name"]
       instance_name = escape(instance_name)
       if instance_name.nil? or instance_name.empty?
@@ -2793,15 +2793,8 @@ def parse_xflxml(xml, isRootMovie = false)
               if event == "keyPress"
                 error "doesn't support script in keyPress event"
               else
-                tail = script_name = ''
-                if instance_linkage_name =~ /.+\/([^\/]+)$/
-                  tail = $1
-                  script_name =
-                    "#{name}_#{index}_#{tail}_#{instance_name}"
-                else
-                  script_name =
-                    "#{name}_#{index}_#{instance_linkage_name}_#{instance_name}"
-                end
+                script_name =
+                  "#{name}_#{index}_#{instance_linkage_name}_#{instance_name}"
                 funcname = "#{script_name}_#{event}"
                 @instance_script_map[script_name] ||= Hash.new
                 @instance_script_map[script_name][event] ||= Hash.new
@@ -3702,7 +3695,10 @@ global.LWF.Script["#{lwfname}"] = function() {
 	var Script = (function() {function Script() {}
 
 	Script.prototype["init"] = function() {
-		_root = this;
+		var movie = this;
+		while (movie.parent !== null)
+			movie = movie.parent.lwf.rootMovie;
+		_root = movie;
 	};
 
 	Script.prototype["destroy"] = function() {
