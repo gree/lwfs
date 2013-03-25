@@ -2,7 +2,6 @@
  * img.c
  */
 
-#include <setjmp.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +9,7 @@
 #undef EXTERN
 #include <png.h>
 #include <jpeglib.h>
+#include <setjmp.h>
 
 /* GL in big endian */
 #define GL_RGB                          0x1907  /* RGB888 */
