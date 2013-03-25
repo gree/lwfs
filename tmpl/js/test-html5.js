@@ -124,11 +124,9 @@
     };
 
     playLWF = function(lwf) {
-        if (isMobile) {
-            if (progressBar) {
-                document.body.removeChild(progressBar);
-                progressBar = null;
-            }
+        if (progressBar) {
+            progressBar.parentNode.removeChild(progressBar);
+            progressBar = null;
         }
         if (lwf == null) {
             var err = this.error;
@@ -141,9 +139,7 @@
                 ];
             }
             var elm = document.createElement('div');
-            elm.style.color = 'red';
-            elm.style.fontFamily = 'monospace';
-            elm.style.fontSize = 'medium';
+            elm.className = 'error'
             var msg = '<p>ERROR: failed to load the lwf.</p>';
             for (var i in err) {
                 var e = err[i];
@@ -532,13 +528,9 @@
             if (loaded_count < total) {
                 progressBar.textContent = 'loading: ' + i2a(Math.round(100 * loaded_count / total), 3) + '%';
             } else {
-                if (isMobile) {
-                    if (progressBar) {
-                        document.body.removeChild(progressBar);
-                        progressBar = null;
-                    }
-                } else {
-                    progressBar.textContent = 'loading: 100%';
+                if (progressBar) {
+                    progressBar.parentNode.removeChild(progressBar);
+                    progressBar = null;
                 }
             }
         }
@@ -590,13 +582,11 @@
             stage.style.zIndex = 0;
             document.body.appendChild(stage);
             progressBar = document.createElement('div')
+            progressBar.className = 'info';
             progressBar.style.position = 'absolute';
             progressBar.style.left = '0px';
             progressBar.style.top = '0px';
             progressBar.style.zindex = 5;
-            progressBar.style.fontFamily = 'monospace';
-            progressBar.style.fontSize = 'medium';
-            progressBar.style.backgroundColor = 'white';
             progressBar.textContent = 'loading:   0%';
             document.body.appendChild(progressBar);
             stageEventReceiver = document.createElement('div');

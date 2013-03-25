@@ -3,14 +3,25 @@ h1 {
 }
 div.info {
     font-family: monospace;
-    white-space: pre;
     font-size: medium;
     margin: 1px;
+    color: black;
+    background-color: white;
+    white-space: pre;
 }
 div.info_wrapped {
     font-family: monospace;
     font-size: medium;
     margin: 1px;
+    color: black;
+    background-color: white;
+}
+div.error {
+    font-family: monospace;
+    font-size: medium;
+    margin: 1px;
+    color: red;
+    background-color: white;
 }
 #fps_canvas {
     padding: 5px;
