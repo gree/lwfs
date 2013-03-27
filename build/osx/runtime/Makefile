@@ -22,7 +22,7 @@ checkso:
 
 ruby:
 	sudo bash -c 'source _bashrc; curl -L https://get.rvm.io | bash'
-	sudo bash -c 'source _bashrc; rvm install 1.9.3 -C "--with-opt-dir="`pwd`"/opt"'
+	sudo bash -c 'source _bashrc; rvm install 1.9.3 --autolibs=disabled -C "--with-opt-dir="`pwd`"/opt"'
 
 gems:
 	sudo bash -c 'source _bashrc; gem install httpclient'
