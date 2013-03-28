@@ -4756,6 +4756,15 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       Utility.scaleForWidth(this, stageWidth);
     };
 
+    LWF.prototype.getStageSize = function() {
+      var h, w, _ref;
+      _ref = this.rendererFactory.getStageSize(), w = _ref[0], h = _ref[1];
+      return {
+        width: w,
+        height: h
+      };
+    };
+
     LWF.prototype.renderOffset = function() {
       this.renderingIndexOffsetted = 0;
     };
@@ -5991,6 +6000,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   LWF.prototype["forceExec"] = LWF.prototype.forceExec;
 
   LWF.prototype["forceExecWithoutProgress"] = LWF.prototype.forceExecWithoutProgress;
+
+  LWF.prototype["getStageSize"] = LWF.prototype.getStageSize;
 
   LWF.prototype["getStringId"] = LWF.prototype.getStringId;
 
