@@ -2681,6 +2681,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case "rollOver":
         case "rollOut":
         case "keyPress":
+          this.lwf.interactive = true;
           if (this.handler == null) {
             this.setHandlers(new ButtonEventHandlers());
           }
