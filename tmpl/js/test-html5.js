@@ -21,7 +21,8 @@
     var isFinishing = false;
     var isRewinding = false;
     var clamp, i2a, createStage, createFPSDisplay, playLWF, onProgress, inPlay;
-    var fr, fr0;
+    var fr0;
+    var fr = 0;
     var fs = 1;
     var ds = 1.0;
     var config = null;
@@ -220,6 +221,15 @@
                     stage_h = Math.round(iw * lwf.height / lwf.width);
                     stage.style.width = stage_w + 'px';
                     stage.style.height = stage_h + 'px';
+                    stageEventReceiver.style.width = stage_w + 'px';
+                    stageEventReceiver.style.height = stage_h + 'px';
+                    if (isMobile) {
+                        if (isIOS) {
+                            window.scrollTo(0, 0);
+                        } else if (isAndroid) {
+                            window.scrollTo(0, 1);
+                        }
+                    }
                     stage.width = Math.round(stage_w * dpr);
                     stage.height = Math.round(stage_h * dpr);
                     stage_scale = stage_w / stage.width;
@@ -231,7 +241,9 @@
             if (! isMobile) {
                 updateInfo();
             }
-            lwf.setFrameRate(fr);
+            if (fr) {
+                lwf.setFrameRate(fr);
+            }
             var t1 = window.performance.now();
             var dt = t1 - t0;
             t0 = t1;
@@ -324,8 +336,10 @@
                 x = e.clientX;
                 y = e.clientY;
             }
-            x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
-            y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
+            if (! isMobile) {
+                x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
+                y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
+            }
             x /= stage_scale;
             y /= stage_scale;
             lwf.inputPoint(x, y);
@@ -346,8 +360,10 @@
                 x = e.clientX;
                 y = e.clientY;
             }
-            x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
-            y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
+            if (! isMobile) {
+                x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
+                y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
+            }
             x /= stage_scale;
             y /= stage_scale;
             lwf.inputPoint(x, y);
@@ -371,11 +387,12 @@
         updateInfo = function() {
             var info = '';
             var elm = document.getElementById('info1');
-            info = '(x' + ds.toFixed(2) + ', ' + stage_w + 'x' + stage_h + ', ' + fr + 'fps, ' + fs + 'fs)';
+            var fps = (lwf) ? lwf.frameRate : 0;
+            info = '(x' + ds.toFixed(2) + ', ' + stage_w + 'x' + stage_h + ', ' + fps + 'fps, ' + fs + 'fs)';
             elm.textContent = info;
         };
         stage.lwf = lwf;
-        fr = (config.fr) ? config.fr : lwf.frameRate;
+        fr = (config.fr) ? config.fr : 0;
         fs = (config.fs) ? config.fs : 1;
         {
             var bgColor = lwf.backgroundColor;
@@ -389,9 +406,6 @@
                 return;
             }
             if (isFinishing) {
-                return;
-            }
-            if (! fr) {
                 return;
             }
             if (e != null) {
@@ -461,8 +475,12 @@
                         break;
                     case 38:  // up
                         if (! config.fr) {
+                            if (! fr) {
+                                fr = lwf.frameRate;
+                            }
                             fr = clamp(fr + 1, 1, 60);
                             if (! isMobile) {
+                                lwf.setFrameRate(fr);
                                 updateInfo();
                             }
                         }
@@ -470,8 +488,12 @@
                         break;
                     case 40:  // down
                         if (! config.fr) {
+                            if (! fr) {
+                                fr = lwf.frameRate;
+                            }
                             fr = clamp(fr - 1, 1, 60);
                             if (! isMobile) {
+                                lwf.setFrameRate(fr);
                                 updateInfo();
                             }
                         }
@@ -542,7 +564,7 @@
                 stage.lwf.destroy();
             }
         }
-        var names = ['fps', ((isMobile) ? 'stage' : 'wrapper')];
+        var names = ['fps', ((isMobile) ? 'stage' : 'wrapper'), 'strut'];
         for (var i in names) {
             var elm = document.getElementById(names[i]);
             if (elm != null) {
@@ -581,12 +603,12 @@
             stage.style.bottom = '0px';
             stage.style.zIndex = 0;
             document.body.appendChild(stage);
-            progressBar = document.createElement('div')
+            progressBar = document.createElement('div');
             progressBar.className = 'info';
             progressBar.style.position = 'absolute';
             progressBar.style.left = '0px';
-            progressBar.style.top = '0px';
-            progressBar.style.zindex = 5;
+            progressBar.style.top = '32px';
+            progressBar.style.zIndex = 5;
             progressBar.textContent = 'loading:   0%';
             document.body.appendChild(progressBar);
             stageEventReceiver = document.createElement('div');
@@ -595,7 +617,7 @@
             stageEventReceiver.style.top = '0px';
             stageEventReceiver.style.right = '0px';
             stageEventReceiver.style.bottom = '0px';
-            stageEventReceiver.style.zindex = 10;
+            stageEventReceiver.style.zIndex = 10;
             document.body.appendChild(stageEventReceiver);
             if (mode == 'debug') {
                 var fps_display = createFPSDisplay();
@@ -605,6 +627,22 @@
                 fps_display.style.top = '32px';
                 fps_display.style.zIndex = 10000;
                 document.body.appendChild(fps_display);
+            }
+            {
+                var strut = document.createElement('div');
+                strut.id = 'strut';
+                strut.style.position = 'absolute';
+                strut.style.left = '0px';
+                strut.style.top = '0px';
+                strut.style.width = '1px';
+                strut.style.height = '4096px';
+                strut.style.zIndex = 1;
+                document.body.appendChild(strut);
+                if (isIOS) {
+                    window.scrollTo(0, 0);
+                } else if (isAndroid) {
+                    setTimeout(function() {window.scrollTo(0, 1);}, 100);
+                }
             }
         } else {
             var wrapper = document.createElement('div');
