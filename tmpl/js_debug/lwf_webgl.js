@@ -1,4 +1,4 @@
-// Copyright (c) 2012 GREE, Inc - http://git.io/uvS3hQ
+// Copyright (c) 2012-2013 GREE, Inc - http://git.io/uvS3hQ
 // Copyright (c) 2010-2012 Tween.js authors - http://git.io/tiDrNw
 // Copyright (c) 2001 Robert Penner - http://goo.gl/Qjqc0
 // Copyright (c) 2012 imaya - http://git.io/SKEzIQ http://git.io/cC8gDw
@@ -3843,7 +3843,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.update = function(m, c) {
-      var attachName, colorTransformChanged, depth, k, lwfContainer, matrixChanged, movie, obj, v, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2, _ref3;
+      var attachName, colorTransformChanged, depth, inspector, k, lwfContainer, matrixChanged, movie, obj, v, _i, _j, _k, _len, _len1, _ref, _ref1, _ref2, _ref3,
+        _this = this;
       if (!this.active) {
         return;
       }
@@ -3900,6 +3901,71 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             lwfContainer = this.attachedLWFList[k];
             this.lwf.renderObject(lwfContainer.child.exec(this.lwf.thisTick, m, c));
           }
+        }
+      }
+      if (this.requestedCalculateBounds) {
+        this.xMin = 0;
+        this.xMax = 0;
+        this.yMin = 0;
+        this.yMax = 0;
+        inspector = function(o, h, d, r) {
+          return _this.calculateBounds(o);
+        };
+        this.inspect(inspector, 0, 0);
+        this.bounds = {
+          "xMin": this.xMin,
+          "xMax": this.xMax,
+          "yMin": this.yMin,
+          "yMax": this.yMax
+        };
+        this.requestedCalculateBounds = false;
+      }
+    };
+
+    Movie.prototype.calculateBounds = function(o) {
+      var pobj, text, tf, tfId;
+      tfId = null;
+      switch (o.type) {
+        case Type.BITMAP:
+        case Type.BITMAPEX:
+          if (o.type === Type.BITMAP) {
+            tfId = o.lwf.data.bitmaps[o.objectId].textureFragmentId;
+          } else {
+            tfId = o.lwf.data.bitmapExs[o.objectId].textureFragmentId;
+          }
+          if ((tfId != null) && tfId >= 0) {
+            tf = o.lwf.data.textureFragments[tfId];
+            this.updateBounds(o.matrix, tf.x, tf.x + tf.w, tf.y, tf.y + tf.h);
+          }
+          break;
+        case Type.BUTTON:
+          this.updateBounds(o.matrix, 0, o.width, 0, o.height);
+          break;
+        case Type.TEXT:
+          text = o.lwf.data.texts[o.objectId];
+          this.updateBounds(o.matrix, 0, text.width, 0, text.height);
+          break;
+        case Type.PROGRAMOBJECT:
+          pobj = o.lwf.data.programObjects[o.objectId];
+          this.updateBounds(o.matrix, 0, pobj.width, 0, pobj.height);
+      }
+    };
+
+    Movie.prototype.updateBounds = function(matrix, xmin, xmax, ymin, ymax) {
+      var p, x, y, _i, _len, _ref, _ref1;
+      _ref = [[xmin, ymin], [xmin, ymax], [xmax, ymin], [xmax, ymax]];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        p = _ref[_i];
+        _ref1 = Utility.calcMatrixToPoint(p[0], p[1], matrix), x = _ref1[0], y = _ref1[1];
+        if (x < this.xMin) {
+          this.xMin = x;
+        } else if (x > this.xMax) {
+          this.xMax = x;
+        }
+        if (y < this.yMin) {
+          this.yMin = y;
+        } else if (y > this.yMax) {
+          this.yMax = y;
         }
       }
     };
@@ -4498,6 +4564,41 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.property.setAlpha(v);
     };
 
+    Movie.prototype.requestCalculateBounds = function() {
+      this.requestedCalculateBounds = true;
+    };
+
+    Movie.prototype.getBounds = function() {
+      return this.bounds;
+    };
+
+    Movie.prototype.setFrameRate = function(frameRate) {
+      var instance, k, lwfContainer, movie, _i, _j, _len, _len1, _ref, _ref1;
+      if (this.attachedMovies != null) {
+        _ref = this.attachedMovieListKeys;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          k = _ref[_i];
+          movie = this.attachedMovieList[k];
+          movie.setFrameRate(frameRate);
+        }
+      }
+      if (this.attachedLWFs != null) {
+        _ref1 = this.attachedLWFListKeys;
+        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+          k = _ref1[_j];
+          lwfContainer = this.attachedLWFList[k];
+          lwfContainer.child.setFrameRate(frameRate);
+        }
+      }
+      instance = this.instanceHead;
+      while (instance !== null) {
+        if (instance.isMovie) {
+          instance.setFrameRate(frameRate);
+        }
+        instance = instance.linkInstance;
+      }
+    };
+
     return Movie;
 
   })(IObject);
@@ -4729,6 +4830,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       this.frameRate = frameRate;
       this.tick = 1.0 / this.frameRate;
+      if (this.isLWFAttached) {
+        this.rootMovie.setFrameRate(frameRate);
+      }
     };
 
     LWF.prototype.setPreferredFrameRate = function(preferredFrameRate, execLimit) {
@@ -6120,6 +6224,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
   Movie.prototype["getAttachedMovie"] = Movie.prototype.getAttachedMovie;
 
+  Movie.prototype["getBounds"] = Movie.prototype.getBounds;
+
   Movie.prototype["globalToLocal"] = Movie.prototype.globalToLocal;
 
   Movie.prototype["gotoAndPlay"] = Movie.prototype.gotoAndPlay;
@@ -6151,6 +6257,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   Movie.prototype["removeEventListener"] = Movie.prototype.removeEventHandler;
 
   Movie.prototype["removeMovieClip"] = Movie.prototype.removeMovieClip;
+
+  Movie.prototype["requestCalculateBounds"] = Movie.prototype.requestCalculateBounds;
 
   Movie.prototype["rotate"] = Movie.prototype.rotate;
 
@@ -8420,7 +8528,7 @@ TWEENLWF.Tween = function ( movie ) {
 
 			if ( this.lwf._tweens.length == 0 ) {
 
-				this.stopTweens();
+				this.lwf.stopTweens();
 
 			}
 

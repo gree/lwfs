@@ -3692,6 +3692,10 @@ global.LWF.Script["#{lwfname}"] = function() {
 		}
 	};
 
+	var trace = function(msg) {
+		console.log(msg);
+	};
+
 	var Script = (function() {function Script() {}
 
 	Script.prototype["init"] = function() {
