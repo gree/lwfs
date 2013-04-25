@@ -25,6 +25,7 @@
     var fr = 0;
     var fs = 1;
     var ds = 1.0;
+    var isConfigurable = true;
     var config = null;
     var mode = 'release';
     var fps = {
@@ -215,7 +216,7 @@
                     // }
                     iw = lwf.width;
                 }
-                iw *= ((config.ds) ? config.ds : ds);
+                iw *= ds;
                 if (iw0 != iw) {
                     stage_w = Math.round(iw);
                     stage_h = Math.round(iw * lwf.height / lwf.width);
@@ -394,6 +395,7 @@
         stage.lwf = lwf;
         fr = (config.fr) ? config.fr : 0;
         fs = (config.fs) ? config.fs : 1;
+        ds = (config.ds) ? config.ds : 1;
         {
             var bgColor = lwf.backgroundColor;
             var r = (bgColor >> 16) & 0xff;
@@ -436,7 +438,7 @@
                     }
                     isHandled = true;
                 } else if (key == 'D') {
-                    if (! config.ds) {
+                    if (isConfigurable) {
                         if (ds < 1.0) {
                             ds += 0.25;
                         } else {
@@ -458,7 +460,7 @@
                         isHandled = true;
                         break;
                     case 37:  // left
-                        if (! config.fs) {
+                        if (isConfigurable) {
                             fs = clamp(fs - 1, 1, 60);
                             if (! isMobile) {
                                 updateInfo();
@@ -466,7 +468,7 @@
                         }
                         break;
                     case 39:  // right
-                        if (! config.fs) {
+                        if (isConfigurable) {
                             fs = clamp(fs + 1, 1, 60);
                             if (! isMobile) {
                                 updateInfo();
@@ -474,7 +476,7 @@
                         }
                         break;
                     case 38:  // up
-                        if (! config.fr) {
+                        if (isConfigurable) {
                             if (! fr) {
                                 fr = lwf.frameRate;
                             }
@@ -487,7 +489,7 @@
                         isHandled = true;
                         break;
                     case 40:  // down
-                        if (! config.fr) {
+                        if (isConfigurable) {
                             if (! fr) {
                                 fr = lwf.frameRate;
                             }
@@ -558,7 +560,7 @@
         }
     };
 
-    window.onpagehide = function() {
+    var onpagehide = function() {
         if (stage != null) {
             if (stage.lwf != null) {
                 stage.lwf.destroy();
@@ -573,20 +575,24 @@
             }
         }
     };
-    window.onpageshow = function() {
+    var onpageshow = function() {
         config = {
             'fr': window['testlwf_config']['fr'],
+            'fs': window['testlwf_config']['fs'],
             'ds': window['testlwf_config']['ds'],
             'rootoffset': window['testlwf_config']['rootoffset']
         };
         if (/fr=([0-9]+)/.test(window.location.search)) {
             config.fr = parseInt(RegExp.$1, 10);
+            isConfigurable = false;
         }
         if (/fs=([0-9]+)/.test(window.location.search)) {
             config.fs = parseInt(RegExp.$1, 10);
+            isConfigurable = false;
         }
         if (/ds=([0-9.]+)/.test(window.location.search)) {
             config.ds = parseFloat(RegExp.$1);
+            isConfigurable = false;
         }
         mode = 'release';
         if (/-debug\.html$/.test(window.location.pathname)) {
@@ -678,7 +684,7 @@
                     span.textContent = '(x1)';
                     div.appendChild(span);
                 }
-                if (! config.fr || ! config.ds) {
+                if (isConfigurable) {
                     var a = document.createElement('a');
                     a.textContent = '(open with current settings)';
                     a.href = 'javascript:void(0)';
@@ -686,7 +692,7 @@
                         window.open(
                             window.location.origin + window.location.pathname
                                 + '?fr=' + fr
-                                + '?fs=' + fs
+                                + '&fs=' + fs
                                 + '&ds=' + ds,
                             '_blank');
                         return false;
@@ -790,10 +796,22 @@
             'fitForWidth': true,
             'onprogress': onProgress
         };
-        if (isAndroid && /^(4\.0|[32]\.)/.test(osVersion)) {
+        if (isAndroid && /^2\.1/.test(osVersion)) {
+            // cf. https://code.google.com/p/android/issues/detail?id=5141#c6
+            var factor = 1 / window.devicePixelRatio;
+            var drawImage = CanvasRenderingContext2D.prototype.drawImage;
+            CanvasRenderingContext2D.prototype.drawImage
+                = function(image, sx, sy, sw, sh, dx, dy, dw, dh) {
+                    for (var i = 1; i < arguments.length; i++) {
+                        arguments[i] = (arguments[i] * factor);
+                    }
+                    drawImage.apply(this, arguments);
+                };
+        }
+        if (isAndroid && /^(4\.0|[321]\.)/.test(osVersion)) {
             params['use3D'] = false;
         }
-        if (! (isAndroid && /^4\.0/.test(osVersion)) && ! isFile) {
+        if (! (isAndroid && /^(4\.0|2\.1|1\.6)/.test(osVersion)) && ! isFile) {
             params['worker'] = true;
         } else {
             params['worker'] = false;
@@ -831,4 +849,11 @@
         }
         return LWF.ResourceCache.get().loadLWF(params);
     };
+     if (isAndroid && /^(2\.1|1\.6)/.test(osVersion)) {
+         window.onunload = onpagehide;
+         window.onload = onpageshow;
+     } else {
+        window.onpagehide = onpagehide;
+        window.onpageshow = onpageshow;
+     }
 }).call(this);
