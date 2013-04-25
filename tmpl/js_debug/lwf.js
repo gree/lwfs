@@ -3064,8 +3064,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.loadFunc.call(this);
       }
       this.playAnimation(ClipEvent.LOAD);
-      this.handler = handler != null ? handler : lwf.getMovieEventHandlers(this);
-      if (this.handler != null) {
+      this.handler = new MovieEventHandlers;
+      this.handler.concat(lwf.getMovieEventHandlers(this));
+      this.handler.concat(handler);
+      if (!this.handler.empty) {
         this.handler.call("load", this);
       }
       lwf.execMovieCommand();
@@ -3077,11 +3079,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.setHandlers = function(handler) {
-      if (this.handler != null) {
-        this.handler.concat(handler);
-      } else {
-        this.handler = handler;
-      }
+      this.handler.concat(handler);
     };
 
     Movie.prototype.play = function() {
@@ -3186,24 +3184,18 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.attachMovie = function(linkageName, attachName, options) {
-      var attachedMovie, depth, enterFrame, handlers, load, movie, movieId, postLoad, render, reorder, unload, update, _ref;
+      var attachedMovie, depth, handlers, movie, movieId, reorder, _ref;
       if (options == null) {
         options = null;
       }
       if (linkageName instanceof LWF) {
-        return attachLWF(linkageName, attachName, options);
+        return this.attachLWF(linkageName, attachName, options);
       }
       if (options == null) {
         options = {};
       }
       depth = options["depth"];
       reorder = (_ref = options["reorder"]) != null ? _ref : false;
-      load = options["load"];
-      postLoad = options["postLoad"];
-      unload = options["unload"];
-      enterFrame = options["enterFrame"];
-      update = options["update"];
-      render = options["render"];
       if (linkageName instanceof Movie && linkageName.lwf === this.lwf) {
         movie = linkageName;
         this.deleteAttachedMovie(movie.parent, movie, false);
@@ -3231,9 +3223,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.deleteAttachedMovie(this, attachedMovie);
         }
       }
-      handlers = new MovieEventHandlers(load, postLoad, unload, enterFrame, update, render);
+      handlers = new MovieEventHandlers();
+      handlers.add(options);
       if (movie != null) {
-        movie.setHandlers(handler);
+        movie.setHandlers(handlers);
       } else {
         movie = new Movie(this.lwf, this, movieId, -1, 0, 0, true, handlers);
         if (this.attachMovieExeced) {
@@ -3324,20 +3317,21 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     Movie.prototype.detachMovie = function(arg) {
       var attachedMovie, _ref;
       if (this.detachedMovies != null) {
-        switch (typeof arg) {
-          case "string":
-            this.detachedMovies[arg] = true;
-            break;
-          case "number":
-            attachedMovie = (_ref = this.attachedMovieList) != null ? _ref[arg] : void 0;
-            if ((attachedMovie != null ? attachedMovie.attachName : void 0) != null) {
-              this.detachedMovies[attachedMovie.attachName] = true;
-            }
-            break;
-          case typeof Movie:
-            if ((arg != null ? arg.attachName : void 0) != null) {
-              this.detachedMovies[arg.attachName] = true;
-            }
+        if (arg instanceof Movie) {
+          if ((arg != null ? arg.attachName : void 0) != null) {
+            this.detachedMovies[arg.attachName] = true;
+          }
+        } else {
+          switch (typeof arg) {
+            case "string":
+              this.detachedMovies[arg] = true;
+              break;
+            case "number":
+              attachedMovie = (_ref = this.attachedMovieList) != null ? _ref[arg] : void 0;
+              if ((attachedMovie != null ? attachedMovie.attachName : void 0) != null) {
+                this.detachedMovies[attachedMovie.attachName] = true;
+              }
+          }
         }
       }
     };
@@ -3358,8 +3352,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.parent.detachMovie(this);
         }
       } else if (this.lwf.attachName != null) {
-        if (this.parent != null) {
-          this.parent.detachLWF(this);
+        if (this.lwf.parent != null) {
+          this.lwf.parent.detachLWF(this.lwf);
         }
       }
     };
@@ -3540,20 +3534,21 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     Movie.prototype.detachLWF = function(arg) {
       var attachedLWF, _ref, _ref1;
       if (this.detachedLWFs != null) {
-        switch (typeof arg) {
-          case "string":
-            this.detachedLWFs[arg] = true;
-            break;
-          case "number":
-            attachedLWF = (_ref = this.attachedLWFList) != null ? _ref[arg] : void 0;
-            if ((attachedLWF != null ? (_ref1 = attachedLWF.child) != null ? _ref1.attachName : void 0 : void 0) != null) {
-              this.detachedLWFs[attachedLWF.child.attachName] = true;
-            }
-            break;
-          case typeof LWF:
-            if ((arg != null ? arg.attachName : void 0) != null) {
-              this.detachedLWFs[arg.attachName] = true;
-            }
+        if (arg instanceof LWF) {
+          if ((arg != null ? arg.attachName : void 0) != null) {
+            this.detachedLWFs[arg.attachName] = true;
+          }
+        } else {
+          switch (typeof arg) {
+            case "string":
+              this.detachedLWFs[arg] = true;
+              break;
+            case "number":
+              attachedLWF = (_ref = this.attachedLWFList) != null ? _ref[arg] : void 0;
+              if ((attachedLWF != null ? (_ref1 = attachedLWF.child) != null ? _ref1.attachName : void 0 : void 0) != null) {
+                this.detachedLWFs[attachedLWF.child.attachName] = true;
+              }
+          }
         }
       }
     };
@@ -3795,7 +3790,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           if (this.postLoadFunc != null) {
             this.postLoadFunc.call(this);
           }
-          if (this.handler != null) {
+          if (!this.handler.empty) {
             this.handler.call("postLoad", this);
           }
         }
@@ -3817,7 +3812,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.enterFrameFunc.call(this);
       }
       this.playAnimation(ClipEvent.ENTERFRAME);
-      if (this.handler != null) {
+      if (!this.handler.empty) {
         this.handler.call("enterFrame", this);
       }
       this.postExecCount = this.lwf.execCount;
@@ -3855,7 +3850,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         matrixChanged = this.matrix.setWithComparing(m);
         colorTransformChanged = this.colorTransform.setWithComparing(c);
       }
-      if (this.handler != null) {
+      if (!this.handler.empty) {
         this.handler.call("update", this);
       }
       if (this.property.hasMatrix) {
@@ -4022,11 +4017,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             break;
           case "erase":
           case "layer":
+          case "mask":
             this.lwf.beginMaskMode(this.blendMode);
             useMaskMode = true;
         }
       }
-      if (this.handler != null) {
+      if (!this.handler.empty) {
         this.handler.call("render", this);
       }
       if (this.property.hasRenderingOffset) {
@@ -4139,7 +4135,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.unloadFunc.call(this);
       }
       this.playAnimation(ClipEvent.UNLOAD);
-      if (this.handler != null) {
+      if (!this.handler.empty) {
         this.handler.call("unload", this);
       }
       this.instanceHead = null;
@@ -4169,7 +4165,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case "enterFrame":
         case "update":
         case "render":
-          if (this.handler != null) {
+          if (!this.handler.empty) {
             this.handler.call(e, this);
           }
           break;
@@ -4206,9 +4202,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case "enterFrame":
         case "update":
         case "render":
-          if (this.handler == null) {
-            this.setHandlers(new MovieEventHandlers());
-          }
           this.handler.addHandler(e, eventHandler);
           break;
         default:
@@ -4228,9 +4221,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case "enterFrame":
         case "update":
         case "render":
-          if (this.handler != null) {
-            this.handler.removeHandler(e, eventHandler);
-          }
+          this.handler.removeHandler(e, eventHandler);
           break;
         default:
           handlers = this.eventHandlers[e];
@@ -4257,9 +4248,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       switch (e) {
         case null:
-          if (this.handler != null) {
-            this.handler.clear();
-          }
+          this.handler.clear();
           this.eventHandlers = {};
           break;
         case "load":
@@ -4268,9 +4257,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case "enterFrame":
         case "update":
         case "render":
-          if (this.handler != null) {
-            this.handler.clear(e);
-          }
+          this.handler.clear(e);
           break;
         default:
           delete this.eventHandlers[e];
@@ -4625,10 +4612,14 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this[type] = [];
         }
       }
+      this.empty = true;
     };
 
     EventHandlers.prototype.add = function(handlers) {
       var handler, type, _i, _len, _ref;
+      if (handlers == null) {
+        return;
+      }
       _ref = this.types;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         type = _ref[_i];
@@ -4637,10 +4628,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this[type].push(handler);
         }
       }
+      this.updateEmpty();
     };
 
     EventHandlers.prototype.concat = function(handlers) {
       var h, handler, type, _i, _j, _len, _len1, _ref;
+      if (handlers == null) {
+        return;
+      }
+      if (handlers.empty) {
+        return;
+      }
       _ref = this.types;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         type = _ref[_i];
@@ -4650,11 +4648,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this[type].push(h);
         }
       }
+      this.updateEmpty();
     };
 
     EventHandlers.prototype.addHandler = function(type, handler) {
       if (handler != null) {
         this[type].push(handler);
+        this.empty = false;
       }
     };
 
@@ -4680,12 +4680,14 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.removeInternal(this[type], handler);
         }
       }
+      this.updateEmpty();
     };
 
     EventHandlers.prototype.removeHandler = function(type, handler) {
       if (handler != null) {
         this.removeInternal(this[type], handler);
       }
+      this.updateEmpty();
     };
 
     EventHandlers.prototype.call = function(type, target) {
@@ -4706,6 +4708,19 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           handler.call(target);
         }
       }
+    };
+
+    EventHandlers.prototype.updateEmpty = function() {
+      var type, _i, _len, _ref, _ref1;
+      _ref = this.types;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        type = _ref[_i];
+        if (((_ref1 = this[type]) != null ? _ref1.length : void 0) > 0) {
+          this.empty = false;
+          return;
+        }
+      }
+      this.empty = true;
     };
 
     return EventHandlers;
@@ -4839,7 +4854,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (execLimit == null) {
         execLimit = 2;
       }
-      if (frameRate === 0) {
+      if (preferredFrameRate === 0) {
         return;
       }
       this.execLimit = Math.ceil(this.frameRate / preferredFrameRate) + execLimit;
@@ -5581,7 +5596,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         h.remove(handlers);
       }
       movie = this.searchMovieInstance(instanceName);
-      if ((movie != null ? movie.handler : void 0) != null) {
+      if (movie != null) {
         movie.handler.remove(handlers);
       }
     };
@@ -5596,7 +5611,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         h.clear(type);
       }
       movie = this.searchMovieInstance(instanceName);
-      if ((movie != null ? movie.handler : void 0) != null) {
+      if (movie != null) {
         movie.handler.clear(type);
       }
     };
@@ -6170,6 +6185,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
   LWF.prototype["setMovieEventListener"] = LWF.prototype.setMovieEventHandler;
 
+  LWF.prototype["setPreferredFrameRate"] = LWF.prototype.setPreferredFrameRate;
+
   LWF.prototype["setProgramObjectConstructor"] = LWF.prototype.setProgramObjectConstructor;
 
   LWF.prototype["setRendererFactory"] = LWF.prototype.setRendererFactory;
@@ -6337,6 +6354,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.stage = stage;
       this.textInSubpixel = textInSubpixel;
       this.use3D = use3D;
+      this.maskMode = "normal";
       this.bitmapContexts = [];
       _ref1 = data.bitmaps;
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
@@ -6382,11 +6400,53 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         style.width = "" + data.header.width + "px";
         style.height = "" + data.header.height + "px";
       }
-      this.commands = [];
+      this.initCommands();
     }
+
+    WebkitCSSRendererFactory.prototype.initCommands = function() {
+      this.commands = {};
+      this.commandsKeys = Utility.newIntArray();
+      this.subCommands = null;
+      this.subCommandsKeys = null;
+    };
+
+    WebkitCSSRendererFactory.prototype.isMask = function(cmd) {
+      switch (cmd.maskMode) {
+        case "erase":
+        case "mask":
+          return true;
+      }
+      return false;
+    };
+
+    WebkitCSSRendererFactory.prototype.isLayer = function(cmd) {
+      return cmd.maskMode === "layer";
+    };
+
+    WebkitCSSRendererFactory.prototype.addCommand = function(rIndex, cmd) {
+      if (this.isMask(cmd)) {
+        if (this.subCommands != null) {
+          this.subCommands[rIndex] = cmd;
+          Utility.insertIntArray(this.subCommandsKeys, rIndex);
+        }
+      } else {
+        if (this.isLayer(cmd) && this.commandMaskMode !== cmd.maskMode) {
+          cmd.subCommands = {};
+          cmd.subCommandsKeys = Utility.newIntArray();
+          this.subCommands = cmd.subCommands;
+          this.subCommandsKeys = cmd.subCommandsKeys;
+        }
+        this.commands[rIndex] = cmd;
+        Utility.insertIntArray(this.commandsKeys, rIndex);
+      }
+      this.commandMaskMode = cmd.maskMode;
+    };
 
     WebkitCSSRendererFactory.prototype.destruct = function() {
       var context, _i, _j, _k, _len, _len1, _len2, _ref1, _ref2, _ref3;
+      if (this.mask != null) {
+        this.stage.removeChild(this.mask);
+      }
       _ref1 = this.bitmapContexts;
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
         context = _ref1[_i];
@@ -6444,34 +6504,105 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     WebkitCSSRendererFactory.prototype.beginRender = function(lwf) {};
 
-    WebkitCSSRendererFactory.prototype.endRender = function(lwf) {
-      var command, m, renderer, scaleX, scaleY, skew0, skew1, style, translateX, translateY, _i, _len, _ref1;
-      _ref1 = this.commands;
-      for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
-        command = _ref1[_i];
-        renderer = command.renderer;
-        style = renderer.node.style;
-        style.zIndex = renderer.zIndex;
-        style.opacity = renderer.alpha;
-        m = command.matrix;
-        scaleX = m.scaleX.toFixed(12);
-        scaleY = m.scaleY.toFixed(12);
-        skew1 = m.skew1.toFixed(12);
-        skew0 = m.skew0.toFixed(12);
-        translateX = m.translateX.toFixed(12);
-        translateY = m.translateY.toFixed(12);
-        if (this.use3D) {
-          style.webkitTransform = "matrix3d(" + ("" + scaleX + "," + skew1 + ",0,0,") + ("" + skew0 + "," + scaleY + ",0,0,") + "0,0,1,0," + ("" + translateX + "," + translateY + ",0,1)");
-        } else {
-          style.webkitTransform = "matrix(" + ("" + scaleX + "," + skew1 + "," + skew0 + "," + scaleY + "," + translateX + "," + translateY + ")");
-        }
+    WebkitCSSRendererFactory.prototype.render = function(cmd) {
+      var m, node, renderer, scaleX, scaleY, skew0, skew1, style, translateX, translateY;
+      renderer = cmd.renderer;
+      node = renderer.node;
+      style = node.style;
+      style.zIndex = renderer.zIndex;
+      m = cmd.matrix;
+      switch (cmd.maskMode) {
+        case "mask":
+          this.renderMasked = true;
+          style.opacity = 0;
+          if (this.renderMaskMode !== "mask") {
+            if (this.mask != null) {
+              style = this.mask.style;
+            } else {
+              this.mask = document.createElement("div");
+              style = this.mask.style;
+              style.display = "block";
+              style.position = "absolute";
+              style.overflow = "hidden";
+              style.webkitUserSelect = "none";
+              style.webkitTransformOrigin = "0px 0px";
+              this.stage.appendChild(this.mask);
+            }
+            style.width = node.style.width;
+            style.height = node.style.height;
+            if (this.maskMatrix == null) {
+              this.maskMatrix = new Matrix();
+              this.maskedMatrix = new Matrix();
+            }
+            Utility.invertMatrix(this.maskMatrix, m);
+          } else {
+            return;
+          }
+          break;
+        case "layer":
+          if (this.renderMasked) {
+            if (this.renderMaskMode !== cmd.maskMode) {
+              this.mask.style.zIndex = renderer.zIndex;
+            }
+            if (node.parentNode !== this.mask) {
+              node.parentNode.removeChild(node);
+              this.mask.appendChild(node);
+            }
+            m = Utility.calcMatrix(this.maskedMatrix, this.maskMatrix, m);
+          } else {
+            if (node.parentNode !== this.stage) {
+              node.parentNode.removeChild(node);
+              this.stage.appendChild(node);
+            }
+          }
+          break;
+        default:
+          if (node.parentNode !== this.stage) {
+            node.parentNode.removeChild(node);
+            this.stage.appendChild(node);
+          }
       }
-      this.commands = [];
+      this.renderMaskMode = cmd.maskMode;
+      style.opacity = renderer.alpha;
+      scaleX = m.scaleX.toFixed(12);
+      scaleY = m.scaleY.toFixed(12);
+      skew1 = m.skew1.toFixed(12);
+      skew0 = m.skew0.toFixed(12);
+      translateX = m.translateX.toFixed(12);
+      translateY = m.translateY.toFixed(12);
+      if (this.use3D) {
+        style.webkitTransform = "matrix3d(" + ("" + scaleX + "," + skew1 + ",0,0,") + ("" + skew0 + "," + scaleY + ",0,0,") + "0,0,1,0," + ("" + translateX + "," + translateY + ",0,1)");
+      } else {
+        style.webkitTransform = "matrix(" + ("" + scaleX + "," + skew1 + "," + skew0 + "," + scaleY + "," + translateX + "," + translateY + ")");
+      }
+    };
+
+    WebkitCSSRendererFactory.prototype.endRender = function(lwf) {
+      var cmd, rIndex, scmd, srIndex, _i, _j, _len, _len1, _ref1, _ref2;
+      this.renderMaskMode = "normal";
+      this.renderMasked = false;
+      _ref1 = this.commandsKeys;
+      for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+        rIndex = _ref1[_i];
+        cmd = this.commands[rIndex];
+        if (cmd.subCommandsKeys != null) {
+          _ref2 = cmd.subCommandsKeys;
+          for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
+            srIndex = _ref2[_j];
+            scmd = cmd.subCommands[srIndex];
+            this.render(scmd);
+          }
+        }
+        this.render(cmd);
+      }
+      this.initCommands();
     };
 
     WebkitCSSRendererFactory.prototype.setBlendMode = function(blendMode) {};
 
-    WebkitCSSRendererFactory.prototype.setMaskMode = function(maskMode) {};
+    WebkitCSSRendererFactory.prototype.setMaskMode = function(maskMode) {
+      this.maskMode = maskMode;
+    };
 
     WebkitCSSRendererFactory.prototype.constructBitmap = function(lwf, objectId, bitmap) {
       var context;
@@ -6687,7 +6818,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         default:
           offsetY = 0;
       }
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width + 1, canvas.height + 1);
       ctx.fillStyle = "rgb(" + textColor.red + "," + textColor.green + "," + textColor.blue + ")";
       useStroke = false;
       if (context.strokeColor != null) {
@@ -6781,6 +6912,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.node.style.pointerEvents = "none";
       this.node.style.position = "absolute";
       this.node.style.webkitTransformOrigin = "0px 0px";
+      this.width = sw;
+      this.height = sh;
       this.cache = [];
     }
 
@@ -6789,7 +6922,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       _ref1 = this.cache;
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
         node = _ref1[_i];
-        this.factory.stage.removeChild(node);
+        node.parentNode.removeChild(node);
       }
     };
 
@@ -6825,7 +6958,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSBitmapRenderer.prototype.render = function(m, c, renderingIndex, renderingCount, visible) {
-      var fragment, matrixChanged, scale, x, y;
+      var fragment, maskMode, matrixChanged, scale, x, y;
       if (this.visible === visible) {
         if (visible === false) {
           return;
@@ -6858,15 +6991,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           m = this.matrix;
         }
       }
-      if (!matrixChanged && this.alpha === c.multi.alpha && this.zIndex === renderingIndex) {
+      maskMode = this.context.factory.maskMode;
+      if (!matrixChanged && this.alpha === c.multi.alpha && this.zIndex === renderingIndex && maskMode === "normal" && this.node.parentNode === this.context.factory.stage) {
         return;
       }
       this.alpha = c.multi.alpha;
       this.zIndex = renderingIndex;
-      this.context.factory.commands.push({
+      this.context.factory.addCommand(renderingIndex, {
         isBitmap: true,
         renderer: this,
-        matrix: m
+        matrix: m,
+        maskMode: maskMode
       });
     };
 
@@ -7066,14 +7201,16 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case Align.VERTICAL_MIDDLE:
           len = lines.length + 1;
           h = (this.fontHeight * len + this.leading * (len - 1)) * 96 / 72;
-          offsetY = (canvas.height - h) / 2;
+          offsetY = (canvas.height - h) / 2 + this.fontHeight;
           break;
         default:
           offsetY = 0;
       }
       offsetY += this.fontHeight * 1.2;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width + 1, canvas.height + 1);
       ctx.fillStyle = "rgb(" + textColor.red + "," + textColor.green + "," + textColor.blue + ")";
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       useStroke = false;
       if (context.strokeColor != null) {
         ctx.strokeStyle = context.factory.convertRGB(context.strokeColor);
@@ -7090,16 +7227,16 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         line = lines[i];
         x = this.offsetX * scale;
         y = offsetY + (this.fontHeight + this.leading) * i * 96 / 72;
-        if (context.shadowColor != null) {
-          ctx.shadowColor = shadowColor;
-        }
-        ctx.fillText(line, x, y);
         if (useStroke) {
           if (context.shadowColor != null) {
             ctx.shadowColor = "rgba(0, 0, 0, 0)";
           }
           ctx.strokeText(line, x, y);
         }
+        if (context.shadowColor != null) {
+          ctx.shadowColor = shadowColor;
+        }
+        ctx.fillText(line, x, y);
       }
     };
 
@@ -7173,11 +7310,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     }
 
     WebkitCSSTextRenderer.prototype.destruct = function() {
-      this.context.factory.stage.removeChild(this.node);
+      this.node.parentNode.removeChild(this.node);
     };
 
     WebkitCSSTextRenderer.prototype.render = function(m, c, renderingIndex, renderingCount, visible) {
-      var matrixChanged;
+      var maskMode, matrixChanged;
       if (this.visible === visible) {
         if (visible === false) {
           return;
@@ -7193,15 +7330,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       WebkitCSSTextRenderer.__super__.render.apply(this, arguments);
       matrixChanged = this.matrixForRender.setWithComparing(this.matrix);
-      if (!matrixChanged && this.alpha === c.multi.alpha && this.zIndex === renderingIndex) {
+      maskMode = this.context.factory.maskMode;
+      if (!matrixChanged && this.alpha === c.multi.alpha && this.zIndex === renderingIndex && maskMode === "normal" && this.node.parentNode === this.context.factory.stage) {
         return;
       }
       this.alpha = c.multi.alpha;
       this.zIndex = renderingIndex;
-      this.context.factory.commands.push({
+      this.context.factory.addCommand(renderingIndex, {
         isBitmap: false,
         renderer: this,
-        matrix: this.matrixForRender
+        matrix: this.matrixForRender,
+        maskMode: maskMode
       });
     };
 
@@ -7319,16 +7458,57 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.checkTextures = function(settings, data) {
-      var h, m, ma, orig, pngFilename, re, rgb, rotated, t, texture, u, v, w, x, y, _base, _i, _len, _ref1, _ref2;
+      var a, b, colorOp, colorValue, g, h, m, ma, orig, pngFilename, r, re, re_add, re_add10, re_rgb, re_rgb10, re_rgba, re_rgba10, rotated, t, texture, u, v, w, x, y, _base, _i, _len, _ref1, _ref2;
       settings._alphaMap = {};
-      settings._rgbMap = {};
+      settings._colorMap = {};
       settings._textures = [];
       re = new RegExp("_atlas_(.*)_info_" + "([0-9])_([0-9]+)_([0-9]+)_([0-9]+)_([0-9]+)_([0-9]+)_([0-9]+)", "i");
+      re_rgb = new RegExp("(.*)_rgb_([0-9a-f]{6})(.*)$", "i");
+      re_rgb10 = new RegExp("(.*)_rgb_([0-9]*),([0-9]*),([0-9]*)(.*)$", "i");
+      re_rgba = new RegExp("(.*)_rgba_([0-9a-f]{8})(.*)$", "i");
+      re_rgba10 = new RegExp("(.*)_rgba_([0-9]*),([0-9]*),([0-9]*),([0-9]*)(.*)$", "i");
+      re_add = new RegExp("(.*)_add_([0-9a-f]{6})(.*)$", "i");
+      re_add10 = new RegExp("(.*)_add_([0-9]*),([0-9]*),([0-9]*)(.*)$", "i");
       _ref1 = data.textures;
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
         texture = _ref1[_i];
-        m = texture.filename.match(/^(.*)_rgb_([0-9a-f]{6})(.*)$/i);
-        if (m != null) {
+        orig = null;
+        if ((m = texture.filename.match(re_rgb)) != null) {
+          orig = m[1] + m[3];
+          colorOp = "rgb";
+          colorValue = m[2];
+        } else if ((m = texture.filename.match(re_rgb10)) != null) {
+          orig = m[1] + m[5];
+          colorOp = "rgb";
+          r = parseInt(m[2], 10).toString(16);
+          g = parseInt(m[3], 10).toString(16);
+          b = parseInt(m[4], 10).toString(16);
+          colorValue = (r.length === 1 ? "0" : "") + r + (g.length === 1 ? "0" : "") + g + (b.length === 1 ? "0" : "") + b;
+        } else if ((m = texture.filename.match(re_rgba)) != null) {
+          orig = m[1] + m[3];
+          colorOp = "rgba";
+          colorValue = m[2];
+        } else if ((m = texture.filename.match(re_rgba10)) != null) {
+          orig = m[1] + m[6];
+          colorOp = "rgba";
+          r = parseInt(m[2], 10).toString(16);
+          g = parseInt(m[3], 10).toString(16);
+          b = parseInt(m[4], 10).toString(16);
+          a = parseInt(m[5], 10).toString(16);
+          colorValue = (r.length === 1 ? "0" : "") + r + (g.length === 1 ? "0" : "") + g + (b.length === 1 ? "0" : "") + b + (a.length === 1 ? "0" : "") + a;
+        } else if ((m = texture.filename.match(re_add)) != null) {
+          orig = m[1] + m[3];
+          colorOp = "add";
+          colorValue = m[2];
+        } else if ((m = texture.filename.match(re_add10)) != null) {
+          orig = m[1] + m[5];
+          colorOp = "add";
+          r = parseInt(m[2], 10).toString(16);
+          g = parseInt(m[3], 10).toString(16);
+          b = parseInt(m[4], 10).toString(16);
+          colorValue = (r.length === 1 ? "0" : "") + r + (g.length === 1 ? "0" : "") + g + (b.length === 1 ? "0" : "") + b;
+        }
+        if (orig != null) {
           ma = texture.filename.match(re);
           if (ma != null) {
             orig = ma[1];
@@ -7340,7 +7520,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             x = parseInt(ma[7], 10);
             y = parseInt(ma[8], 10);
           } else {
-            orig = m[1] + m[3];
             rotated = false;
             u = 0;
             v = 0;
@@ -7349,13 +7528,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             x = 0;
             y = 0;
           }
-          rgb = m[2];
-          if ((_ref2 = (_base = settings._rgbMap)[orig]) == null) {
+          if ((_ref2 = (_base = settings._colorMap)[orig]) == null) {
             _base[orig] = [];
           }
-          settings._rgbMap[orig].push({
+          settings._colorMap[orig].push({
             filename: texture.filename,
-            rgb: rgb,
+            colorOp: colorOp,
+            colorValue: colorValue,
             rotated: rotated,
             u: u,
             v: v,
@@ -7666,7 +7845,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       if (settings.loadedCount === settings.total) {
         delete settings._alphaMap;
-        delete settings._rgbMap;
+        delete settings._colorMap;
         delete settings._textures;
         if (settings.error.length > 0) {
           delete this.cache[settings["lwf"]];
@@ -7677,9 +7856,39 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
     };
 
+    WebkitCSSResourceCache.prototype.drawImage = function(ctx, image, o, x, y, u, v, h, iw, ih) {
+      var m;
+      if (o.rotated) {
+        m = new Matrix();
+        Utility.rotateMatrix(m, new Matrix(), 1, x, y + h);
+        ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
+      } else if (x !== 0 || y !== 0) {
+        m = new Matrix();
+        Utility.scaleMatrix(m, new Matrix(), 1, x, y);
+        ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
+      }
+      ctx.drawImage(image, u, v, iw, ih, 0, 0, iw, ih);
+    };
+
+    WebkitCSSResourceCache.prototype.createCanvas = function(filename, w, h) {
+      var canvas, ctx, name;
+      if (this.constructor === WebkitCSSResourceCache) {
+        name = "canvas_" + filename.replace(/[\.,-]/g, "_");
+        ctx = document.getCSSCanvasContext("2d", name, w, h);
+        canvas = ctx.canvas;
+        canvas.name = name;
+      } else {
+        canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        ctx = canvas.getContext('2d');
+      }
+      return [canvas, ctx];
+    };
+
     WebkitCSSResourceCache.prototype.generateImages = function(settings, imageCache, texture, image) {
-      var canvas, ctx, d, h, ih, iw, m, name, o, scale, u, v, w, x, y, _i, _len, _ref1, _ref2;
-      d = settings._rgbMap[texture.filename];
+      var a, b, canvas, canvasAdd, ctx, ctxAdd, d, g, h, ih, iw, o, r, scale, u, v, val, w, x, y, _i, _len, _ref1, _ref2, _ref3;
+      d = settings._colorMap[texture.filename];
       if (d != null) {
         scale = image.width / texture.width;
         for (_i = 0, _len = d.length; _i < _len; _i++) {
@@ -7697,30 +7906,38 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             iw = w;
             ih = h;
           }
-          if (this.constructor === WebkitCSSResourceCache) {
-            name = "canvas_" + o.filename.replace(/[\.-]/g, "_");
-            ctx = document.getCSSCanvasContext("2d", name, w, h);
-            canvas = ctx.canvas;
-            canvas.name = name;
-          } else {
-            canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            ctx = canvas.getContext('2d');
+          _ref3 = this.createCanvas(o.filename, w, h), canvas = _ref3[0], ctx = _ref3[1];
+          switch (o.colorOp) {
+            case "rgb":
+              ctx.fillStyle = "#" + o.colorValue;
+              ctx.fillRect(0, 0, w, h);
+              ctx.globalCompositeOperation = 'destination-in';
+              this.drawImage(ctx, image, o, x, y, u, v, h, iw, ih);
+              break;
+            case "rgba":
+              this.drawImage(ctx, image, o, x, y, u, v, h, iw, ih);
+              ctx.globalCompositeOperation = 'source-atop';
+              val = o.colorValue;
+              r = parseInt(val.substr(0, 2), 16);
+              g = parseInt(val.substr(2, 2), 16);
+              b = parseInt(val.substr(4, 2), 16);
+              a = parseInt(val.substr(6, 2), 16) / 255;
+              ctx.fillStyle = "rgba(" + r + ", " + g + ", " + b + ", " + a + ")";
+              ctx.fillRect(0, 0, w, h);
+              break;
+            case "add":
+              canvasAdd = document.createElement('canvas');
+              canvasAdd.width = w;
+              canvasAdd.height = h;
+              ctxAdd = canvasAdd.getContext('2d');
+              ctxAdd.fillStyle = "#" + o.colorValue;
+              ctxAdd.fillRect(0, 0, w, h);
+              ctxAdd.globalCompositeOperation = 'destination-in';
+              this.drawImage(ctxAdd, image, o, x, y, u, v, h, iw, ih);
+              this.drawImage(ctx, image, o, x, y, u, v, h, iw, ih);
+              ctx.globalCompositeOperation = 'lighter';
+              ctx.drawImage(canvasAdd, 0, 0, canvasAdd.width, canvasAdd.height, 0, 0, canvasAdd.width, canvasAdd.height);
           }
-          ctx.fillStyle = "#" + o.rgb;
-          ctx.fillRect(0, 0, w, h);
-          ctx.globalCompositeOperation = 'destination-in';
-          if (o.rotated) {
-            m = new Matrix();
-            Utility.rotateMatrix(m, new Matrix(), 1, x, y + h);
-            ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
-          } else if (x !== 0 || y !== 0) {
-            m = new Matrix();
-            Utility.scaleMatrix(m, new Matrix(), 1, x, yy);
-            ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
-          }
-          ctx.drawImage(image, u, v, iw, ih, 0, 0, iw, ih);
           ctx.globalCompositeOperation = 'source-over';
           imageCache[o.filename] = canvas;
         }
@@ -7756,7 +7973,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           return _this.loadImagesCallback(settings, imageCache, data);
         };
         image.onload = function() {
-          var alpha, alphaImg, canvas, ctx, d, jpg, jpgImg, name;
+          var alpha, alphaImg, canvas, ctx, d, jpg, jpgImg, _ref2;
           imageCache[texture.filename] = image;
           d = settings._alphaMap[texture.filename];
           if (d != null) {
@@ -7765,20 +7982,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             jpgImg = imageCache[jpg.filename];
             alphaImg = imageCache[alpha.filename];
             if ((jpgImg != null) && (alphaImg != null)) {
-              if (_this.constructor === WebkitCSSResourceCache) {
-                name = "canvas_" + jpg.filename.replace(/[\.-]/g, "_");
-                ctx = document.getCSSCanvasContext("2d", name, jpgImg.width, jpgImg.height);
-                canvas = ctx.canvas;
-                canvas.name = name;
-              } else {
-                canvas = document.createElement('canvas');
-                canvas.width = jpgImg.width;
-                canvas.height = jpgImg.height;
-                ctx = canvas.getContext('2d');
-              }
-              ctx.drawImage(jpgImg, 0, 0, jpgImg.width, jpgImg.height);
+              _ref2 = _this.createCanvas(jpg.filename, jpgImg.width, jpgImg.height), canvas = _ref2[0], ctx = _ref2[1];
+              ctx.drawImage(jpgImg, 0, 0, jpgImg.width, jpgImg.height, 0, 0, jpgImg.width, jpgImg.height);
               ctx.globalCompositeOperation = 'destination-in';
-              ctx.drawImage(alphaImg, 0, 0, jpgImg.width, jpgImg.height);
+              ctx.drawImage(alphaImg, 0, 0, alphaImg.width, alphaImg.height, 0, 0, jpgImg.width, jpgImg.height);
               ctx.globalCompositeOperation = 'source-over';
               delete imageCache[jpg.filename];
               delete imageCache[alpha.filename];
@@ -8042,16 +8249,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.initCommands();
     }
 
-    CanvasRendererFactory.prototype.initCommands = function() {
-      this.commands = {};
-      return this.commandsKeys = Utility.newIntArray();
-    };
-
-    CanvasRendererFactory.prototype.addCommand = function(rIndex, cmd) {
-      this.commands[rIndex] = cmd;
-      Utility.insertIntArray(this.commandsKeys, rIndex);
-    };
-
     CanvasRendererFactory.prototype.destruct = function() {
       var context, _i, _j, _k, _len, _len1, _len2, _ref1, _ref2, _ref3;
       _ref1 = this.bitmapContexts;
@@ -8071,24 +8268,108 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
     };
 
-    CanvasRendererFactory.prototype.beginRender = function(lwf) {};
+    CanvasRendererFactory.prototype.beginRender = function(lwf) {
+      this.commandMaskMode = "normal";
+    };
 
     CanvasRendererFactory.prototype.renderMask = function() {
       var ctx;
-      ctx = this.eraseCanvas.getContext('2d');
+      ctx = this.maskCanvas.getContext('2d');
       ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = "source-out";
+      ctx.globalCompositeOperation = this.maskComposition;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(this.layerCanvas, 0, 0);
+      ctx.drawImage(this.layerCanvas, 0, 0, this.layerCanvas.width, this.layerCanvas.height, 0, 0, this.layerCanvas.width, this.layerCanvas.height);
       ctx = this.stageContext;
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      return ctx.drawImage(this.eraseCanvas, 0, 0);
+      ctx.drawImage(this.maskCanvas, 0, 0, this.maskCanvas.width, this.maskCanvas.height, 0, 0, this.maskCanvas.width, this.maskCanvas.height);
+    };
+
+    CanvasRendererFactory.prototype.render = function(ctx, cmd) {
+      var cleared, h, m, u, v, w;
+      if (this.renderMaskMode !== cmd.maskMode) {
+        switch (cmd.maskMode) {
+          case "erase":
+          case "mask":
+            this.renderMasked = true;
+            this.maskComposition = cmd.maskMode === "erase" ? "source-out" : "source-in";
+            if (this.maskCanvas == null) {
+              this.maskCanvas = document.createElement('canvas');
+              this.maskCanvas.width = this.stage.width;
+              this.maskCanvas.height = this.stage.height;
+              cleared = true;
+            } else {
+              cleared = false;
+            }
+            ctx = this.maskCanvas.getContext('2d');
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
+            this.renderBlendMode = "normal";
+            if (!cleared) {
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.clearRect(0, 0, this.stage.width + 1, this.stage.height + 1);
+            }
+            break;
+          case "layer":
+            if (this.renderMasked) {
+              if (this.layerCanvas == null) {
+                this.layerCanvas = document.createElement('canvas');
+                this.layerCanvas.width = this.stage.width;
+                this.layerCanvas.height = this.stage.height;
+                cleared = true;
+              } else {
+                cleared = false;
+              }
+              ctx = this.layerCanvas.getContext('2d');
+              ctx.globalAlpha = 1;
+              ctx.globalCompositeOperation = "source-over";
+              this.renderBlendMode = "normal";
+              if (!cleared) {
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.clearRect(0, 0, this.stage.width + 1, this.stage.height + 1);
+              }
+            } else {
+              ctx = this.stageContext;
+              ctx.globalAlpha = 1;
+              ctx.globalCompositeOperation = "source-over";
+              this.renderBlendMode = "normal";
+            }
+            break;
+          case "normal":
+            ctx = this.stageContext;
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = "source-over";
+            this.renderBlendMode = "normal";
+            if (this.renderMaskMode === "layer" && this.renderMasked) {
+              this.renderMask();
+            }
+        }
+        this.renderMaskMode = cmd.maskMode;
+      }
+      if (this.renderBlendMode !== cmd.blendMode) {
+        this.renderBlendMode = cmd.blendMode;
+        switch (this.renderBlendMode) {
+          case "add":
+            ctx.globalCompositeOperation = "lighter";
+            break;
+          case "normal":
+            ctx.globalCompositeOperation = "source-over";
+        }
+      }
+      ctx.globalAlpha = cmd.alpha;
+      m = cmd.matrix;
+      ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
+      u = cmd.u;
+      v = cmd.v;
+      w = cmd.w;
+      h = cmd.h;
+      ctx.drawImage(cmd.image, u, v, w, h, 0, 0, w, h);
+      return ctx;
     };
 
     CanvasRendererFactory.prototype.endRender = function(lwf) {
-      var blendMode, cleared, cmd, ctx, f, h, m, maskMode, rIndex, u, v, w, _i, _len, _ref1, _ref2;
+      var cmd, ctx, f, rIndex, scmd, srIndex, _i, _j, _len, _len1, _ref1, _ref2, _ref3;
       ctx = this.stageContext;
       if (lwf.parent != null) {
         f = lwf.parent.lwf.rendererFactory;
@@ -8104,92 +8385,36 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         if (this.clearColor != null) {
           if (this.clearColor[3] === 'a') {
-            ctx.clearRect(0, 0, this.stage.width, this.stage.height);
+            ctx.clearRect(0, 0, this.stage.width + 1, this.stage.height + 1);
           }
           ctx.fillStyle = this.clearColor;
           ctx.fillRect(0, 0, this.stage.width, this.stage.height);
         } else {
-          ctx.clearRect(0, 0, this.stage.width, this.stage.height);
+          ctx.clearRect(0, 0, this.stage.width + 1, this.stage.height + 1);
         }
       }
-      blendMode = "normal";
-      maskMode = "normal";
+      this.renderBlendMode = "normal";
+      this.renderMaskMode = "normal";
+      this.renderMasked = false;
       _ref2 = this.commandsKeys;
       for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
         rIndex = _ref2[_i];
         cmd = this.commands[rIndex];
-        ctx.globalAlpha = cmd.alpha;
-        if (maskMode !== cmd.maskMode) {
-          switch (cmd.maskMode) {
-            case "erase":
-              if (this.eraseCanvas == null) {
-                this.eraseCanvas = document.createElement('canvas');
-                this.eraseCanvas.width = this.stage.width;
-                this.eraseCanvas.height = this.stage.height;
-                cleared = true;
-              } else {
-                cleared = false;
-              }
-              ctx = this.eraseCanvas.getContext('2d');
-              ctx.globalAlpha = 1;
-              ctx.globalCompositeOperation = "source-over";
-              blendMode = "normal";
-              if (!cleared) {
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.clearRect(0, 0, this.stage.width, this.stage.height);
-              }
-              break;
-            case "layer":
-              if (this.layerCanvas == null) {
-                this.layerCanvas = document.createElement('canvas');
-                this.layerCanvas.width = this.stage.width;
-                this.layerCanvas.height = this.stage.height;
-                cleared = true;
-              } else {
-                cleared = false;
-              }
-              ctx = this.layerCanvas.getContext('2d');
-              ctx.globalAlpha = 1;
-              ctx.globalCompositeOperation = "source-over";
-              blendMode = "normal";
-              if (!cleared) {
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.clearRect(0, 0, this.stage.width, this.stage.height);
-              }
-              break;
-            case "normal":
-              ctx = this.stageContext;
-              ctx.globalAlpha = 1;
-              ctx.globalCompositeOperation = "source-over";
-              blendMode = "normal";
-              if (maskMode === "layer") {
-                this.renderMask();
-              }
-          }
-          maskMode = cmd.maskMode;
-        }
-        if (blendMode !== cmd.blendMode) {
-          blendMode = cmd.blendMode;
-          switch (blendMode) {
-            case "add":
-              ctx.globalCompositeOperation = "lighter";
-              break;
-            case "normal":
-              ctx.globalCompositeOperation = "source-over";
+        if (cmd.subCommandsKeys != null) {
+          _ref3 = cmd.subCommandsKeys;
+          for (_j = 0, _len1 = _ref3.length; _j < _len1; _j++) {
+            srIndex = _ref3[_j];
+            scmd = cmd.subCommands[srIndex];
+            ctx = this.render(ctx, scmd);
           }
         }
-        m = cmd.matrix;
-        ctx.setTransform(m.scaleX, m.skew1, m.skew0, m.scaleY, m.translateX, m.translateY);
-        u = cmd.u;
-        v = cmd.v;
-        w = cmd.w;
-        h = cmd.h;
-        ctx.drawImage(cmd.image, u, v, w, h, 0, 0, w, h);
+        ctx = this.render(ctx, cmd);
       }
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = "source-over";
-      if (maskMode === "layer") {
+      if (this.renderMaskMode === "layer" && this.renderMasked) {
         this.renderMask();
+      } else {
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = "source-over";
       }
       this.initCommands();
     };
@@ -8423,24 +8648,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     CanvasResourceCache.prototype.generateImages = function(settings, imageCache, texture, image) {
-      var canvas, ctx, h, m, name, w;
+      var canvas, ctx, h, m, w;
       m = texture.filename.match(/_withpadding/);
       if (m != null) {
         w = image.width + 2;
         h = image.height + 2;
-        if (this.constructor === WebkitCSSResourceCache) {
-          name = "canvas_" + texture.filename.replace(/[\.-]/g, "_");
-          ctx = document.getCSSCanvasContext("2d", name, w, h);
-          canvas = ctx.canvas;
-          canvas.name = name;
-        } else {
-          canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          ctx = canvas.getContext('2d');
-        }
+        canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        ctx = canvas.getContext('2d');
         canvas.withPadding = true;
-        ctx.drawImage(image, 1, 1, image.width, image.height);
+        ctx.drawImage(image, 0, 0, image.width, image.height, 1, 1, image.width, image.height);
         imageCache[texture.filename] = canvas;
       }
       CanvasResourceCache.__super__.generateImages.apply(this, arguments);
