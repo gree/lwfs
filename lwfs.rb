@@ -8,6 +8,7 @@ require 'fileutils'
 if RUBY_PLATFORM == /java/
   require 'listen'
 end
+require 'logger'
 require 'set'
 require 'sinatra'
 require 'socket'
@@ -34,6 +35,7 @@ module Sinatra::Helpers
   end
 end
 
+$log = Logger.new((ENV['LWFS_LOG_FILE'].nil?) ? STDOUT : ENV['LWFS_LOG_FILE'], 10)
 $updated_jsfls = []
 $mutex_p = Mutex.new
 $mutex_i = Mutex.new
@@ -84,7 +86,8 @@ configure do
     src_s.mtime > dst_s.mtime and not FileUtils.cmp(src, dst)
   end
 
-  FORCE_CHECK_EVERY_FOLDER = false
+  EXCLUDE_PATTERN = /\/(_|[^\/]+\.lwfdata)\/.*$/
+
   if File.file?('lib/LWFS_VERSION')
     VERSION = File.read('lib/LWFS_VERSION').chomp
   else
@@ -193,7 +196,7 @@ configure do
   Thread.new do 
     sleep(0.5)
     while not postUpdate(PORT)
-      sleep(3.0)
+      sleep(1.0)
     end
     $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR, PORT)
   end
@@ -237,11 +240,21 @@ post '/update/*' do |target|
   $mutex_i.synchronize do
     if params[:arg]
       $changes += params[:arg].split("\n")
-      $changes.sort!
-      $changes.uniq!
     else
-      $changes = Dir.glob("#{SRC_DIR}/*").map { |f| File.basename(f) }
+      glob("#{SRC_DIR}/**/*").each do |entry|
+        prefix = "#{SRC_DIR}/"
+        entry = entry.slice(prefix.length, entry.length - prefix.length)
+        prefix = ''
+        if entry =~ /^([A-Z0-9][A-Z0-9_\-\/]*)/
+          # fully captal characters represent projects and allow nested folders.
+          prefix = $1
+        end
+        entry = entry.slice(prefix.length, entry.length - prefix.length)
+        $changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ /(^|\/)[.,]/
+      end
     end
+    $changes.sort!
+    $changes.uniq!
     if $is_in_post
       $is_interrupted = true
       return
@@ -256,8 +269,8 @@ post '/update/*' do |target|
       begin
         updateTopIndex(true)
       rescue => e
-        p e
-        p e.backtrace
+        $log.error(e.to_s)
+        $log.error(e.backtrace.to_s)
       end
       rsync(true) unless REMOTE_SERVER.nil?
       if REMOTE_SERVER.nil?
@@ -282,42 +295,43 @@ post '/update/*' do |target|
         t1 = Time.now
         checkInterruption(__LINE__, 1.0)
         t2 = Time.now
+        changes = {:vanishes => [], :updates => []}
         begin
-          sync()
+          changes = sync()
         rescue => e
-          p e
-          p e.backtrace
-          p "restart at #{__LINE__}"
+          $log.error(e.to_s)
+          $log.error(e.backtrace.to_s)
+          $log.info("restart at #{__LINE__}")
           throw :restart
         end
         t3 = Time.now
         checkInterruption(__LINE__, 0.001)
         t4 = Time.now
         begin
-          convert()
+          convert(changes)
         rescue => e
-          p e
-          p e.backtrace
-          p "restart at #{__LINE__}"
+          $log.error(e.to_s)
+          $log.error(e.backtrace.to_s)
+          $log.info("restart at #{__LINE__}")
           throw :restart
         end
         t5 = Time.now
         checkInterruption(__LINE__, 0.001)
         t6 = Time.now
         begin
-          updateFolders()
+          updateFolders(changes)
           updateTopIndex()
         rescue => e
-          p e
-          p e.backtrace
-          p "restart at #{__LINE__}"
+          $log.error(e.to_s)
+          $log.error(e.backtrace.to_s)
+          $log.info("restart at #{__LINE__}")
           throw :restart
         end
         t7 = Time.now
         $mutex_i.synchronize do
           if $is_interrupted
             $is_interrupted = false
-            p "restart at #{__LINE__}"
+            $log.info("restart at #{__LINE__}")
             throw :restart
           end
           $changes = []
@@ -329,7 +343,7 @@ post '/update/*' do |target|
         is_in_progress = false
       end
     end
-    p "thread finished #{t8 - t0} #{t8 - t1} i #{t2 - t1} s #{t3 - t2} i #{t4 - t3} c #{t5 - t4} i #{t6 - t5} u #{t7 - t6} i #{t8 - t7}"
+    $log.info("thread finished #{t8 - t0} #{t8 - t1} i #{t2 - t1} s #{t3 - t2} i #{t4 - t3} c #{t5 - t4} i #{t6 - t5} u #{t7 - t6} i #{t8 - t7}")
   end
 end
 
@@ -338,10 +352,18 @@ def checkInterruption(line, wait)
   $mutex_i.synchronize do
     if $is_interrupted
       $is_interrupted = false
-      p "restart at #{line}"
+      $log.info("restart at #{line}")
       throw :restart
     end
   end
+end
+
+def glob(filter)
+  entries = []
+  Dir.glob(filter).each do |e|
+    entries.push(e) unless e =~ /(^|\/)[#,]/
+  end
+  entries
 end
 
 def rm_rf(src, w)
@@ -361,7 +383,7 @@ end
 
 def cp_r(src, dst)
   # FileUtils.cp_r(src, dst)
-  Dir.glob("#{src}/*").each do |f|
+  glob("#{src}/*").each do |f|
     checkInterruption(__LINE__, 0.001)
     if File.file?(f) and not (f =~ /\/index-[^\/]+\.html$/i)
       if f =~ /(swf|fla|json|conf|html|xml|js|png|jpg|jpeg)$/i
@@ -376,71 +398,61 @@ def cp_r(src, dst)
   end
 end
 
+def rmdir_p(folder)
+  if File.directory?(folder)
+    while Dir.glob("#{folder}/*").length == 0
+      FileUtils.rmdir(folder)
+      folder = File.dirname(folder)
+    end
+  end
+end
+
 def sync()
   t0 = Time.now
   # always start over
   FileUtils.rm_rf(Dir.glob("#{DST_DIR}/.tmp.*"))
   t1 = Time.now
-  # remove vanished folders
-  Dir.glob("#{DST_DIR}/*").each do |file|
+  # vanished folders
+  vanishes = []
+  Dir.glob("#{DST_DIR}/*/**/.status").each do |file|
     checkInterruption(__LINE__, 0.001)
-    if File.directory?(file)
-      name = File.basename(file)
-      if not File.exists?("#{SRC_DIR}/#{name}")
-        p "deleted " + name
-        # generate empty tmp indicating the vanished folder
-        dst = "#{DST_DIR}/.tmp.#{name}"
-        FileUtils.rm_rf(dst)
-        FileUtils.mkdir(dst)
-      end
+    name = File.dirname(file).sub(/^#{DST_DIR}\//, '')
+    if not File.exists?("#{SRC_DIR}/#{name}")
+      $log.info("deleted " + name)
+      vanishes.push(name)
     end
   end
   t2 = Time.now
   # added/updated folders
-  updates = []
-  if $changes.length > 0
-    $changes.each do |name|
-      updates.push(SRC_DIR + '/' + name)
-    end
-  else
-    updates = Dir.glob("#{SRC_DIR}/*")
-  end
-  if FORCE_CHECK_EVERY_FOLDER
-    # sometimes updates seems to be incorrect on windows, so we'll check all for now.
-    updates = Dir.glob("#{SRC_DIR}/*")
-  end
-  updates.each do |file|
-    next unless FileTest.exists?(file)
-    next if File.file?(file) and not (/\.swf$/ =~ file)
-    name = File.basename(file)
+  updates = $changes.dup
+  updates.each do |name|
+    checkInterruption(__LINE__, 0.001)
     src = "#{SRC_DIR}/#{name}"
     dst = "#{DST_DIR}/#{name}"
-    checkInterruption(__LINE__, 0.001)
-    is_updated = false
-    if FORCE_CHECK_EVERY_FOLDER
-      is_updated = (not File.exists?(dst) or diff(src, dst))
-    else
-      is_updated = true
-    end
-    if is_updated
-      p "updated " + name
+    next unless File.exists?(src)
+    next if File.file?(src) and not (src =~ /\.swf$/)
+    begin
+      $log.info("updated " + name)
       dst = "#{DST_DIR}/.tmp.#{name}"
-      if File.file?(src) and /\.swf$/ =~ src
-        t = Time.now
-        FileUtils.mkdir(dst)
-        FileUtils.cp(src, dst)
-        #FileUtils.ln(src, dst)
-        p "copied #{src} to #{dst} #{Time.now - t}"
+      if File.file?(src)
+        if /\.swf$/ =~ src
+          t = Time.now
+          FileUtils.mkdir_p(dst)
+          FileUtils.cp(src, dst)
+          #FileUtils.ln(src, dst)
+          $log.info("copied #{src} to #{dst} #{Time.now - t}")
+        end
       else
         t = Time.now
-        FileUtils.mkdir(dst)
+        FileUtils.mkdir_p(dst)
         cp_r(src, dst)
-        p "copied #{src} to #{dst} #{Time.now - t}"
+        $log.info("copied #{src} to #{dst} #{Time.now - t}")
       end
     end
   end
   t3 = Time.now
-  p "sync finished #{t3 - t0} #{t3 - t2} #{t2 - t1} #{t1 - t0}"
+  $log.info("sync finished #{t3 - t0} #{t3 - t2} #{t2 - t1} #{t1 - t0}")
+  {:vanishes => vanishes, :updates => updates}
 end
 
 def diff(src, dst)
@@ -449,47 +461,46 @@ def diff(src, dst)
     dst_file = "#{dst}/#{File.basename(src)}"
     return true unless sameFile?(src_file, dst_file)
   else
-    excludes = /#{dst}\/(_|[^\/]+\.lwfdata)\/.*$/  # excludes folders generated by swf2lwf/swf2arc
-    Dir.glob(["#{src}/*.swf",
-              "#{src}/*.fla",
-              "#{src}/*.json",
-              "#{src}/*.lwfconf",
-              "#{src}/swf2lwf.conf",
-              "#{src}/index.html",
-              "#{src}/**/*.xml",
-              "#{src}/**/*.js"]).each do |src_file|
+    glob(["#{src}/*.swf",
+          "#{src}/*.fla",
+          "#{src}/*.json",
+          "#{src}/*.lwfconf",
+          "#{src}/swf2lwf.conf",
+          "#{src}/index.html",
+          "#{src}/**/*.xml",
+          "#{src}/**/*.js"]).each do |src_file|
       file = src_file.sub(/#{src}\//, '')
+      next if file =~ EXCLUDE_PATTERN
       dst_file = "#{dst}/#{file}"
-      next if excludes =~ dst_file
       return true unless File.exists?(dst_file)
     end
-    Dir.glob(["#{dst}/*.swf",
-              "#{dst}/*.fla",
-              "#{dst}/*.json",
-              "#{dst}/*.lwfconf",
-              "#{dst}/swf2lwf.conf",
-              "#{dst}/index.html",
-              "#{dst}/**/*.xml",
-              "#{dst}/**/*.js"]).each do |dst_file|
-      next if excludes =~ dst_file
+    glob(["#{dst}/*.swf",
+          "#{dst}/*.fla",
+          "#{dst}/*.json",
+          "#{dst}/*.lwfconf",
+          "#{dst}/swf2lwf.conf",
+          "#{dst}/index.html",
+          "#{dst}/**/*.xml",
+          "#{dst}/**/*.js"]).each do |dst_file|
       file = dst_file.sub(/#{dst}\//, '')
+      next if file =~ EXCLUDE_PATTERN
       src_file = "#{src}/#{file}"
       return true unless File.exists?(src_file)
       return true unless sameFile?(src_file, dst_file)
     end
-    Dir.glob(["#{src}/**/*.png",
-              "#{src}/**/*.jpg",
-              "#{src}/**/*.jpeg"]).each do |src_file|
+    glob(["#{src}/**/*.png",
+          "#{src}/**/*.jpg",
+          "#{src}/**/*.jpeg"]).each do |src_file|
       file = src_file.sub(/#{src}\//, '')
+      next if file =~ EXCLUDE_PATTERN
       dst_file = "#{dst}/#{file}"
-      next if excludes =~ dst_file
       return true unless File.exists?(dst_file)
     end
-    Dir.glob(["#{dst}/**/*.png",
-              "#{dst}/**/*.jpg",
-              "#{dst}/**/*.jpeg"]).each do |dst_file|
-      next if excludes =~ dst_file
+    glob(["#{dst}/**/*.png",
+          "#{dst}/**/*.jpg",
+          "#{dst}/**/*.jpeg"]).each do |dst_file|
       file = dst_file.sub(/#{dst}\//, '')
+      next if file =~ EXCLUDE_PATTERN
       src_file = "#{src}/#{file}"
       return true unless File.exists?(src_file)
       return true unless sameFile?(src_file, dst_file)
@@ -498,22 +509,29 @@ def diff(src, dst)
   false
 end
 
-def convert()
+def convert(changes)
   # convert added or updated folders
-  Dir.glob("#{DST_DIR}/.tmp.*").each do |folder|
-    next if Dir.glob("#{folder}/*").count == 0  # vanished folders
-    name = File.basename(folder)[5, 4096]
-    p "converting #{name}..."
+  changes[:updates].each do |name|
+    folder = "#{DST_DIR}/.tmp.#{name}"
+    next unless File.exists?(folder)  # vanished folders
+    $log.info("converting #{name}...")
     if File.file?("#{folder}/index.html")
       outputRaw(folder)
     else
-      swfs = Dir.glob("#{folder}/*.swf")
+      swfs = glob("#{folder}/*.swf")
       prefix = ''
       if swfs.count == 0
         outputNG(folder, name, prefix, '', 'found no swf.', '')
       else
         swf = swfs[0]
-        prefix = File.basename(swfs[0], '.swf')
+        swfs.each do |path|
+          if name == File.basename(path)
+            swf = path
+          elsif name == File.basename(path, '.swf')
+            swf = path
+          end
+        end
+        prefix = File.basename(swf, '.swf')
         ret = swf2res(swf)
         ret['args'].each do |s|
           s.sub!(/.*\.(swf|fla|json)$/, File.basename(s))
@@ -572,6 +590,7 @@ def outputRaw(folder)
 end
 
 def outputOK(folder, name, prefix, commandline, warnings)
+  relative = '../' * (name.split('/').count + 1)
   if warnings != ''
     content = <<-"EOF"
 <!DOCTYPE HTML>
@@ -579,10 +598,10 @@ def outputOK(folder, name, prefix, commandline, warnings)
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
     <title>WARNINGS: #{name}</title>
-    <link rel="shortcut icon" href="../../img/favicon-yellow.png" />
-    <link rel="icon" href="../../img/favicon-yellow.png" />
-    <link rel="stylesheet" href="../../css/common.css" />
-    <link rel="stylesheet" href="../../css/viewer.css" />
+    <link rel="shortcut icon" href="#{relative}img/favicon-yellow.png" />
+    <link rel="icon" href="#{relative}img/favicon-yellow.png" />
+    <link rel="stylesheet" href="#{relative}css/common.css" />
+    <link rel="stylesheet" href="#{relative}css/viewer.css" />
   </head>
   <body>
     <div id="wrapper">
@@ -592,7 +611,7 @@ def outputOK(folder, name, prefix, commandline, warnings)
         <div class="info">#{warnings.gsub(/\n/, '<br/>')}</div>
       </div>
     </div>
-    <!-- <script type="text/javascript" src="../../js/auto-reloader.js" interval="1" watch_max_time="0"></script> -->
+    <!-- <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script> -->
   </body>
 </html>
     EOF
@@ -628,7 +647,7 @@ def outputOK(folder, name, prefix, commandline, warnings)
     end
   end
   userscripts = ''
-  Dir.glob("#{folder}/*.js").each do |js|
+  glob("#{folder}/*.js").each do |js|
     userscripts += "    <script type=\"text/javascript\" charset=\"UTF-8\" src=\"#{File.basename(js)}\"></script>\n"
   end
   if userscripts == ''
@@ -647,7 +666,7 @@ def outputOK(folder, name, prefix, commandline, warnings)
       birdwatcher = ''
       if rel == 'birdwatcher'
         birdwatcher = <<-"EOF"
-    <script type="text/javascript" src="../../js/birdwatcher.js"></script>
+    <script type="text/javascript" src="#{relative}js/birdwatcher.js"></script>
     <script type="text/javascript">
       window["testlwf_birdwatcher"] = {};
       window["testlwf_birdwatcher"].reportId = '#{MY_ID}_#{target.upcase}_#{name.gsub(/\s/, '_')}';
@@ -667,13 +686,13 @@ def outputOK(folder, name, prefix, commandline, warnings)
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
     <title>#{target.upcase}: #{name}</title>
-    <link rel="shortcut icon" href="../../img/#{favicon}" />
-    <link rel="icon" href="../../img/#{favicon}" />
-    <link rel="stylesheet" href="../../css/common.css" />
-    <link rel="stylesheet" href="../../css/viewer.css" />
-    <script type="text/javascript" src="../../js/qrcode.js"></script>
-    <script type="text/javascript" src="../../#{(rel == 'release') ? 'js' : 'js_debug'}/#{lwfjs}"></script>
-    <script type="text/javascript" src="../../js/test-html5.js"></script>
+    <link rel="shortcut icon" href="#{relative}img/#{favicon}" />
+    <link rel="icon" href="#{relative}img/#{favicon}" />
+    <link rel="stylesheet" href="#{relative}css/common.css" />
+    <link rel="stylesheet" href="#{relative}css/viewer.css" />
+    <script type="text/javascript" src="#{relative}js/qrcode.js"></script>
+    <script type="text/javascript" src="#{relative}#{(rel == 'release') ? 'js' : 'js_debug'}/#{lwfjs}"></script>
+    <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
     <script type="text/javascript">
       window["testlwf_html5target"] = "#{target}";
       window["testlwf_commandline"] = "#{commandline}";
@@ -694,7 +713,7 @@ def outputOK(folder, name, prefix, commandline, warnings)
 #{birdwatcher}
   </head>
   <body>
-    <script type="text/javascript" src="../../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
+    <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
       EOF
@@ -713,16 +732,17 @@ def outputOK(folder, name, prefix, commandline, warnings)
 end
 
 def outputNG(folder, name, prefix, commandline, msg, warnings)
+  relative = '../' * (name.split('/').count + 1)
   content = <<-"EOF"
 <!DOCTYPE HTML>
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
     <title>ERROR: #{name}</title>
-    <link rel="shortcut icon" href="../../img/favicon-red.png" />
-    <link rel="icon" href="../../img/favicon-red.png" />
-    <link rel="stylesheet" href="../../css/common.css" />
-    <link rel="stylesheet" href="../../css/viewer.css" />
+    <link rel="shortcut icon" href="#{relative}img/favicon-red.png" />
+    <link rel="icon" href="#{relative}img/favicon-red.png" />
+    <link rel="stylesheet" href="#{relative}css/common.css" />
+    <link rel="stylesheet" href="#{relative}css/viewer.css" />
   </head>
   <body>
     <div id="wrapper">
@@ -740,7 +760,7 @@ def outputNG(folder, name, prefix, commandline, msg, warnings)
   content += <<-"EOF"
       </div>
     </div>
-    <script type="text/javascript" src="../../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
+    <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
   EOF
@@ -756,17 +776,24 @@ def outputNG(folder, name, prefix, commandline, msg, warnings)
   end
 end
 
-def updateFolders()
-  Dir.glob("#{DST_DIR}/.tmp.*").each do |src|
-    name = File.basename(src)[5, 4096]
+def updateFolders(changes)
+  changes[:vanishes].each do |name|
+    folder = "#{DST_DIR}/#{name}"
+    FileUtils.rm_rf(folder)
+  end
+  changes[:updates].each do |name|
+    src = "#{DST_DIR}/.tmp.#{name}"
+    next unless File.exists?(src)  # vanished folders
     dst = "#{DST_DIR}/#{name}"
     FileUtils.rm_rf(dst)
-    next if Dir.glob("#{src}/*").count == 0  # vanished folders
+    FileUtils.mkdir_p(File.dirname(dst))
     FileUtils.mv(src, dst)
+    rmdir_p(File.dirname(dst))
     if not OUT_DIR.nil?
       if File.read("#{DST_DIR}/#{name}/.status") =~ /OK/
         # html5
         FileUtils.rm_rf("#{OUT_DIR}/html5/list/#{name}")
+        rmdir_p("#{OUT_DIR}/html5/list/#{name}")
         FileUtils.mkdir_p("#{OUT_DIR}/html5/list/#{name}")
         FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/html5/list/#{name}/_")
         Dir.glob("#{DST_DIR}/#{name}/index-*.html") do |f|
@@ -777,6 +804,8 @@ def updateFolders()
         end
         # unity
         FileUtils.rm_rf("#{OUT_DIR}/unity/#{name}")
+        rmdir_p("#{OUT_DIR}/unity/#{name}")
+        FileUtils.mkdir_p(File.dirname("#{OUT_DIR}/unity/#{name}"))
         FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/unity/#{name}")
         Dir.glob("#{OUT_DIR}/unity/#{name}/*.lwf") do |f|
           FileUtils.mv(f, f.sub(/\.lwf$/, '.bytes'))
@@ -807,11 +836,12 @@ end
 def updateTopIndex(is_start = false)
   names = []
   if not is_start
-    Dir.glob("#{DST_DIR}/*").each do |file|
-      if File.directory?(file)
-        names.push(File.basename(file))
-      end
+    Dir.glob("#{DST_DIR}/*/**/.status").each do |entry|
+      prefix = "#{DST_DIR}/"
+      name = File.dirname(entry.slice(prefix.length, entry.length - prefix.length))
+      names.push(name)
     end
+    names.sort!()
   end
   updated_message = Time.now.strftime('%F %T')
   if not is_start and $updated_jsfls.length > 0
@@ -832,14 +862,7 @@ def updateTopIndex(is_start = false)
     <script type="text/javascript" src="../js/ajax.js"></script>
     <script type="text/javascript" src="../js/sorter.js"></script>
     <script type="text/javascript" src="../js/qrcode.js"></script>
-    <script type="text/javascript">
-      window.onload = function() {
-        var qr = qrcode(8, 'M');
-        qr.addData(window.location.href);
-        qr.make();
-        document.getElementById('qr').innerHTML = qr.createImgTag();
-      };
-    </script>
+    <script type="text/javascript" src="../js/top-index.js"></script>
   </head>
   <body>
     <div id="wrapper">

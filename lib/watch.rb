@@ -22,7 +22,7 @@ Thread.new do
       changes = changes.join("\n")
       while not postUpdate(PORT, changes)
         p 'retrying...'
-        sleep(3.0)
+        sleep(1.0)
       end
     else
       sleep(1.0)
@@ -32,8 +32,14 @@ end
 
 callback = Proc.new do |modified, added, removed|
   $mutex.synchronize do
-    (modified + added + removed).each do |e|
-      $changes.push(e.sub(/\/.*$/, ''))
+    (modified + added + removed).each do |entry|
+      prefix = ''
+      if entry =~ /^([A-Z0-9][A-Z0-9_\-\/]*)/
+        # fully captal characters represent projects and allow nested folders.
+        prefix = $1
+      end
+      entry = entry.slice(prefix.length, entry.length - prefix.length)
+      $changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ /(^|\/)[.,]/
     end
     $changes.sort!
     $changes.uniq!
