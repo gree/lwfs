@@ -31,6 +31,7 @@ def swf2res(swf)
   FileUtils.mkdir res
 
   args = []
+  args.push('-i')  # ignore unknown actionscript command.
   if Dir.glob("#{dirname}/**/*.jpg").count + Dir.glob("#{dirname}/**/*.png").count == 0
     args.push('-p')
   end
