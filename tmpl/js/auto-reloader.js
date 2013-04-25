@@ -120,13 +120,15 @@
       if(xhr.readyState === 4){
         if (xhr.status === 200) {
           if (isInitialied()) {
-            var fileLastModified = Date.parse(xhr.getResponseHeader("Last-Modified"));
+            var fileLastModified = Date.parse(xhr.getResponseHeader("Last-Modified")) - 0;
             if (lastModified < fileLastModified) {
               TARGET_FILES[index].lastModified = fileLastModified;
               reload();
             }
           } else {
-            TARGET_FILES[index].lastModified = now;
+            lastModified = now - 0;
+            lastModified = lastModified - (lastModified % 1000);
+            TARGET_FILES[index].lastModified = lastModified;
           }
         }
       }
