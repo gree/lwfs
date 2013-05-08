@@ -439,7 +439,7 @@
                     isHandled = true;
                 } else if (key == 'D') {
                     if (isConfigurable) {
-                        if (ds < 1.0) {
+                        if (ds < 2.0) {
                             ds += 0.25;
                         } else {
                             ds = 0.25;
