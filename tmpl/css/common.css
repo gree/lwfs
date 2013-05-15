@@ -21,4 +21,8 @@
 #loading {
     visibility: hidden;
     vertical-align: middle;
+    background-image: url(../img/loading.gif);
+    display: inline-block;
+    width: 24px;
+    height: 24px;
 }

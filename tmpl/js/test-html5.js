@@ -672,8 +672,14 @@
             }
             {
                 var h1 = document.createElement('h1');
-                h1.textContent = document.title;
+                h1.innerHTML = document.title + '<span id="loading"></span>';
                 lpart.appendChild(h1);
+            }
+            {
+                var div = document.createElement('div');
+                div.className = 'info';
+                div.innerHTML = "<a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '" + window['testlwf_name'] + "'}); return false;\">force to update</a>";
+                lpart.appendChild(div);
             }
             {
                 var div = document.createElement('div');
@@ -849,11 +855,11 @@
         }
         return LWF.ResourceCache.get().loadLWF(params);
     };
-     if (isAndroid && /^(2\.1|1\.6)/.test(osVersion)) {
-         window.onunload = onpagehide;
-         window.onload = onpageshow;
-     } else {
-        window.onpagehide = onpagehide;
-        window.onpageshow = onpageshow;
-     }
+    if (isAndroid && /^(2\.1|1\.6)/.test(osVersion)) {
+        window.addEventListener('unload', onpagehide, false);
+        window.addEventListener('load', onpageshow, false);
+    } else {
+        window.addEventListener('pagehide', onpagehide, false);
+        window.addEventListener('pageshow', onpageshow, false);
+    }
 }).call(this);

@@ -263,7 +263,7 @@ post '/update/*' do |target|
   end
   Thread.new do
     t0 = t1 = t2 = t3 = t4 = t5 = t6 = t7 = t8 = Time.now
-    updateTopStatus(true)
+    updateLoadingStatus('/', true)
     if $is_start
       $is_start = false
       begin
@@ -337,7 +337,7 @@ post '/update/*' do |target|
           $changes = []
           $is_in_post = false
         end
-        updateTopStatus(false)
+        updateLoadingStatus('/', false)
         rsync() unless REMOTE_SERVER.nil?
         t8 = Time.now
         is_in_progress = false
@@ -425,6 +425,10 @@ def sync()
   t2 = Time.now
   # added/updated folders
   updates = $changes.dup
+  updates.each do |name|
+    updateLoadingStatus("/#{name}/", true);
+  end
+  rsync() unless REMOTE_SERVER.nil?
   updates.each do |name|
     checkInterruption(__LINE__, 0.001)
     src = "#{SRC_DIR}/#{name}"
@@ -611,6 +615,7 @@ def outputOK(folder, name, prefix, commandline, warnings)
         <div class="info">#{warnings.gsub(/\n/, '<br/>')}</div>
       </div>
     </div>
+    <!-- <script type="text/javascript" src="#{relative}js/loading.js" interval="1"></script> -->
     <!-- <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script> -->
   </body>
 </html>
@@ -690,10 +695,12 @@ def outputOK(folder, name, prefix, commandline, warnings)
     <link rel="icon" href="#{relative}img/#{favicon}" />
     <link rel="stylesheet" href="#{relative}css/common.css" />
     <link rel="stylesheet" href="#{relative}css/viewer.css" />
+    <script type="text/javascript" src="#{relative}js/ajax.js"></script>
     <script type="text/javascript" src="#{relative}js/qrcode.js"></script>
     <script type="text/javascript" src="#{relative}#{(rel == 'release') ? 'js' : 'js_debug'}/#{lwfjs}"></script>
     <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
     <script type="text/javascript">
+      window["testlwf_name"] = "#{name}";
       window["testlwf_html5target"] = "#{target}";
       window["testlwf_commandline"] = "#{commandline}";
       window["testlwf_warn"] = #{warnings != ''};
@@ -713,6 +720,7 @@ def outputOK(folder, name, prefix, commandline, warnings)
 #{birdwatcher}
   </head>
   <body>
+    <script type="text/javascript" src="#{relative}js/loading.js" interval="1"></script>
     <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
@@ -743,11 +751,13 @@ def outputNG(folder, name, prefix, commandline, msg, warnings)
     <link rel="icon" href="#{relative}img/favicon-red.png" />
     <link rel="stylesheet" href="#{relative}css/common.css" />
     <link rel="stylesheet" href="#{relative}css/viewer.css" />
+    <script type="text/javascript" src="#{relative}js/ajax.js"></script>
   </head>
   <body>
     <div id="wrapper">
       <div id="header">
         <h1>ERROR: #{name}</h1>
+        <div class="info"><a href="javascript:void(0)" onClick="Ajax.post('http://localhost:10080/update/', {'arg': '#{name}'}); return false;">force to update</a></div>
         <div class="info">(#{commandline})</div>
         <div class="info">#{msg.gsub(/\n/, '<br/>')}</div>
   EOF
@@ -760,6 +770,7 @@ def outputNG(folder, name, prefix, commandline, msg, warnings)
   content += <<-"EOF"
       </div>
     </div>
+    <script type="text/javascript" src="#{relative}js/loading.js" interval="1"></script>
     <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
@@ -784,6 +795,7 @@ def updateFolders(changes)
   changes[:updates].each do |name|
     src = "#{DST_DIR}/.tmp.#{name}"
     next unless File.exists?(src)  # vanished folders
+    updateLoadingStatus("/.tmp.#{name}/", false);
     dst = "#{DST_DIR}/#{name}"
     FileUtils.rm_rf(dst)
     FileUtils.mkdir_p(File.dirname(dst))
@@ -820,15 +832,17 @@ def rsync(is_top_only = false)
   if is_top_only
     `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude "#{BASE_DIR}/list/*" #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
   else
-    `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude list/index.html --exclude list/.status #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
+    `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude list/index.html --exclude list/.loading #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
   end
-  `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.status rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
+  `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.loading rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
 end
 
-def updateTopStatus(is_in_conversion)
+def updateLoadingStatus(dir, is_in_conversion)
   $mutex_p.synchronize do
-    File.open("#{DST_DIR}/.status", 'w') do |fp|
-      fp.write("{\"is_in_conversion\":#{is_in_conversion}}")
+    if File.exists?("#{DST_DIR}#{dir}")
+      File.open("#{DST_DIR}#{dir}.loading", 'w') do |fp|
+        fp.write("{\"is_in_conversion\":#{is_in_conversion}}")
+      end
     end
   end
 end
@@ -858,7 +872,6 @@ def updateTopIndex(is_start = false)
     <link rel="icon" href="../img/favicon.png" />
     <link rel="stylesheet" href="../css/common.css" />
     <link rel="stylesheet" href="../css/sorter.css" />
-    <script type="text/javascript" src="../js/status.js" interval="1"></script>
     <script type="text/javascript" src="../js/ajax.js"></script>
     <script type="text/javascript" src="../js/sorter.js"></script>
     <script type="text/javascript" src="../js/qrcode.js"></script>
@@ -868,7 +881,7 @@ def updateTopIndex(is_start = false)
     <div id="wrapper">
       <div id="header">
         <div id="lpart">
-          <h1>lwfs<img id="loading" src="../img/loading.gif" /></h1>
+          <h1>lwfs<span id="loading"></span></h1>
           <p>(version: #{VERSION})</p>
           <p><a href="javascript:void(0)" onClick=\"Ajax.post('http://localhost:10080/update/'); return false;\">force to update all</a></p>
         </div>
@@ -881,7 +894,7 @@ def updateTopIndex(is_start = false)
       <p>(updated: #{updated_message})</p>
       <table cellpadding="0" cellspacing="0" border="0" class="sortable" id="sorter">
   EOF
-  content += '        <tr><th>name</th>'
+  content += '        <tr><th>name</th><th></th>'
   ['webkitcss', 'canvas', 'webgl'].each do |target|
     next unless TARGETS.include?(target)
     content += "<th>#{target}</th>"
@@ -892,7 +905,7 @@ def updateTopIndex(is_start = false)
     prefix = ''
     date = lastModified("#{DST_DIR}/#{name}")
     date = date.strftime('%F %T')
-    content += "        <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td>"
+    content += "        <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td><td><a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '#{name}'}); return false;\">u</a></td>"
     if status != 'NG'
       ['webkitcss', 'canvas', 'webgl'].each do |target|
         next unless TARGETS.include?(target)
@@ -918,8 +931,9 @@ def updateTopIndex(is_start = false)
     </div>
     <script type="text/javascript">
       var sorter = new table.sorter("sorter");
-      sorter.init("sorter", #{TARGETS.length + 2}, true);
+      sorter.init("sorter", #{TARGETS.length + 3}, true);
     </script>
+    <script type="text/javascript" src="../js/loading.js" interval="1"></script>
     <script type="text/javascript" src="../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
