@@ -83,7 +83,7 @@ Ruby
         (LGPL)
 
 * listen
-  https://github.com/KojiNakamaru/listen/blob/fix/wdm_version/LICENSE
+  https://github.com/guard/listen/blob/master/LICENSE
   (MIT)
 
 * minitest

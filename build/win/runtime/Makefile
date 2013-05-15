@@ -4,7 +4,7 @@ RUBY=http://rubyforge.org/frs/download.php/76799/ruby-1.9.3-p392-i386-mingw32.7z
 DEVKIT=https://github.com/downloads/oneclick/rubyinstaller/DevKit-tdm-32-4.5.2-20111229-1559-sfx.exe
 LIBJPEG=http://www.ijg.org/files/jpegsrc.v8d.tar.gz
 LIBPNG=http://prdownloads.sourceforge.net/libpng/libpng-1.2.50.tar.gz
-ZLIB=http://zlib.net/zlib-1.2.7.tar.gz
+ZLIB=http://zlib.net/zlib-1.2.8.tar.gz
 LIBICONV=http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.14.tar.gz
 LIBXML2=http://xmlsoft.org/sources/libxml2-2.9.0.tar.gz
 
@@ -76,7 +76,7 @@ libxml2:
 
 gems:
 	bash -c 'source _bashrc; gem install httpclient'
-	bash -c 'source _bashrc; gem install ../../../vendor/cache/listen-*[0-9].gem'
+	bash -c 'source _bashrc; gem install listen'
 	bash -c 'source _bashrc; gem install wdm'
 	bash -c 'source _bashrc; gem install sinatra'
 	bash -c 'source _bashrc; gem install thin'

@@ -2,7 +2,7 @@
 
 LIBJPEG=http://www.ijg.org/files/jpegsrc.v8d.tar.gz
 LIBPNG=http://prdownloads.sourceforge.net/libpng/libpng-1.2.50.tar.gz
-ZLIB=http://zlib.net/zlib-1.2.7.tar.gz
+ZLIB=http://zlib.net/zlib-1.2.8.tar.gz
 
 WGET=wget --no-check-certificate
 
@@ -26,7 +26,7 @@ ruby:
 
 gems:
 	sudo bash -c 'source _bashrc; gem install httpclient'
-	sudo bash -c 'source _bashrc; gem install ../../../vendor/cache/listen-*[0-9].gem'
+	sudo bash -c 'source _bashrc; gem install listen'
 	sudo bash -c 'source _bashrc; gem install rb-fsevent'
 	sudo bash -c 'source _bashrc; gem install sinatra'
 	sudo bash -c 'source _bashrc; gem install thin'
