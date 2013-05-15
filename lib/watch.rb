@@ -50,4 +50,4 @@ listener = Listen.to(FOLDER)
 listener.relative_paths(true)
 listener.change(&callback)
 
-listener.start
+listener.start!
