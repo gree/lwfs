@@ -354,9 +354,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     }).call(this);
 
     Format.Font = (function() {
-      function Font(stringId, letterspacing) {
+      function Font(stringId, letterSpacing) {
         this.stringId = stringId;
-        this.letterspacing = letterspacing;
+        this.letterSpacing = letterSpacing;
       }
 
       return Font;
@@ -385,14 +385,14 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
       })();
 
-      function TextProperty(maxLength, fontId, fontHeight, align, leftMargin, rightMargin, indent, leading, strokeColorId, strokeWidth, shadowColorId, shadowOffsetX, shadowOffsetY, shadowBlur) {
+      function TextProperty(maxLength, fontId, fontHeight, align, leftMargin, rightMargin, letterSpacing, leading, strokeColorId, strokeWidth, shadowColorId, shadowOffsetX, shadowOffsetY, shadowBlur) {
         this.maxLength = maxLength;
         this.fontId = fontId;
         this.fontHeight = fontHeight;
         this.align = align;
         this.leftMargin = leftMargin;
         this.rightMargin = rightMargin;
-        this.indent = indent;
+        this.letterSpacing = letterSpacing;
         this.leading = leading;
         this.strokeColorId = strokeColorId;
         this.strokeWidth = strokeWidth;
@@ -1095,11 +1095,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWFLoader.prototype.loadFont = function() {
-      return new Format.Font(this.readInt32(), this.readInt32());
+      return new Format.Font(this.readInt32(), this.readSingle());
     };
 
     LWFLoader.prototype.loadTextProperty = function() {
-      return new Format.TextProperty(this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32());
+      return new Format.TextProperty(this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readSingle(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32(), this.readInt32());
     };
 
     LWFLoader.prototype.loadText = function() {
@@ -2701,6 +2701,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case "rollOut":
         case "keyPress":
           this.lwf.interactive = true;
+          this.lwf.enableExec();
           if (this.handler == null) {
             this.setHandlers(new ButtonEventHandlers());
           }
@@ -4267,6 +4268,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case "enterFrame":
         case "update":
         case "render":
+          this.lwf.enableExec();
           this.handler.addHandler(e, eventHandler);
           break;
         default:
@@ -7172,7 +7174,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (this.textProperty.shadowColorId !== -1) {
         this.shadowColor = this.data.colors[this.textProperty.shadowColorId];
       }
-      this.fontName = "\"" + this.data.strings[font.stringId] + "\",sans-serif";
+      this.fontName = "" + this.data.strings[font.stringId] + ",sans-serif";
+      this.letterSpacing = font.letterSpacing + this.textProperty.letterSpacing;
     }
 
     HTML5TextContext.prototype.destruct = function() {};
@@ -7201,6 +7204,13 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     HTML5TextRenderer.prototype.destruct = function() {};
 
+    HTML5TextRenderer.prototype.measureText = function(str) {
+      var swidth;
+
+      swidth = str.length <= 1 ? 0 : (str.length - 1) * this.letterSpacing;
+      return this.canvasContext.measureText(str).width + swidth;
+    };
+
     HTML5TextRenderer.prototype.fitText = function(line, words, lineStart, imin, imax) {
       var imid, start, str, w;
 
@@ -7210,7 +7220,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       imid = ((imin + imax) / 2) >> 0;
       start = lineStart === 0 ? 0 : words[lineStart - 1];
       str = line.slice(start, words[imid]);
-      w = this.canvasContext.measureText(str).width;
+      w = this.measureText(str);
       if (w <= this.maxWidth) {
         if (w > this.lineWidth) {
           this.index = imid;
@@ -7240,7 +7250,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             line += word;
           }
         }
-        if (this.canvasContext.measureText(line).width > this.maxWidth) {
+        if (this.measureText(line) > this.maxWidth) {
           words = [];
           prev = 0;
           for (i = _k = 1, _ref2 = line.length; 1 <= _ref2 ? _k < _ref2 : _k > _ref2; i = 1 <= _ref2 ? ++_k : --_k) {
@@ -7273,7 +7283,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             newlines.push(str);
             start = to + (line.charCodeAt(to) === 0x20 ? 1 : 0);
             str = line.slice(start);
-            if (this.canvasContext.measureText(str).width <= this.maxWidth) {
+            if (this.measureText(str) <= this.maxWidth) {
               line = str;
               break;
             }
@@ -7286,7 +7296,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     HTML5TextRenderer.prototype.renderText = function(textColor) {
-      var canvas, context, ctx, h, i, len, line, lines, offsetY, property, scale, shadowColor, useStroke, x, y, _i, _ref2;
+      var c, canvas, context, ctx, h, i, j, len, line, lines, offset, offsetY, property, scale, shadowColor, useStroke, x, y, _i, _j, _k, _ref2, _ref3, _ref4;
 
       this.textRendered = true;
       context = this.context;
@@ -7329,17 +7339,44 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       for (i = _i = 0, _ref2 = lines.length; 0 <= _ref2 ? _i < _ref2 : _i > _ref2; i = 0 <= _ref2 ? ++_i : --_i) {
         line = lines[i];
         x = this.offsetX * scale;
+        if (this.letterSpacing !== 0) {
+          switch (this.context.textProperty.align & Align.ALIGN_MASK) {
+            case Align.RIGHT:
+              x -= this.measureText(line);
+              break;
+            case Align.CENTER:
+              x -= this.measureText(line) / 2;
+          }
+        }
         y = offsetY + (this.fontHeight + this.leading) * i * 96 / 72;
         if (useStroke) {
           if (context.shadowColor != null) {
             ctx.shadowColor = "rgba(0, 0, 0, 0)";
           }
-          ctx.strokeText(line, x, y);
+          if (this.letterSpacing === 0) {
+            ctx.strokeText(line, x, y);
+          } else {
+            offset = 0;
+            for (j = _j = 0, _ref3 = line.length; 0 <= _ref3 ? _j < _ref3 : _j > _ref3; j = 0 <= _ref3 ? ++_j : --_j) {
+              c = line[j];
+              ctx.strokeText(c, x + offset, y);
+              offset += this.canvasContext.measureText(c).width + this.letterSpacing;
+            }
+          }
         }
         if (context.shadowColor != null) {
           ctx.shadowColor = shadowColor;
         }
-        ctx.fillText(line, x, y);
+        if (this.letterSpacing === 0) {
+          ctx.fillText(line, x, y);
+        } else {
+          offset = 0;
+          for (j = _k = 0, _ref4 = line.length; 0 <= _ref4 ? _k < _ref4 : _k > _ref4; j = 0 <= _ref4 ? ++_k : --_k) {
+            c = line[j];
+            ctx.fillText(c, x + offset, y);
+            offset += this.canvasContext.measureText(c).width + this.letterSpacing;
+          }
+        }
       }
     };
 
@@ -7430,7 +7467,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       ctx.textAlign = align;
       ctx.textBaseline = "bottom";
       this.canvas = canvas;
-      return this.canvasContext = ctx;
+      this.canvasContext = ctx;
+      return this.letterSpacing = ctx.measureText('M').width * this.context.letterSpacing;
     };
 
     return HTML5TextRenderer;
@@ -8454,10 +8492,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
     };
 
-    CanvasRendererFactory.prototype.beginRender = function(lwf) {
-      this.commandMaskMode = "normal";
-    };
-
     CanvasRendererFactory.prototype.renderMask = function() {
       var ctx;
 
@@ -8910,6 +8944,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
  * @author lechecacharro
  * @author Josh Faul / http://jocafa.com/
  * @author egraether / http://egraether.com/
+ * @author endel / http://endel.me
  * @author GREE, Inc.
  *
  * The MIT License
@@ -8943,13 +8978,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
 var TWEENLWF = {};
 
+TWEENLWF.REVISION = '10';
+
 TWEENLWF.Tween = function ( movie ) {
 
 	this.lwf = movie.lwf;
 	this.object = movie;
 	this.valuesStart = {};
 	this.valuesEnd = {};
+	this.valuesStartRepeat = {};
 	this.duration = 0;
+	this.repeat = 0;
 	this.delayTime = 0;
 	this.startTime = null;
 	this.easingFunction = TWEENLWF.Easing.Linear.None;
@@ -9028,6 +9067,12 @@ TWEENLWF.Tween = function ( movie ) {
 
 			this.valuesStart[ property ] = this.object[ property ];
 
+			if( ( this.valuesStart[ property ] instanceof Array ) === false ) {
+				this.valuesStart[ property ] *= 1.0; // Ensures we're using numbers, not strings
+			}
+
+			this.valuesStartRepeat[ property ] = this.valuesStart[ property ] || 0;
+
 		}
 
 		return this;
@@ -9057,6 +9102,13 @@ TWEENLWF.Tween = function ( movie ) {
 	this.delay = function ( amount ) {
 
 		this.delayTime = amount * this.lwf.tick;
+		return this;
+
+	};
+
+	this.repeat = function ( times ) {
+
+		this.repeat = times;
 		return this;
 
 	};
@@ -9146,9 +9198,9 @@ TWEENLWF.Tween = function ( movie ) {
 
 		var value = this.easingFunction( elapsed );
 
-		for ( var property in this.valuesStart ) {
+		for ( var property in this.valuesEnd ) {
 
-			var start = this.valuesStart[ property ];
+			var start = this.valuesStart[ property ] || 0;
 			var end = this.valuesEnd[ property ];
 
 			if ( end instanceof Array ) {
@@ -9156,6 +9208,10 @@ TWEENLWF.Tween = function ( movie ) {
 				this.object[ property ] = this.interpolationFunction( end, value );
 
 			} else {
+
+				if ( typeof(end) === "string" ) {
+					end = start + parseFloat(end, 10);
+				}
 
 				this.object[ property ] = start + ( end - start ) * value;
 
@@ -9171,19 +9227,44 @@ TWEENLWF.Tween = function ( movie ) {
 
 		if ( elapsed == 1 ) {
 
-			if ( this.onCompleteCallback !== null ) {
+			if ( this.repeat > 0 ) {
 
-				this.onCompleteCallback.call( this.object );
+				if( isFinite( this.repeat ) ) {
+					this.repeat--;
+				}
+
+				// reassign starting values, restart by making startTime = now
+				for( var property in this.valuesStartRepeat ) {
+
+					if ( typeof( this.valuesEnd[ property ] ) === "string" ) {
+						this.valuesStartRepeat[ property ] = this.valuesStartRepeat[ property ] + parseFloat(this.valuesEnd[ property ], 10);
+					}
+
+					this.valuesStart[ property ] = this.valuesStartRepeat[ property ];
+
+				}
+
+				this.startTime = time + this.delayTime;
+
+				return true;
+
+			} else {
+
+				if ( this.onCompleteCallback !== null ) {
+
+					this.onCompleteCallback.call( this.object );
+
+				}
+
+				for ( var i = 0, l = this.chainedTweens.length; i < l; i ++ ) {
+
+					this.chainedTweens[ i ].start( time );
+
+				}
+
+				return false;
 
 			}
-
-			for ( var i = 0, l = this.chainedTweens.length; i < l; i ++ ) {
-
-				this.chainedTweens[ i ].start( time );
-
-			}
-
-			return false;
 
 		}
 
@@ -9668,7 +9749,7 @@ moviePrototype[ "stopTweens" ] = function() {
 
 	while ( i < num_tweens ) {
 
-		if ( tweens[ i ]._object === this ) {
+		if ( tweens[ i ].object === this ) {
 
 			tweens.splice( i, 1 );
 			num_tweens --;

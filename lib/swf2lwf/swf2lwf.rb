@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012 GREE, Inc.
 #
@@ -226,6 +227,16 @@ def to_num(href, name, str, minusable = true)
   regexp = minusable ? /^[\d-]+$/ : /^\d+$/
   if str =~ regexp
     str.to_i
+  else
+    error "INVALID #{name}: #{str} in #{href}"
+    0
+  end
+end
+
+def to_float(href, name, str)
+  regexp = /^[\.\d-]+$/
+  if str =~ regexp
+    str.to_f
   else
     error "INVALID #{name}: #{str} in #{href}"
     0
@@ -516,7 +527,7 @@ class LWFFont < LWFData
   end
   def to_bytes
     to_u32(@nameStringId) +
-    to_s32(@letterspacing)
+    to_float32(@letterspacing)
   end
 end
 
@@ -536,7 +547,7 @@ class LWFTextProperty < LWFData
     @align = text.align
     @leftMargin = text.left_margin
     @rightMargin = text.right_margin
-    @indent = text.indent
+    @letterSpacing = text.letter_spacing
     @leading = text.leading
     @strokeColorId = strokeColorId
     @strokeWidth = text.stroke_width
@@ -552,7 +563,7 @@ class LWFTextProperty < LWFData
     to_u32(@align) +
     to_u32(@leftMargin) +
     to_u32(@rightMargin) +
-    to_s32(@indent) +
+    to_float32(@letterSpacing) +
     to_s32(@leading) +
     to_s32(@strokeColorId) +
     to_s32(@strokeWidth) +
@@ -994,7 +1005,7 @@ class Font < SWFObject
       @letterspacing = 0
     else
       @name = fontinfo['name']
-      @letterspacing = (fontinfo['letterspacing'] || 0).to_i
+      @letterspacing = (fontinfo['letterspacing'] || 0).to_f
     end
     @orgname = orgname
   end
@@ -1002,12 +1013,12 @@ end
 
 class Text < SWFObject
   attr_reader :max_length, :font, :font_height, :align,
-    :left_margin, :right_margin, :indent, :leading,
+    :left_margin, :right_margin, :letter_spacing, :leading,
       :stroke_color, :stroke_width, :shadow_color, :shadow_offset_x,
       :shadow_offset_y, :shadow_blur, :color, :name, :text, :matrix
   def initialize(stage, max_length, font, font_height, align,
-      left_margin, right_margin, indent, leading, stroke_color, stroke_width,
-      shadow_color, shadow_offset_x, shadow_offset_y, shadow_blur,
+      left_margin, right_margin, letter_spacing, leading, stroke_color,
+      stroke_width, shadow_color, shadow_offset_x, shadow_offset_y, shadow_blur,
       color, name, text)
     super()
     @stage = stage
@@ -1017,7 +1028,7 @@ class Text < SWFObject
     @align = align
     @left_margin = left_margin
     @right_margin = right_margin
-    @indent = indent
+    @letter_spacing = letter_spacing
     @leading = leading
     @stroke_color = stroke_color
     @stroke_width = stroke_width
@@ -1270,7 +1281,7 @@ def get_string
     break if c == 0
     str += c.chr
   end
-  str
+  str.toutf8
 end
 
 def get_data(length)
@@ -1984,14 +1995,14 @@ def parse_define_edit_text
   align = LWF_TEXTPROPERTY_ALIGN_LEFT
   left_margin = 0
   right_margin = 0
-  indent = 0
+  letter_spacing = 0
   leading = 0
   if has_layout
     align = get_byte
     align = LWF_TEXTPROPERTY_ALIGN_LEFT if align < 0 or align > 2
     left_margin = (get_word / 20.0).round
     right_margin = (get_word / 20.0).round
-    indent = (get_sword / 20.0).round
+    get_sword
     leading = (get_sword / 20.0).round
   end
   name = get_string
@@ -2015,6 +2026,7 @@ def parse_define_edit_text
     @shadow_blur = 0
     @use_stroke = false
     @use_shadow = false
+    @letter_spacing = 0
     def check_node(node)
       if node.class == HTML::Text
         @html_text += node.content
@@ -2058,6 +2070,8 @@ def parse_define_edit_text
             when /^\s*shadowBlur\s*=\s*(.*)\s*$/
               @use_shadow = true
               @shadow_blur = to_num(href, "shadowBlur", $1)
+            when /^\s*letterSpacing\s*=\s*(.*)\s*$/
+              @letter_spacing = to_float(href, "letterSpacing", $1)
             else
               error "UNKNOWN ATTRIBUTE: #{t} in #{href}"
             end
@@ -2083,15 +2097,17 @@ def parse_define_edit_text
     shadow_offset_x = @shadow_offset_x
     shadow_offset_y = @shadow_offset_y
     shadow_blur = @shadow_blur
+    letter_spacing = @letter_spacing
   end
 
   graphic = Graphic.new
   gobj = Text.new(stage, max_length, @objects[font_id], font_height, align,
-    left_margin, right_margin, indent, leading, stroke_color, stroke_width,
-    shadow_color, shadow_offset_x, shadow_offset_y, shadow_blur,
+    left_margin, right_margin, letter_spacing, leading, stroke_color,
+    stroke_width, shadow_color, shadow_offset_x, shadow_offset_y, shadow_blur,
     color, name, text)
   graphic.add_graphic_object(gobj)
-  info "  text #{obj_id} name=#{name} align=#{align}"
+  info "  text #{obj_id} name=#{name} align=#{align} " +
+    "letter_spacing=#{letter_spacing}"
   unless stroke_color.nil?
     info "    stroke:color=#{stroke_color.dump} w=#{stroke_width} "
   end
@@ -3555,7 +3571,7 @@ def swf2lwf(*args)
   @stringBytesOffset = @offset
   @stringBytes = ""
   @strings.keys.sort{|a,b| @strings[a] <=> @strings[b]}.each do |str|
-    @data_string.push LWFString.new(@stringBytes.size, str.size)
+    @data_string.push LWFString.new(@stringBytes.bytesize, str.bytesize)
     @stringBytes += [str, 0].pack('a*C')
   end
   psize = ((@stringBytes.size + 3) & ~3) - @stringBytes.size
