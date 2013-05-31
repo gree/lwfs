@@ -13,17 +13,20 @@ LWF
 JavaScript
 ==========
 
-* AutoReloader-js
-  https://github.com/KojiNakamaru/AutoReloader-js/tree/develop
-  (public domain)
-
 * birdwatcher.js
   https://github.com/imaya/birdwatcher.js/blob/master/birdwatcher.js
   (MIT)
 
-* javascript-table-sorter
-  https://github.com/KojiNakamaru/javascript-table-sorter/blob/develop/README.md
-  (CC BY 3.0)
+* DataTables
+  http://www.datatables.net/
+  http://www.datatables.net/license_gpl2
+  http://www.datatables.net/license_bsd
+  (GPL v2 or 3-clause BSD)
+
+* jQuery
+  http://jquery.com/
+  https://github.com/jquery/jquery/blob/master/MIT-LICENSE.txt
+  (MIT)
 
 * qrcode.js
   http://www.d-project.com/qrcode/index.html
@@ -83,7 +86,7 @@ Ruby
         (LGPL)
 
 * listen
-  https://github.com/guard/listen/blob/master/LICENSE
+  https://github.com/KojiNakamaru/listen/blob/fix/at_exit/LICENSE
   (MIT)
 
 * minitest
