@@ -26,7 +26,7 @@ ruby:
 
 gems:
 	sudo bash -c 'source _bashrc; gem install httpclient'
-	sudo bash -c 'source _bashrc; gem install listen'
+	sudo bash -c 'source _bashrc; gem install ../../../vendor/cache/listen-*[0-9].gem'
 	sudo bash -c 'source _bashrc; gem install rb-fsevent'
 	sudo bash -c 'source _bashrc; gem install sinatra'
 	sudo bash -c 'source _bashrc; gem install thin'
