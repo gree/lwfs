@@ -25,6 +25,10 @@
     var fr = 0;
     var fs = 1;
     var ds = 1.0;
+    var ss = {
+        w: 0,
+        h: 0
+    };
     var isConfigurable = true;
     var config = null;
     var mode = 'release';
@@ -167,6 +171,7 @@
         var destroy, onexec, onmove, onpress, onrelease, ongestureend;
         var updateInfo;
         var iw0 = 0;
+        var ih0 = 0;
         var stage_scale = 1;
         var stage_w = 0;
         var stage_h = 0;
@@ -197,6 +202,7 @@
                 lwf.rootMovie.moveTo(config.rootoffset.x, config.rootoffset.y);
                 lwf.rootMovie.gotoAndPlay(1);
                 iw0 = 0;
+                ih0 = 0;
             }
             {
                 var dpr = window.devicePixelRatio;
@@ -206,20 +212,20 @@
                 var iw;
                 if (isMobile) {
                     iw = window.innerWidth;
+                    ih = 0;
                 } else {
-                    // iw = window.innerWidth - 36;
-                    // if (iw < 0) {
-                    //     iw = 0;
-                    // }
-                    // if (iw > lwf.width) {
-                    //     iw = lwf.width;
-                    // }
                     iw = lwf.width;
+                    ih = 0;
+                    if (ss.w && ss.h) {
+                        iw = ss.w / 2;
+                        ih = ss.h / 2;
+                    }
                 }
                 iw *= ds;
-                if (iw0 != iw) {
+                ih *= ds;
+                if (iw0 != iw || ih0 != ih) {
                     stage_w = Math.round(iw);
-                    stage_h = Math.round(iw * lwf.height / lwf.width);
+                    stage_h = (ih) ? Math.round(ih) : Math.round(iw * lwf.height / lwf.width);
                     stage.style.width = stage_w + 'px';
                     stage.style.height = stage_h + 'px';
                     stageEventReceiver.style.width = stage_w + 'px';
@@ -235,8 +241,13 @@
                     stage.height = Math.round(stage_h * dpr);
                     stage_scale = stage_w / stage.width;
                     lwf.property.clear();
-                    lwf.fitForWidth(stage.width, stage.height);
+                    if (stage_h / stage_w >= lwf.height / lwf.width) {
+                        lwf.fitForWidth(stage.width, stage.height);
+                    } else {
+                        lwf.fitForHeight(stage.width, stage.height);
+                    }
                     iw0 = iw;
+                    ih0 = ih;
                 }
             }
             if (! isMobile) {
@@ -396,12 +407,21 @@
         fr = (config.fr) ? config.fr : 0;
         fs = (config.fs) ? config.fs : 1;
         ds = (config.ds) ? config.ds : 1;
+        if (config.ss.w && config.ss.h) {
+            ss.w = config.ss.w;
+            ss.h = config.ss.h;
+        }
         {
             var bgColor = lwf.backgroundColor;
             var r = (bgColor >> 16) & 0xff;
             var g = (bgColor >> 8) & 0xff;
             var b = (bgColor >> 0) & 0xff;
             stage.style.backgroundColor = 'rgba(' + r + ',' + g + ',' + b + ',1)';
+        }
+        if (! isMobile) {
+            stage.style.border = 'solid';
+            stage.style.borderColor = 'rgb(240,240,240)';
+            stage.style.borderWidth = '1px';
         }
         document.onkeydown = function(e) {
             if (! lwf) {
@@ -580,6 +600,7 @@
             'fr': window['testlwf_config']['fr'],
             'fs': window['testlwf_config']['fs'],
             'ds': window['testlwf_config']['ds'],
+            'ss': window['testlwf_config']['ss'],
             'rootoffset': window['testlwf_config']['rootoffset']
         };
         if (/fr=([0-9]+)/.test(window.location.search)) {
@@ -592,6 +613,11 @@
         }
         if (/ds=([0-9.]+)/.test(window.location.search)) {
             config.ds = parseFloat(RegExp.$1);
+            isConfigurable = false;
+        }
+        if (/ss=([0-9.]+)x([0-9.]+)/.test(window.location.search)) {
+            config.ss.w = parseInt(RegExp.$1);
+            config.ss.h = parseInt(RegExp.$2);
             isConfigurable = false;
         }
         mode = 'release';
@@ -618,6 +644,7 @@
             progressBar.textContent = 'loading:   0%';
             document.body.appendChild(progressBar);
             stageEventReceiver = document.createElement('div');
+            stageEventReceiver.id = 'stageEventReceiver';
             stageEventReceiver.style.position = 'absolute';
             stageEventReceiver.style.left = '0px';
             stageEventReceiver.style.top = '0px';
@@ -672,7 +699,7 @@
             }
             {
                 var h1 = document.createElement('h1');
-                h1.innerHTML = document.title + '<span id="loading"></span>';
+                h1.innerHTML = document.title + '<span id="loading_icon"></span>';
                 lpart.appendChild(h1);
             }
             {
@@ -683,7 +710,7 @@
             }
             {
                 var div = document.createElement('div');
-                div.className = 'info';
+                div.className = 'info_wrapped';
                 {
                     var span = document.createElement('span');
                     span.id = 'info1';
@@ -699,7 +726,8 @@
                             window.location.origin + window.location.pathname
                                 + '?fr=' + fr
                                 + '&fs=' + fs
-                                + '&ds=' + ds,
+                                + '&ds=' + ds
+                                + '&ss=' + ss.w + 'x' + ss.h,
                             '_blank');
                         return false;
                     };
@@ -747,6 +775,53 @@
                     = (warnings != '')
                     ? '<span style="background-color:yellow">warning: ' + warnings + '</span>'
                     : '<span>warning: none.</span>';
+                lpart.appendChild(div);
+            }
+            {
+                var sizes = [
+                    'default',
+                    '480x800',
+                    //'480x854',
+                    '540x960',
+                    '640x960',
+                    '768x1024',
+                    '|',
+                    '800x480',
+                    //'854x480',
+                    '960x540',
+                    '960x640',
+                    '1024x768'
+                ];
+                var resize = function(event) {
+                    if (/([0-9]+)x([0-9]+)/.test(event.target.textContent)) {
+                        ss.w = parseInt(RegExp.$1);
+                        ss.h = parseInt(RegExp.$2);
+                    } else {
+                        ss.w = 0;
+                        ss.h = 0;
+                    }
+                    return false;
+                };
+                var div = document.createElement('div');
+                div.className = 'info_wrapped';
+                {
+                    var span = document.createElement('span');
+                    span.className = 'info';
+                    span.textContent = 'screen size:';
+                    div.appendChild(span);
+                }
+                for (var i in sizes) {
+                    div.appendChild(document.createTextNode(' '));
+                    if (sizes[i] == 'default' || /([0-9]+)x([0-9]+)/.test(sizes[i])) {
+                        var a = document.createElement('a');
+                        a.textContent = sizes[i];
+                        a.href = 'javascript:void(0)';
+                        a.onclick = resize;
+                        div.appendChild(a);
+                    } else {
+                        div.appendChild(document.createTextNode(sizes[i]));
+                    }
+                }
                 lpart.appendChild(div);
             }
             {

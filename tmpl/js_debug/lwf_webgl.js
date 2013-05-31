@@ -2700,7 +2700,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         case "rollOver":
         case "rollOut":
         case "keyPress":
-          this.lwf.interactive = true;
+          this.lwf.setInteractive();
           this.lwf.enableExec();
           if (this.handler == null) {
             this.setHandlers(new ButtonEventHandlers());
@@ -3474,9 +3474,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       lwfContainer = new LWFContainer(this, attachLWF);
       if (attachLWF.interactive) {
-        this.lwf.interactive = true;
+        this.lwf.setInteractive();
       }
-      attachLWF.parent = this;
+      attachLWF.setParent(this);
       attachLWF.rootMovie.parent = this;
       attachLWF.detachHandler = detachHandler;
       attachLWF.attachName = attachName;
@@ -3893,7 +3893,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.update = function(m, c) {
-      var attachName, colorTransformChanged, depth, inspector, k, lwfContainer, matrixChanged, movie, obj, v, _i, _j, _k, _len, _len1, _ref1, _ref2, _ref3, _ref4,
+      var attachName, colorTransformChanged, depth, inspector, invert, k, lwfContainer, matrixChanged, movie, obj, p, v, _i, _j, _k, _len, _len1, _ref1, _ref2, _ref3, _ref4,
         _this = this;
 
       if (!this.active) {
@@ -3955,14 +3955,24 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
       }
       if (this.requestedCalculateBounds) {
-        this.xMin = 0;
-        this.xMax = 0;
-        this.yMin = 0;
-        this.yMax = 0;
+        this.xMin = Number.MAX_VALUE;
+        this.xMax = -Number.MAX_VALUE;
+        this.yMin = Number.MAX_VALUE;
+        this.yMax = -Number.MAX_VALUE;
         inspector = function(o, h, d, r) {
           return _this.calculateBounds(o);
         };
         this.inspect(inspector, 0, 0);
+        if (this.lwf.property.hasMatrix) {
+          invert = new Matrix();
+          Utility.invertMatrix(invert, this.lwf.property.matrix);
+          p = Utility.calcMatrixToPoint(this.xMin, this.yMin, invert);
+          this.xMin = p[0];
+          this.yMin = p[1];
+          p = Utility.calcMatrixToPoint(this.xMax, this.yMax, invert);
+          this.xMax = p[0];
+          this.yMax = p[1];
+        }
         this.bounds = {
           "xMin": this.xMin,
           "xMax": this.xMax,
@@ -3974,10 +3984,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Movie.prototype.calculateBounds = function(o) {
-      var pobj, text, tf, tfId;
+      var obj, pobj, text, tf, tfId, _i, _len, _ref1;
 
       tfId = null;
       switch (o.type) {
+        case Type.GRAPHIC:
+          _ref1 = o.displayList;
+          for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+            obj = _ref1[_i];
+            this.calculateBounds(obj);
+          }
+          break;
         case Type.BITMAP:
         case Type.BITMAPEX:
           if (o.type === Type.BITMAP) {
@@ -4864,6 +4881,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.url = null;
       this.lwfInstanceId = null;
       this.frameRate = this.data.header.frameRate;
+      this.active = true;
       this.execLimit = 3;
       this.tick = 1.0 / this.frameRate;
       this.roundOffTick = this.tick * ROUND_OFF_TICK_RATE;
@@ -5081,11 +5099,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (colorTransform == null) {
         colorTransform = null;
       }
-      if (this.rootMovie == null) {
+      if (!((this.rootMovie != null) && this.active)) {
         return;
       }
       execed = false;
       currentProgress = this.progress;
+      this.thisTick = tick;
       if (this.isExecDisabled && this._tweens === null) {
         if (!this.executedForExecDisabled) {
           ++this.execCount;
@@ -5096,7 +5115,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
       } else {
         progressing = true;
-        this.thisTick = tick;
         if (tick === 0) {
           this.progress = this.tick;
         } else if (tick < 0) {
@@ -5184,7 +5202,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.renderingIndexOffsetted = 0;
       this.rootMovie.update(m, c);
       this.renderingCount = this.renderingIndex;
-      this.thisTick = 0;
       this.isPropertyDirty = false;
     };
 
@@ -5200,7 +5217,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (rOffset == null) {
         rOffset = Number.MIN_VALUE;
       }
-      if (this.rootMovie == null) {
+      if (!((this.rootMovie != null) && this.active)) {
         return;
       }
       renderingCountBackup = this.renderingCount;
@@ -5759,7 +5776,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     LWF.prototype.addButtonEventHandler = function(instanceName, handlers) {
       var button, h, instId, _ref1;
 
-      this.interactive = true;
+      this.setInteractive();
       instId = this.searchInstanceId(this.getStringId(instanceName));
       if (instId >= 0 && instId < this.data.instanceNames.length) {
         h = this.buttonEventHandlers[instId];
@@ -5954,6 +5971,28 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.isPropertyDirty = true;
       if (this.parent != null) {
         this.parent.lwf.setPropertyDirty();
+      }
+    };
+
+    LWF.prototype.setParent = function(parent) {
+      var func, _ref1;
+
+      this.active = true;
+      this.parent = parent;
+      func = (_ref1 = this.functions) != null ? _ref1['init'] : void 0;
+      if (func != null) {
+        func.call(this);
+      }
+    };
+
+    LWF.prototype.setInteractive = function() {
+      var lwf;
+
+      this.interactive = true;
+      lwf = this;
+      while (lwf.parent != null) {
+        lwf = lwf.parent.lwf;
+        lwf.interactive = true;
       }
     };
 
@@ -6570,9 +6609,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     WebkitCSSRendererFactory.prototype.destruct = function() {
       var context, _i, _j, _k, _len, _len1, _len2, _ref2, _ref3, _ref4;
 
-      if (this.mask != null) {
-        this.stage.removeChild(this.mask);
-      }
       _ref2 = this.bitmapContexts;
       for (_i = 0, _len = _ref2.length; _i < _len; _i++) {
         context = _ref2[_i];
@@ -6645,10 +6681,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.renderMasked = true;
           style.opacity = 0;
           if (this.renderMaskMode !== "mask") {
-            if (this.mask != null) {
+            if (node.mask != null) {
+              this.mask = node.mask;
               style = this.mask.style;
             } else {
-              this.mask = document.createElement("div");
+              this.mask = node.mask = document.createElement("div");
               style = this.mask.style;
               style.display = "block";
               style.position = "absolute";
@@ -7714,6 +7751,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         embeddedScript = (_ref2 = global["LWF"]) != null ? (_ref3 = _ref2["Script"]) != null ? _ref3[data.name()] : void 0 : void 0;
       }
       lwf = new LWF(data, factory, embeddedScript, settings["privateData"]);
+      if (settings["active"] != null) {
+        lwf.active = settings["active"];
+      }
       lwf.url = settings["lwf"];
       lwf.lwfInstanceId = ++this.lwfInstanceIndex;
       if ((_ref4 = cache.instances) == null) {
@@ -7995,6 +8035,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         switch (cmd.maskMode) {
           case "erase":
           case "mask":
+            if (this.renderMaskMode === "layer" && this.renderMasked) {
+              this.renderMask();
+            }
             this.renderMasked = true;
             this.srcFactor = cmd.maskMode === "erase" ? gl.ONE_MINUS_DST_ALPHA : gl.DST_ALPHA;
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.maskFrameBuffer);
@@ -8547,9 +8590,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           offsetY = canvas.height - h;
           break;
         case Align.VERTICAL_MIDDLE:
-          len = lines.length + 1;
+          len = lines.length;
           h = (this.fontHeight * len + this.leading * (len - 1)) * 96 / 72;
-          offsetY = (canvas.height - h) / 2 + this.fontHeight;
+          offsetY = (canvas.height - h) / 2;
           break;
         default:
           offsetY = 0;
