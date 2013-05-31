@@ -1,9 +1,0 @@
-.sortable {width:98%; border:1px solid #ccc; border-bottom:none}
-.sortable th {padding:4px 6px 6px; background:#444; color:#fff; text-align:left; color:#ccc}
-.sortable td {padding:2px 4px 4px; background:#fff; border-bottom:1px solid #ccc}
-.sortable .head {background:#444 url("../img/sort.gif") 6px center no-repeat; cursor:pointer; padding-left:18px}
-.sortable .desc {background:#222 url("../img/desc.gif") 6px center no-repeat; cursor:pointer; padding-left:18px}
-.sortable .asc {background:#222 url("../img/asc.gif") 6px  center no-repeat; cursor:pointer; padding-left:18px}
-.sortable .head:hover, .sortable .desc:hover, .sortable .asc:hover {color:#fff}
-.sortable .even td {background:#f2f2f2}
-.sortable .odd td {background:#fff}
