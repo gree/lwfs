@@ -1,24 +1,27 @@
 * {
+    font-family: Verdana, sans-serif;
     margin: 0px;
     padding: 0px;
-    -webkit-user-select: none;
-    -webkit-tap-highlight-color: rgba(255,255,255,0);
-    -webkit-tap-callout: none;
 }
 #wrapper {
     margin: 9px 18px 9px 18px;
 }
+#header {
+    margin-bottom: 40px;
+}
 #lpart {
     float: left;
+    margin-right: 140px;
 }
 #rpart {
-    float: right;
+    position: absolute;
+    right: 10px;
 }
 #clear {
     clear: both;
     width: 100%;
 }
-#loading {
+#loading_icon {
     visibility: hidden;
     vertical-align: middle;
     background-image: url(../img/loading.gif);

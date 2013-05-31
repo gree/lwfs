@@ -45,13 +45,15 @@ $is_interrupted = false
 $is_start = true
 $watcher = 0
 
-['INT', 'TERM'].each { |signal|
-  Signal.trap(signal) {
-    if $watcher != 0
-      Process.kill(signal, $watcher)
-    end
-  }
-}
+IS_RUNNING = File.dirname(__FILE__) + "/.lwfs_is_running.#{$$}"
+at_exit { FileUtils.rm_f(IS_RUNNING) }
+FileUtils.touch(IS_RUNNING)
+Thread.new do
+  while true
+    exit(0) unless File.exists?(IS_RUNNING)
+    sleep(2.0)
+  end
+end
 
 def sameFile?(f0, f1)
   return false unless (File.file?(f0) and File.file?(f1))
@@ -68,12 +70,14 @@ configure do
   set :public_folder, File.dirname(__FILE__) + '/htdocs'
 
   def updateJSFL(folders)
-    src_file = 'lib/LWF_Publish.jsfl'
-    folders.each do |folder|
-      dst_file = folder + '/LWF_Publish.jsfl'
-      if needUpdate?(src_file, dst_file)
-        FileUtils.cp('lib/LWF_Publish.jsfl', folder, {:preserve => true})
-        $updated_jsfls.push(dst_file)
+    ['LWF_Publish.jsfl', 'include JavaScript for LWF.jsfl'].each do |jsfl|
+      src_file = "lib/#{jsfl}"
+      folders.each do |folder|
+        dst_file = "#{folder}/#{jsfl}"
+        if needUpdate?(src_file, dst_file)
+          FileUtils.cp("lib/#{jsfl}", folder, {:preserve => true})
+          $updated_jsfls.push(jsfl) unless $updated_jsfls.include?(jsfl)
+        end
       end
     end
   end
@@ -107,6 +111,11 @@ configure do
     DISPLAY_SCALE = 0
   else
     DISPLAY_SCALE = ENV['LWFS_DISPLAY_SCALE'].to_f
+  end
+  if ENV['LWFS_SCREEN_SIZE'].nil?
+    SCREEN_SIZE = '0x0'
+  else
+    SCREEN_SIZE = ENV['LWFS_SCREEN_SIZE']
   end
   REMOTE_SERVER = ENV['LWFS_REMOTE_SERVER']
   BIRD_WATCHER_SERVER = ENV['LWFS_BIRD_WATCHER_SERVER']
@@ -161,7 +170,7 @@ configure do
   # ~/Desktop/LWFS_work
   FileUtils.mkdir_p(SRC_DIR) unless File.directory?(SRC_DIR)
   # htdocs/lwfs
-  FileUtils.mv('htdocs/lwfs', '.htdocs_lwfs.' + (Time.now - Time.at(0)).to_s) if File.directory?('htdocs/lwfs')
+  FileUtils.mv('htdocs/lwfs', '.htdocs_lwfs.' + Time.now.to_f.to_s) if File.directory?('htdocs/lwfs')
   FileUtils.mkdir_p(BASE_DIR)
   FileUtils.cp_r(Dir.glob('tmpl/*'), BASE_DIR)
   # ~/Desktop/LWFS_work_output
@@ -169,6 +178,7 @@ configure do
     FileUtils.mkdir_p(OUT_DIR) unless File.directory?(OUT_DIR)
     FileUtils.mkdir_p("#{OUT_DIR}/html5") unless File.directory?("#{OUT_DIR}/html5")
     FileUtils.mkdir_p("#{OUT_DIR}/unity") unless File.directory?("#{OUT_DIR}/unity")
+    FileUtils.mkdir_p("#{OUT_DIR}/native") unless File.directory?("#{OUT_DIR}/native")
     # css
     FileUtils.rm_rf("#{OUT_DIR}/html5/css")
     FileUtils.cp_r('tmpl/css', "#{OUT_DIR}/html5/css")
@@ -178,7 +188,6 @@ configure do
     # js
     FileUtils.rm_rf("#{OUT_DIR}/html5/js")
     FileUtils.mkdir_p("#{OUT_DIR}/html5/js")
-    FileUtils.cp_r('tmpl/js/auto-reloader.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/birdwatcher.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/qrcode.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/test-html5.js', "#{OUT_DIR}/html5/js")
@@ -198,7 +207,7 @@ configure do
     while not postUpdate(PORT)
       sleep(1.0)
     end
-    $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR, PORT)
+    $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR, PORT, IS_RUNNING)
   end
 end
 
@@ -206,10 +215,12 @@ get '/locate/*' do |path|
   if File.directory?("#{SRC_DIR}/#{path}") or File.file?("#{SRC_DIR}/#{path}")
     if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
       path = "#{SRC_DIR}/#{path}"
+      path.encode!(Encoding.default_external)
       `open -R "#{path}"`
     elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
       path = "#{SRC_DIR}/#{path}".gsub(/\//, '\\')
-      `start explorer /select,"#{path}"`
+      path.encode!(Encoding.default_external)
+      `start explorer /select,#{path}`
     else
       # not supported
     end
@@ -263,11 +274,9 @@ post '/update/*' do |target|
   end
   Thread.new do
     t0 = t1 = t2 = t3 = t4 = t5 = t6 = t7 = t8 = Time.now
-    updateLoadingStatus('/', true)
     if $is_start
-      $is_start = false
       begin
-        updateTopIndex(true)
+        updateTopIndex(Time.now.to_f, true)
       rescue => e
         $log.error(e.to_s)
         $log.error(e.backtrace.to_s)
@@ -287,8 +296,12 @@ post '/update/*' do |target|
         end
       end
     else
+      $mutex_p.synchronize do
+        updateLoadingStatus("#{DST_DIR}/", true)
+      end
       rsync(true) unless REMOTE_SERVER.nil?
     end
+    $is_start = false
     is_in_progress = true
     while is_in_progress
       catch :restart do
@@ -320,7 +333,7 @@ post '/update/*' do |target|
         t6 = Time.now
         begin
           updateFolders(changes)
-          updateTopIndex()
+          updateTopIndex(Time.now.to_f)
         rescue => e
           $log.error(e.to_s)
           $log.error(e.backtrace.to_s)
@@ -337,7 +350,6 @@ post '/update/*' do |target|
           $changes = []
           $is_in_post = false
         end
-        updateLoadingStatus('/', false)
         rsync() unless REMOTE_SERVER.nil?
         t8 = Time.now
         is_in_progress = false
@@ -426,7 +438,9 @@ def sync()
   # added/updated folders
   updates = $changes.dup
   updates.each do |name|
-    updateLoadingStatus("/#{name}/", true);
+    $mutex_p.synchronize do
+      updateLoadingStatus("#{DST_DIR}/#{name}/", true);
+    end
   end
   rsync() unless REMOTE_SERVER.nil?
   updates.each do |name|
@@ -515,17 +529,18 @@ end
 
 def convert(changes)
   # convert added or updated folders
+  update_time = Time.now.to_f
   changes[:updates].each do |name|
     folder = "#{DST_DIR}/.tmp.#{name}"
     next unless File.exists?(folder)  # vanished folders
     $log.info("converting #{name}...")
     if File.file?("#{folder}/index.html")
-      outputRaw(folder)
+      outputRaw(update_time, folder)
     else
       swfs = glob("#{folder}/*.swf")
       prefix = ''
       if swfs.count == 0
-        outputNG(folder, name, prefix, '', 'found no swf.', '')
+        outputNG(update_time, folder, name, prefix, '', 'found no swf.', '')
       else
         swf = swfs[0]
         swfs.each do |path|
@@ -543,10 +558,10 @@ def convert(changes)
         end
         commandline = "swf2lwf#{(ret['args'].length > 0) ? ' ' : ''}#{ret['args'].join(' ')}"
         if not ret['is_error']
-          outputOK(folder, name, prefix, commandline, getWarnings(folder, name, prefix))
+          outputOK(update_time, folder, name, prefix, commandline, getWarnings(folder, name, prefix))
         else
           # ret['message'] contains warnings.
-          outputNG(folder, name, prefix, commandline, ret['message'], '')
+          outputNG(update_time, folder, name, prefix, commandline, ret['message'], '')
         end
       end
     end
@@ -568,7 +583,7 @@ def getWarnings(folder, name, prefix)
   warnings
 end
 
-def outputRaw(folder)
+def outputRaw(update_time, folder)
   ['webkitcss', 'canvas'].each do |target|
     next unless TARGETS.include?(target)
     content = <<-"EOF"
@@ -580,20 +595,21 @@ def outputRaw(folder)
   </body>
 </html>
     EOF
-    $mutex_p.synchronize do
+#    $mutex_p.synchronize do
       File.open("#{folder}/index-#{target}.html", 'w') do |fp|
         fp.write(content)
       end
-    end
+#    end
   end
-  $mutex_p.synchronize do
+#  $mutex_p.synchronize do
+    updateLoadingStatus("#{folder}/", false, update_time);
     File.open("#{folder}/.status", 'w') do |fp|
       fp.write('as-is')
     end
-  end
+#  end
 end
 
-def outputOK(folder, name, prefix, commandline, warnings)
+def outputOK(update_time, folder, name, prefix, commandline, warnings)
   relative = '../' * (name.split('/').count + 1)
   if warnings != ''
     content = <<-"EOF"
@@ -615,16 +631,15 @@ def outputOK(folder, name, prefix, commandline, warnings)
         <div class="info">#{warnings.gsub(/\n/, '<br/>')}</div>
       </div>
     </div>
-    <!-- <script type="text/javascript" src="#{relative}js/loading.js" interval="1"></script> -->
-    <!-- <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script> -->
+    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{update_time}"></script>
   </body>
 </html>
     EOF
-    $mutex_p.synchronize do
+#    $mutex_p.synchronize do
       File.open("#{folder}/index-warn.html", 'w') do |fp|
         fp.write(content)
       end
-    end
+#    end
   end
   if commandline =~ / -p / or warnings != ''
     status = (commandline =~ / -p /) ? 'OK??' : 'OK?'
@@ -632,6 +647,11 @@ def outputOK(folder, name, prefix, commandline, warnings)
   else
     status = 'OK'
     favicon = 'favicon-blue.png'
+  end
+  screensize = {:w => 0, :h => 0}
+  if SCREEN_SIZE =~ /(\d+)x(\d+)/
+    screensize[:w] = $1.to_i
+    screensize[:h] = $2.to_i
   end
   rootoffset = {:x => 0, :y => 0}
   if File.file?("#{folder}/#{prefix}.lwfconf")
@@ -658,7 +678,6 @@ def outputOK(folder, name, prefix, commandline, warnings)
   if userscripts == ''
     userscripts = "    <script type=\"text/javascript\">/* no user script is found */</script>\n"
   end
-  userscripts.chomp!
   ['webkitcss', 'canvas', 'webgl'].each do |target|
     next unless TARGETS.include?(target)
     case target
@@ -710,36 +729,40 @@ def outputOK(folder, name, prefix, commandline, warnings)
           "fr": #{FRAME_RATE},
           "fs": #{FRAME_STEP},
           "ds": #{DISPLAY_SCALE},
+          "ss": {
+              "w": #{screensize[:w]},
+              "h": #{screensize[:h]}
+          },
           "rootoffset": {
               "x": #{rootoffset[:x]},
               "y": #{rootoffset[:y]}
           }
       };
     </script>
-#{userscripts}
-#{birdwatcher}
+#{userscripts.chomp}
+#{birdwatcher.chomp}
   </head>
   <body>
-    <script type="text/javascript" src="#{relative}js/loading.js" interval="1"></script>
-    <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script>
+    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{update_time}"></script>
   </body>
 </html>
       EOF
-      $mutex_p.synchronize do
+#      $mutex_p.synchronize do
         File.open("#{folder}/index-#{target}#{(rel == 'release') ? '' : '-' + rel}.html", 'w') do |fp|
           fp.write(content)
         end
-      end
+#      end
     end
   end
-  $mutex_p.synchronize do
+#  $mutex_p.synchronize do
+    updateLoadingStatus("#{folder}/", false, update_time);
     File.open("#{folder}/.status", 'w') do |fp|
       fp.write(status)
     end
-  end
+#  end
 end
 
-def outputNG(folder, name, prefix, commandline, msg, warnings)
+def outputNG(update_time, folder, name, prefix, commandline, msg, warnings)
   relative = '../' * (name.split('/').count + 1)
   content = <<-"EOF"
 <!DOCTYPE HTML>
@@ -756,7 +779,7 @@ def outputNG(folder, name, prefix, commandline, msg, warnings)
   <body>
     <div id="wrapper">
       <div id="header">
-        <h1>ERROR: #{name}</h1>
+        <h1>ERROR: #{name}<span id="loading_icon"></span></h1>
         <div class="info"><a href="javascript:void(0)" onClick="Ajax.post('http://localhost:10080/update/', {'arg': '#{name}'}); return false;">force to update</a></div>
         <div class="info">(#{commandline})</div>
         <div class="info">#{msg.gsub(/\n/, '<br/>')}</div>
@@ -770,21 +793,21 @@ def outputNG(folder, name, prefix, commandline, msg, warnings)
   content += <<-"EOF"
       </div>
     </div>
-    <script type="text/javascript" src="#{relative}js/loading.js" interval="1"></script>
-    <script type="text/javascript" src="#{relative}js/auto-reloader.js" interval="1" watch_max_time="0"></script>
+    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{update_time}"></script>
   </body>
 </html>
   EOF
-  $mutex_p.synchronize do
+#  $mutex_p.synchronize do
     File.open("#{folder}/index-err.html", 'w') do |fp|
       fp.write(content)
     end
-  end
-  $mutex_p.synchronize do
+#  end
+#  $mutex_p.synchronize do
+    updateLoadingStatus("#{folder}/", false, update_time);
     File.open("#{folder}/.status", 'w') do |fp|
       fp.write('NG')
     end
-  end
+#  end
 end
 
 def updateFolders(changes)
@@ -795,12 +818,11 @@ def updateFolders(changes)
   changes[:updates].each do |name|
     src = "#{DST_DIR}/.tmp.#{name}"
     next unless File.exists?(src)  # vanished folders
-    updateLoadingStatus("/.tmp.#{name}/", false);
     dst = "#{DST_DIR}/#{name}"
     FileUtils.rm_rf(dst)
     FileUtils.mkdir_p(File.dirname(dst))
     FileUtils.mv(src, dst)
-    rmdir_p(File.dirname(dst))
+    rmdir_p(File.dirname(src))
     if not OUT_DIR.nil?
       if File.read("#{DST_DIR}/#{name}/.status") =~ /OK/
         # html5
@@ -823,6 +845,12 @@ def updateFolders(changes)
           FileUtils.mv(f, f.sub(/\.lwf$/, '.bytes'))
         end
         FileUtils.rm_rf(Dir.glob("#{OUT_DIR}/unity/#{name}/*.js"))
+        # native
+        FileUtils.rm_rf("#{OUT_DIR}/native/#{name}")
+        rmdir_p("#{OUT_DIR}/native/#{name}")
+        FileUtils.mkdir_p(File.dirname("#{OUT_DIR}/native/#{name}"))
+        FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/native/#{name}")
+        FileUtils.rm_rf(Dir.glob("#{OUT_DIR}/native/#{name}/*.js"))
       end
     end
   end
@@ -837,17 +865,19 @@ def rsync(is_top_only = false)
   `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.loading rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
 end
 
-def updateLoadingStatus(dir, is_in_conversion)
-  $mutex_p.synchronize do
-    if File.exists?("#{DST_DIR}#{dir}")
-      File.open("#{DST_DIR}#{dir}.loading", 'w') do |fp|
+def updateLoadingStatus(dir, is_in_conversion, update_time = nil)
+  if File.exists?(dir)
+    File.open("#{dir}/.loading", 'w') do |fp|
+      if update_time.nil?
         fp.write("{\"is_in_conversion\":#{is_in_conversion}}")
+      else
+        fp.write("{\"is_in_conversion\":#{is_in_conversion},\"update_time\":#{update_time}}")
       end
     end
   end
 end
 
-def updateTopIndex(is_start = false)
+def updateTopIndex(update_time, is_start = false)
   names = []
   if not is_start
     Dir.glob("#{DST_DIR}/*/**/.status").each do |entry|
@@ -859,7 +889,7 @@ def updateTopIndex(is_start = false)
   end
   updated_message = Time.now.strftime('%F %T')
   if not is_start and $updated_jsfls.length > 0
-    updated_message += ', <b>NOTE: LWF_Publish.jsfl is also updated</b>'
+    updated_message += ', also updated ' + $updated_jsfls.map{|item| "<u>#{item}</u>"}.join(' and ')
     $updated_jsfls = []
   end
   content = <<-"EOF"
@@ -871,9 +901,10 @@ def updateTopIndex(is_start = false)
     <link rel="shortcut icon" href="../img/favicon.png" />
     <link rel="icon" href="../img/favicon.png" />
     <link rel="stylesheet" href="../css/common.css" />
-    <link rel="stylesheet" href="../css/sorter.css" />
+    <link rel="stylesheet" href="../css/datatable.css" />
+    <script type="text/javascript" src="../js/jquery.min.js"></script>
+    <script type="text/javascript" src="../js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="../js/ajax.js"></script>
-    <script type="text/javascript" src="../js/sorter.js"></script>
     <script type="text/javascript" src="../js/qrcode.js"></script>
     <script type="text/javascript" src="../js/top-index.js"></script>
   </head>
@@ -881,7 +912,7 @@ def updateTopIndex(is_start = false)
     <div id="wrapper">
       <div id="header">
         <div id="lpart">
-          <h1>lwfs<span id="loading"></span></h1>
+          <h1>lwfs<span id="loading_icon"></span></h1>
           <p>(version: #{VERSION})</p>
           <p><a href="javascript:void(0)" onClick=\"Ajax.post('http://localhost:10080/update/'); return false;\">force to update all</a></p>
         </div>
@@ -892,53 +923,63 @@ def updateTopIndex(is_start = false)
         </div>
       </div>
       <p>(updated: #{updated_message})</p>
-      <table cellpadding="0" cellspacing="0" border="0" class="sortable" id="sorter">
+      <table cellpadding="0" cellspacing="0" border="0" class="dataTable" id="sorter">
   EOF
-  content += '        <tr><th>name</th><th></th>'
+  content += '        <thead>'
+  content += '          <tr><th>name</th><th></th>'
   ['webkitcss', 'canvas', 'webgl'].each do |target|
     next unless TARGETS.include?(target)
     content += "<th>#{target}</th>"
   end
   content += "<th>status</th><th>last modified</th></tr>\n"
+  content += '        </thead>'
+  content += '        <tbody>'
   names.each do |name|
     status = File.read("#{DST_DIR}/#{name}/.status")
     prefix = ''
     date = lastModified("#{DST_DIR}/#{name}")
     date = date.strftime('%F %T')
-    content += "        <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td><td><a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '#{name}'}); return false;\">u</a></td>"
+    content += "          <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td><td class=\"center\"><a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '#{name}'}); return false;\">u</a></td>"
     if status != 'NG'
       ['webkitcss', 'canvas', 'webgl'].each do |target|
         next unless TARGETS.include?(target)
         if File.file?("#{DST_DIR}/#{name}/index-#{target}.html")
-          content += "<td><a href=\"#{name}/index-#{target}.html\" target=\"_blank\">#{target}</a></td>"
+          content += "<td class=\"center\"><a href=\"#{name}/index-#{target}.html\" target=\"_blank\">#{target}</a></td>"
         else
-          content += "<td>-</td>"
+          content += "<td class=\"center\">-</td>"
         end
       end
-      content += "<td>#{status}</td>"
-      content += "<td>#{date}</td></tr>\n"
+      content += "<td class=\"center\">#{status}</td>"
     else
       ['webkitcss', 'canvas', 'webgl'].each do |target|
         next unless TARGETS.include?(target)
-        content += "<td>-</td>"
+        content += "<td class=\"center\">-</td>"
       end
-      content += "<td><a href=\"#{name}/index-err.html\" target=\"_blank\">#{status}</a></td>"
-      content += "<td>#{date}</td></tr>\n"
+      content += "<td class=\"center\"><a href=\"#{name}/index-err.html\" target=\"_blank\">#{status}</a></td>"
     end
+    content += "<td class=\"center\">#{date}</td></tr>\n"
   end
+  content += '        </tbody>'
+  modified = Time.now
   content += <<-"EOF"
       </table>
     </div>
+    <script type="text/javascript" src="../js/loading.js" interval="1" update_time="#{update_time}"></script>
     <script type="text/javascript">
-      var sorter = new table.sorter("sorter");
-      sorter.init("sorter", #{TARGETS.length + 3}, true);
+      $(document).ready(function() {
+          $('#sorter').dataTable({
+              "bStateSave": true,
+              "iDisplayLength": 50,
+              "sCookiePrefix": "lwfs_database_#{TARGETS.length + 3}",
+              "aaSorting": [[#{TARGETS.length + 3}, 'desc'],[0, 'asc']]
+          });
+      });
     </script>
-    <script type="text/javascript" src="../js/loading.js" interval="1"></script>
-    <script type="text/javascript" src="../js/auto-reloader.js" interval="1" watch_max_time="0"></script>
   </body>
 </html>
   EOF
   $mutex_p.synchronize do
+    updateLoadingStatus("#{DST_DIR}/", is_start, update_time)
     File.open("#{DST_DIR}/index.html", 'w') do |fp|
       fp.write(content)
     end

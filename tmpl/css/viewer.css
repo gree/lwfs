@@ -1,24 +1,25 @@
+* {
+    font-family: monospace;
+}
 h1 {
+    font-family: Verdana, sans-serif;
     font-size: large;
 }
-div.info {
-    font-family: monospace;
+div {
     font-size: medium;
+}
+div.info {
     margin: 1px;
     color: black;
     background-color: white;
     white-space: pre;
 }
 div.info_wrapped {
-    font-family: monospace;
-    font-size: medium;
     margin: 1px;
     color: black;
     background-color: white;
 }
 div.error {
-    font-family: monospace;
-    font-size: medium;
     margin: 1px;
     color: red;
     background-color: white;
@@ -26,4 +27,17 @@ div.error {
 #fps_canvas {
     padding: 5px;
     vertical-align: middle;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: rgba(255,255,255,0);
+    -webkit-tap-callout: none;
+}
+#stage {
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: rgba(255,255,255,0);
+    -webkit-tap-callout: none;
+}
+#stageEventReceiver {
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: rgba(255,255,255,0);
+    -webkit-tap-callout: none;
 }

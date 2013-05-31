@@ -7,6 +7,13 @@ require 'postupdate.rb'
 
 FOLDER = ARGV[0]
 PORT = ARGV[1]
+IS_RUNNING = ARGV[2]
+Thread.new do
+  while true
+    exit(0) unless File.exists?(IS_RUNNING)
+    sleep(2.0)
+  end
+end
 
 $mutex = Mutex.new
 $changes = []
@@ -33,6 +40,10 @@ end
 callback = Proc.new do |modified, added, removed|
   $mutex.synchronize do
     (modified + added + removed).each do |entry|
+      entry = entry.encode(Encoding::UTF_8,
+                           Encoding.default_external,
+                           :invalid => :replace,
+                           :undef => :replace)
       prefix = ''
       if entry =~ /^([A-Z0-9][A-Z0-9_\-\/]*)/
         # fully captal characters represent projects and allow nested folders.
