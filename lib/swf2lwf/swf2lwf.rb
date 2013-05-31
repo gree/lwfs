@@ -2029,7 +2029,11 @@ def parse_define_edit_text
     @letter_spacing = 0
     def check_node(node)
       if node.class == HTML::Text
-        @html_text += node.content
+        if @html_text == ""
+          @html_text += node.content
+        else
+          @html_text += "\n" + node.content
+        end
       elsif node.class == HTML::Tag
         href = node.attributes['href']
         unless href.nil?
