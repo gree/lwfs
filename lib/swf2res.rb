@@ -90,7 +90,12 @@ def swf2res(swf)
   textures = {}
   tname = File.dirname(lwf) + "/" + File.basename(lwf, ".*") + ".textures"
   File.read(tname).split.each do |texture|
-    unless texture =~ /_rgb_[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]\.(png|jpg)/
+    unless texture =~ /(.*)_rgb_[0-9a-f]{6}(.*)/ or
+        texture =~ /(.*)_rgb_\d+,\d+,\d+(.*)/ or
+        texture =~ /(.*)_rgba_[0-9a-f]{8}(.*)/ or
+        texture =~ /(.*)_rgba_\d+,\d+,\d+,\d+(.*)/ or
+        texture =~ /(.*)_add_[0-9a-f]{6}(.*)/ or
+        texture =~ /(.*)_add_\d+,\d+,\d+(.*)/
       textures[texture] = true
     end
   end
