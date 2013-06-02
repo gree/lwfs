@@ -602,10 +602,10 @@ def outputRaw(update_time, folder)
 #    end
   end
 #  $mutex_p.synchronize do
-    updateLoadingStatus("#{folder}/", false, update_time);
     File.open("#{folder}/.status", 'w') do |fp|
       fp.write('as-is')
     end
+    updateLoadingStatus("#{folder}/", false, update_time);
 #  end
 end
 
@@ -755,10 +755,10 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
     end
   end
 #  $mutex_p.synchronize do
-    updateLoadingStatus("#{folder}/", false, update_time);
     File.open("#{folder}/.status", 'w') do |fp|
       fp.write(status)
     end
+    updateLoadingStatus("#{folder}/", false, update_time);
 #  end
 end
 
@@ -803,10 +803,10 @@ def outputNG(update_time, folder, name, prefix, commandline, msg, warnings)
     end
 #  end
 #  $mutex_p.synchronize do
-    updateLoadingStatus("#{folder}/", false, update_time);
     File.open("#{folder}/.status", 'w') do |fp|
       fp.write('NG')
     end
+    updateLoadingStatus("#{folder}/", false, update_time);
 #  end
 end
 
@@ -979,10 +979,10 @@ def updateTopIndex(update_time, is_start = false)
 </html>
   EOF
   $mutex_p.synchronize do
-    updateLoadingStatus("#{DST_DIR}/", is_start, update_time)
     File.open("#{DST_DIR}/index.html", 'w') do |fp|
       fp.write(content)
     end
+    updateLoadingStatus("#{DST_DIR}/", is_start, update_time)
   end
 end
 
