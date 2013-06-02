@@ -217,7 +217,7 @@ function includeScriptFile(){
         }
     }
     var rootData = searchIncludeData('root');
-    addData(rootData);
+    if(rootData.length > 0) addData(rootData);
 }
 
 function searchIncludeData(mcName){
