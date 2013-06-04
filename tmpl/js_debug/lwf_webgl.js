@@ -2354,9 +2354,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     Graphic.prototype.render = function(v, rOffset) {
       var obj, _i, _len, _ref1;
 
-      if (!v) {
-        return;
-      }
       _ref1 = this.displayList;
       for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
         obj = _ref1[_i];
@@ -3408,6 +3405,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (lwf.detachHandler != null) {
         if (lwf.detachHandler(lwf)) {
           lwf.destroy();
+        } else {
+          lwf.setAttachVisible(false);
+          lwf.render();
         }
       } else {
         lwf.destroy();
@@ -7111,6 +7111,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     function WebkitCSSResourceCache() {
       this.cache = {};
       this.lwfInstanceIndex = 0;
+      this.canvasIndex = 0;
     }
 
     WebkitCSSResourceCache.prototype.clear = function() {
@@ -7580,7 +7581,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       var canvas, ctx, name;
 
       if (this.constructor === WebkitCSSResourceCache) {
-        name = "canvas_" + filename.replace(/[\.,-]/g, "_");
+        name = "canvas_" + ++this.canvasIndex;
         ctx = document.getCSSCanvasContext("2d", name, w, h);
         canvas = ctx.canvas;
         canvas.name = name;

@@ -413,10 +413,12 @@
         }
         {
             var bgColor = lwf.backgroundColor;
+            var a = (bgColor >> 24) & 0xff;
             var r = (bgColor >> 16) & 0xff;
             var g = (bgColor >> 8) & 0xff;
             var b = (bgColor >> 0) & 0xff;
-            stage.style.backgroundColor = 'rgba(' + r + ',' + g + ',' + b + ',1)';
+            // stage.style.backgroundColor = 'rgba(' + r + ',' + g + ',' + b + ',' + (a / 255) + ')';
+            stage.style.backgroundColor = 'rgb(' + r + ',' + g + ',' + b + ')';
         }
         if (! isMobile) {
             stage.style.border = 'solid';
