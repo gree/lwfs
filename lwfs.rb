@@ -55,6 +55,19 @@ Thread.new do
   end
 end
 
+def glob(filter)
+  entries = []
+  if filter.kind_of?(Array)
+    filter = filter.map{|e| e.encode(Encoding::UTF_8)}
+  else
+    filter = filter.encode(Encoding::UTF_8)
+  end
+  Dir.glob(filter).each do |e|
+    entries.push(e) unless e =~ /(^|\/)[#,]/
+  end
+  entries
+end
+
 def sameFile?(f0, f1)
   return false unless (File.file?(f0) and File.file?(f1))
   f0_s = File.stat(f0)
@@ -127,7 +140,7 @@ configure do
   RUBY_COMMAND = (RUBY_PLATFORM =~ /java/) ? 'jruby' : 'ruby'
   if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
     prefix = ENV['HOME']
-    updateJSFL(Dir.glob(prefix + '/Library/Application Support/Adobe/Flash CS*/*/Configuration/Commands'))
+    updateJSFL(glob(prefix + '/Library/Application Support/Adobe/Flash CS*/*/Configuration/Commands'))
     SRC_DIR = prefix + '/Desktop/LWFS_work'
     if ENV['LWFS_USE_OUTPUT_FOLDER'] == '1'
       OUT_DIR = prefix + '/Desktop/LWFS_work_output'
@@ -139,8 +152,8 @@ configure do
     LOG_FILE = '/dev/null'
   elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
     prefix = ENV['USERPROFILE'].gsub(/\\/, '/')
-    updateJSFL(Dir.glob([prefix + '/AppData/Local/Adobe/Flash CS*/*/Configuration/Commands',
-                         prefix + '/Local Settings/Application Data/Adobe/Flash CS*/*/Configuration/Commands']))
+    updateJSFL(glob([prefix + '/AppData/Local/Adobe/Flash CS*/*/Configuration/Commands',
+                     prefix + '/Local Settings/Application Data/Adobe/Flash CS*/*/Configuration/Commands']))
     SRC_DIR = prefix + '/Desktop/LWFS_work'
     if ENV['LWFS_USE_OUTPUT_FOLDER'] == '1'
       OUT_DIR = prefix + '/Desktop/LWFS_work_output'
@@ -172,7 +185,7 @@ configure do
   # htdocs/lwfs
   FileUtils.mv('htdocs/lwfs', '.htdocs_lwfs.' + Time.now.to_f.to_s) if File.directory?('htdocs/lwfs')
   FileUtils.mkdir_p(BASE_DIR)
-  FileUtils.cp_r(Dir.glob('tmpl/*'), BASE_DIR)
+  FileUtils.cp_r(glob('tmpl/*'), BASE_DIR)
   # ~/Desktop/LWFS_work_output
   if not OUT_DIR.nil?
     FileUtils.mkdir_p(OUT_DIR) unless File.directory?(OUT_DIR)
@@ -191,13 +204,13 @@ configure do
     FileUtils.cp_r('tmpl/js/birdwatcher.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/qrcode.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/test-html5.js', "#{OUT_DIR}/html5/js")
-    Dir.glob('tmpl/js/lwf*.js') do |f|
+    glob('tmpl/js/lwf*.js').each do |f|
       FileUtils.cp(f, "#{OUT_DIR}/html5/js") unless f =~ /(cocos2d|unity)/i
     end
     # js_debug
     FileUtils.rm_rf("#{OUT_DIR}/html5/js_debug")
     FileUtils.mkdir_p("#{OUT_DIR}/html5/js_debug")
-    Dir.glob('tmpl/js_debug/lwf*') do |f|
+    glob('tmpl/js_debug/lwf*').each do |f|
       FileUtils.cp(f, "#{OUT_DIR}/html5/js_debug") unless f =~ /(cocos2d|unity)/i
     end
   end
@@ -290,8 +303,8 @@ post '/update/*' do |target|
       # delete old htdocs/lwfs backups
       Thread.new do
         sleep(10.0)
-        #FileUtils.rm_rf(Dir.glob('.htdocs_lwfs.*'))
-        Dir.glob('.htdocs_lwfs.*').each do |f|
+        #FileUtils.rm_rf(glob('.htdocs_lwfs.*'))
+        glob('.htdocs_lwfs.*').each do |f|
           rm_rf(f, 0.001)
         end
       end
@@ -370,21 +383,13 @@ def checkInterruption(line, wait)
   end
 end
 
-def glob(filter)
-  entries = []
-  Dir.glob(filter).each do |e|
-    entries.push(e) unless e =~ /(^|\/)[#,]/
-  end
-  entries
-end
-
 def rm_rf(src, w)
   sleep(w)
-  Dir.glob("#{src}/*").each do |f|
+  glob("#{src}/*").each do |f|
     if File.file?(f)
       FileUtils.rm_rf(f)
     elsif File.directory?(f)
-      Dir.glob("#{f}/*").each do |f|
+      glob("#{f}/*").each do |f|
         rm_rf(f, w)
       end
       FileUtils.rm_rf(f)
@@ -412,7 +417,7 @@ end
 
 def rmdir_p(folder)
   if File.directory?(folder)
-    while Dir.glob("#{folder}/*").length == 0
+    while glob("#{folder}/*").length == 0
       FileUtils.rmdir(folder)
       folder = File.dirname(folder)
     end
@@ -422,11 +427,11 @@ end
 def sync()
   t0 = Time.now
   # always start over
-  FileUtils.rm_rf(Dir.glob("#{DST_DIR}/.tmp.*"))
+  FileUtils.rm_rf(glob("#{DST_DIR}/.tmp.*"))
   t1 = Time.now
   # vanished folders
   vanishes = []
-  Dir.glob("#{DST_DIR}/*/**/.status").each do |file|
+  glob("#{DST_DIR}/*/**/.status").each do |file|
     checkInterruption(__LINE__, 0.001)
     name = File.dirname(file).sub(/^#{DST_DIR}\//, '')
     if not File.exists?("#{SRC_DIR}/#{name}")
@@ -830,10 +835,10 @@ def updateFolders(changes)
         rmdir_p("#{OUT_DIR}/html5/list/#{name}")
         FileUtils.mkdir_p("#{OUT_DIR}/html5/list/#{name}")
         FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/html5/list/#{name}/_")
-        Dir.glob("#{DST_DIR}/#{name}/index-*.html") do |f|
+        glob("#{DST_DIR}/#{name}/index-*.html").each do |f|
           FileUtils.cp_r(f, "#{OUT_DIR}/html5/list/#{name}") unless f =~ /(cocos2d|unity)/i
         end
-        Dir.glob("#{DST_DIR}/#{name}/*.js") do |f|
+        glob("#{DST_DIR}/#{name}/*.js").each do |f|
           FileUtils.cp_r(f, "#{OUT_DIR}/html5/list/#{name}") unless f =~ /(cocos2d|unity)/i
         end
         # unity
@@ -841,16 +846,16 @@ def updateFolders(changes)
         rmdir_p("#{OUT_DIR}/unity/#{name}")
         FileUtils.mkdir_p(File.dirname("#{OUT_DIR}/unity/#{name}"))
         FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/unity/#{name}")
-        Dir.glob("#{OUT_DIR}/unity/#{name}/*.lwf") do |f|
+        glob("#{OUT_DIR}/unity/#{name}/*.lwf").each do |f|
           FileUtils.mv(f, f.sub(/\.lwf$/, '.bytes'))
         end
-        FileUtils.rm_rf(Dir.glob("#{OUT_DIR}/unity/#{name}/*.js"))
+        FileUtils.rm_rf(glob("#{OUT_DIR}/unity/#{name}/*.js"))
         # native
         FileUtils.rm_rf("#{OUT_DIR}/native/#{name}")
         rmdir_p("#{OUT_DIR}/native/#{name}")
         FileUtils.mkdir_p(File.dirname("#{OUT_DIR}/native/#{name}"))
         FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/native/#{name}")
-        FileUtils.rm_rf(Dir.glob("#{OUT_DIR}/native/#{name}/*.js"))
+        FileUtils.rm_rf(glob("#{OUT_DIR}/native/#{name}/*.js"))
       end
     end
   end
@@ -880,7 +885,7 @@ end
 def updateTopIndex(update_time, is_start = false)
   names = []
   if not is_start
-    Dir.glob("#{DST_DIR}/*/**/.status").each do |entry|
+    glob("#{DST_DIR}/*/**/.status").each do |entry|
       prefix = "#{DST_DIR}/"
       name = File.dirname(entry.slice(prefix.length, entry.length - prefix.length))
       names.push(name)
