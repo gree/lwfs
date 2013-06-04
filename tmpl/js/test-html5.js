@@ -145,7 +145,7 @@
                 ];
             }
             var elm = document.createElement('div');
-            elm.className = 'error'
+            elm.className = 'error';
             var msg = '<p>ERROR: failed to load the lwf.</p>';
             for (var i in err) {
                 var e = err[i];
@@ -693,7 +693,7 @@
             {
                 var qr = document.createElement('span');
                 qr.id = 'qr';
-                var q = qrcode(8, 'M');
+                var q = qrcode(10, 'M');
                 q.addData(window.location.href);
                 q.make();
                 qr.innerHTML = q.createImgTag();
@@ -827,7 +827,7 @@
                 lpart.appendChild(div);
             }
             {
-                progressBar = document.createElement('div')
+                progressBar = document.createElement('div');
                 progressBar.className = 'info';
                 progressBar.textContent = 'loading:   0%';
                 footer.appendChild(progressBar);
