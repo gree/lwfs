@@ -11,10 +11,12 @@ var files;
 var directories;
 
 var log = '';
+var warningNum = 0;
 
 var includeData;
 var type = ['load', 'postLoad', 'enterFrame', 'unload'];
 var suffix = ['_load', '_postLoad', '_enterFrame', '_unload'];
+var isRoot = false;
 
 
 init();
@@ -38,6 +40,7 @@ function init(){
 }
 
 function start(){
+    trace('----------------------------------------');
     trace('include JavaScript for LWF');
     trace('');
 
@@ -69,43 +72,8 @@ function createFilesData(){
     var lgh = files.length;
     for(var i = 0; i < lgh; i++){
         var obj = createFilesObject(files[i]);
-        includeData.push(obj);
+        if(typeof obj !== 'undefined') includeData.push(obj);
     }
-}
-
-function createFilesObject(param){
-    var obj = {};
-    if(typeof param === 'string'){
-        var ary = deleteFileExtention(param).split('_');
-        obj.fileName = param;
-        obj.traceName = [param];
-        obj.itemName = ary[0];
-        obj.frame = Number(ary[1]);
-        obj.type = checkType(ary[2]);
-        obj.layerName = 'js';
-        if(obj.type !== null) obj.layerName += suffix[obj.type];
-        if(typeof ary[3] !== 'undefined'){
-            obj.option = ary[3];
-        }else{
-            obj.option = null;
-        }
-    }else if(param instanceof Array){
-        var frameAndType = param[1].split('_');
-        obj.fileName = param.join('/');
-        obj.traceName = [obj.fileName];
-        obj.itemName = param[0];
-        obj.frame = Number(frameAndType[0]);
-        obj.type = checkType(frameAndType[1]);
-        obj.layerName = 'js';
-        if(obj.type !== null) obj.layerName += suffix[obj.type];
-        obj.option = deleteFileExtention(param[2]);
-    }
-    obj.script = getScriptFile(obj.fileName);
-    // obj.script = addScriptIndent(obj.script);
-    if(obj.script === ''){
-        obj.traceName[0] += '\n   [Warning] not found or empty';
-    }
-    return obj;
 }
 
 function createDirectoriesData(){
@@ -129,10 +97,47 @@ function createDirectoriesData(){
             lgh3 = jsFiles.length;
             for(n = 0; n < lgh3; n++){
                 var obj = createFilesObject([directories[i], frameDirectories[j], jsFiles[n]]);
-                includeData.push(obj);
+                if(typeof obj !== 'undefined') includeData.push(obj);
             }
         }
     }
+}
+
+function createFilesObject(param){
+    var obj = {};
+    if(typeof param === 'string'){
+        if(checkFileExtention(param) === false) return undefined;
+        var ary = deleteFileExtention(param).split('_');
+        obj.fileName = param;
+        obj.traceName = [param];
+        obj.itemName = ary[0];
+        obj.frame = Number(ary[1]);
+        obj.type = checkType(ary[2]);
+        obj.layerName = 'js';
+        if(obj.type !== null) obj.layerName += suffix[obj.type];
+        if(typeof ary[3] !== 'undefined'){
+            obj.option = ary[3];
+        }else{
+            obj.option = null;
+        }
+    }else if(param instanceof Array){
+        obj.fileName = param.join('/');
+        if(checkFileExtention(obj.fileName) === false) return undefined;
+        var frameAndType = param[1].split('_');
+        obj.traceName = [obj.fileName];
+        obj.itemName = param[0];
+        obj.frame = Number(frameAndType[0]);
+        obj.type = checkType(frameAndType[1]);
+        obj.layerName = 'js';
+        if(obj.type !== null) obj.layerName += suffix[obj.type];
+        obj.option = deleteFileExtention(param[2]);
+    }
+    obj.script = getScriptFile(obj.fileName);
+    if(obj.script === ''){
+        obj.traceName[0] += '\n -> [Warning] not found or empty';
+        warningNum++;
+    }
+    return obj;
 }
 
 function deleteFileExtention(str){
@@ -155,6 +160,22 @@ function checkType(str){
         }
     }
     return null;
+}
+
+function checkFileExtention(str){
+    var bool = false;
+    if (!str) {
+        return bool;
+    }
+    var fileTypes = str.split(".");
+    var length = fileTypes.length;
+    if (length === 0) {
+        return bool;
+    }
+    if(fileTypes[length - 1] === 'js'){
+        bool = true;
+    }
+    return bool;
 }
 
 function getScriptFile(fileName){
@@ -200,12 +221,6 @@ function addScriptFooter(){
     return '\n\n*/';
 }
 
-// function addScriptIndent(str){
-//     var indent = '    ';
-//     var newStr = str.replace(/^(.+?)$/mg, '    $1');
-//     return newStr;
-// }
-
 function includeScriptFile(){
     var lgh = items.length;
     for(var i = 0; i < lgh; i++){
@@ -217,7 +232,10 @@ function includeScriptFile(){
         }
     }
     var rootData = searchIncludeData('root');
-    if(rootData.length > 0) addData(rootData);
+    if(rootData.length > 0){
+        isRoot = true;
+        addData(rootData);
+    }
 }
 
 function searchIncludeData(mcName){
@@ -284,15 +302,11 @@ function addScript(layer, data){
 }
 
 function complete(){
-    trace('');
-    trace('');
-    trace('include complete!');
+    fl.showIdleMessage(true);
 
-    lib.editItem('root');
+    if(isRoot === false) lib.editItem('root');
 
     doc.save();
-    // doc.publish();
-
     releaseLog();
 }
 
@@ -306,5 +320,17 @@ function trace(msg){
 }
 
 function releaseLog(){
+    if(warningNum > 0){
+        fl.trace('Please check');
+        if(warningNum === 1){
+            fl.trace('Warning ' + warningNum + ' file');
+        }else{
+            fl.trace('Warning ' + warningNum + ' files');
+        }
+    }else{
+        fl.trace('Congratulations! No error!');
+    }
+
+    fl.trace('');
     fl.trace(log);
 }
