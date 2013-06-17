@@ -2958,11 +2958,11 @@ def swf2lwf(*args)
   @script_funcname_map = Hash.new
   @using_script_funcname_map = Hash.new
   @event_map = Hash.new
-  parse_fla(lwfbasedir) unless @fla.nil?
   @lwfpath = lwfbasedir + lwfname
   @logfile = File.open(@lwfpath + '.txt', 'wb')
   @logfile.sync = true
   @logfile.puts Time.now.ctime
+  parse_fla(lwfbasedir) unless @fla.nil?
   @option = 0
   @objects = Hash.new
   @button_map = Hash.new
