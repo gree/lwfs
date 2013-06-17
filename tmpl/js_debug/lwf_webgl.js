@@ -4882,6 +4882,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.lwfInstanceId = null;
       this.frameRate = this.data.header.frameRate;
       this.active = true;
+      this.frameSkip = true;
       this.execLimit = 3;
       this.tick = 1.0 / this.frameRate;
       this.roundOffTick = this.tick * ROUND_OFF_TICK_RATE;
@@ -4903,7 +4904,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.maskModes = [];
       this._tweens = null;
       if (!this.interactive && this.data.frames.length === 1) {
-        this.disableExec();
+        if (!this.functions || !(this.functions['_root_load'] || this.functions['_root_postLoad'] || this.functions['_root_unload'] || this.functions['_root_enterFrame'] || this.functions['_root_update'] || this.functions['_root_render'])) {
+          this.disableExec();
+        }
       }
       this.property = new Property(this);
       this.instances = [];
@@ -5147,6 +5150,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.rootMovie.exec();
           this.rootMovie.postExec(progressing);
           execed = true;
+          if (!this.frameSkip) {
+            break;
+          }
         }
         if (this.progress < this.roundOffTick) {
           this.progress = 0;
@@ -5986,13 +5992,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWF.prototype.setInteractive = function() {
-      var lwf;
-
       this.interactive = true;
-      lwf = this;
-      while (lwf.parent != null) {
-        lwf = lwf.parent.lwf;
-        lwf.interactive = true;
+      if (this.parent != null) {
+        this.parent.lwf.setInteractive();
+      }
+    };
+
+    LWF.prototype.setFrameSkip = function(frameSkip) {
+      this.frameSkip = frameSkip;
+      this.progress = 0;
+      if (this.parent != null) {
+        this.parent.lwf.setFrameSkip(frameSkip);
       }
     };
 
@@ -6343,6 +6353,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
   LWF.prototype["setFrameRate"] = LWF.prototype.setFrameRate;
 
+  LWF.prototype["setFrameSkip"] = LWF.prototype.setFrameSkip;
+
   LWF.prototype["setMovieCommand"] = LWF.prototype.setMovieCommand;
 
   LWF.prototype["setMovieEventHandler"] = LWF.prototype.setMovieEventHandler;
@@ -6552,7 +6564,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       style = this.stage.style;
       style.display = "block";
-      style.position = "absolute";
       style.overflow = "hidden";
       style.webkitUserSelect = "none";
       if (this.use3D) {
