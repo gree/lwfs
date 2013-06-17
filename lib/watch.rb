@@ -45,7 +45,7 @@ callback = Proc.new do |modified, added, removed|
                            :invalid => :replace,
                            :undef => :replace)
       prefix = ''
-      if entry =~ /^([A-Z0-9][A-Z0-9_\-\/]*)/
+      if entry =~ /^([A-Z0-9][A-Z0-9_\-\/]+\/)/
         # fully captal characters represent projects and allow nested folders.
         prefix = $1
       end
