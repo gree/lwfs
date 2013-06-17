@@ -59,6 +59,7 @@ end
 
 listener = Listen.to(FOLDER)
 listener.relative_paths(true)
+listener.ignore!(/(^|\/)[.,]/)
 listener.change(&callback)
 
 listener.start!
