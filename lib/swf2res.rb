@@ -2,6 +2,7 @@
 $:.unshift File.dirname(__FILE__)
 require 'fileutils'
 require 'find'
+require 'glob.rb'
 require 'swf2lwf/swf2lwf.rb'
 require 'lwf2lwfjs/lwf2lwfjs.rb'
 
@@ -32,7 +33,7 @@ def swf2res(swf)
 
   args = []
   args.push('-i')  # ignore unknown actionscript command.
-  if Dir.glob("#{dirname}/**/*.jpg").count + Dir.glob("#{dirname}/**/*.png").count == 0
+  if glob("#{dirname}/**/*.jpg").count + glob("#{dirname}/**/*.png").count == 0
     args.push('-p')
   end
   if File.file?(swf2lwf_conf)
@@ -48,7 +49,7 @@ def swf2res(swf)
   end
   args.push(swf)
   unless args.include?('-p')
-    Dir.glob("#{dirname}/*.json").each do |jsn|
+    glob("#{dirname}/*.json").each do |jsn|
       args.push(jsn)
     end
   end
@@ -89,7 +90,7 @@ def swf2res(swf)
   
   textures = {}
   tname = File.dirname(lwf) + "/" + File.basename(lwf, ".*") + ".textures"
-  File.read(tname).split.each do |texture|
+  File.read(tname, :encoding => 'UTF-8').split.each do |texture|
     unless texture =~ /(.*)_rgb_[0-9a-f]{6}(.*)/ or
         texture =~ /(.*)_rgb_\d+,\d+,\d+(.*)/ or
         texture =~ /(.*)_rgba_[0-9a-f]{8}(.*)/ or
@@ -100,7 +101,7 @@ def swf2res(swf)
     end
   end
   
-  Find.find(File.dirname(swf)) do |file|
+  glob("#{File.dirname(swf)}/**/*").each do |file|
     ext_textures.unshift file
   end
   ext_textures.each do |file|

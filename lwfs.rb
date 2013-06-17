@@ -14,6 +14,7 @@ require 'sinatra'
 require 'socket'
 require 'tmpdir'
 require 'uuidtools'
+require 'lib/glob.rb'
 require 'lib/postupdate.rb'
 require 'lib/swf2lwf/lib/json.rb'
 require 'lib/swf2res.rb'
@@ -53,19 +54,6 @@ Thread.new do
     exit(0) unless File.exists?(IS_RUNNING)
     sleep(2.0)
   end
-end
-
-def glob(filter)
-  entries = []
-  if filter.kind_of?(Array)
-    filter = filter.map{|e| e.encode(Encoding::UTF_8)}
-  else
-    filter = filter.encode(Encoding::UTF_8)
-  end
-  Dir.glob(filter).each do |e|
-    entries.push(e) unless e =~ /(^|\/)[#,]/
-  end
-  entries
 end
 
 def sameFile?(f0, f1)
@@ -924,8 +912,8 @@ def updateTopIndex(update_time, is_start = false)
         <div id="rpart">
           <span id="qr"></span>
         </div>
-        <div id="clear">
-        </div>
+      </div>
+      <div id="clear">
       </div>
       <p>(updated: #{updated_message})</p>
       <table cellpadding="0" cellspacing="0" border="0" class="dataTable" id="sorter">
@@ -993,7 +981,8 @@ end
 
 def lastModified(folder)
   tmax = Time.at(0)
-  Find.find(folder) do |file|
+  glob("#{folder}/**/*").each do |file|
+    file = file.encode('UTF-8')
     next if File.directory?(file)
     t = File.mtime(file)
     tmax = t if t > tmax
