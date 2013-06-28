@@ -106,8 +106,6 @@ function CheckVersion()
 			SetLog("Disable HTML output." + lineBreak);
 		} else if (s == "<CompressMovie>1</CompressMovie>") {
 			xmlArray[i] = "<CompressMovie>0</CompressMovie>";
-		} else if (s == "<InvisibleLayer>1</InvisibleLayer>") {
-			xmlArray[i] = "<InvisibleLayer>0</InvisibleLayer>";
 		} else if (s == "<IncludeXMP>1</IncludeXMP>") {
 			xmlArray[i] = "<IncludeXMP>0</IncludeXMP>";
 			SetLog("Disable including XML." + lineBreak);
