@@ -93,6 +93,7 @@ configure do
 
   def defineDirs(prefix)
     prefix = ENV['LWFS_DESKTOP_FOLDER'] unless ENV['LWFS_DESKTOP_FOLDER'].nil?
+    prefix = prefix.gsub(/\\/, '/')
     SRC_DIR.replace(prefix + '/LWFS_work')
     if ENV['LWFS_USE_OUTPUT_FOLDER'] == '1'
       OUT_DIR.replace(prefix + '/LWFS_work_output')
