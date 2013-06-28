@@ -10,5 +10,5 @@ def glob(filter)
   Dir.glob(filter).each do |e|
     entries.push(e) unless e =~ /(^|\/)[#,]/
   end
-  entries
+  entries.sort
 end
