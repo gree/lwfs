@@ -58,6 +58,10 @@ callback = Proc.new do |modified, added, removed|
 end
 
 listener = Listen.to(FOLDER)
+if RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/ and
+    `ver` =~ /Version [543]/
+  listener.force_polling(true)
+end
 listener.relative_paths(true)
 listener.ignore!(/(^|\/)[.,]/)
 listener.change(&callback)

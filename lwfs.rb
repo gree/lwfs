@@ -91,6 +91,14 @@ configure do
     src_s.mtime > dst_s.mtime and not FileUtils.cmp(src, dst)
   end
 
+  def defineDirs(prefix)
+    prefix = ENV['LWFS_DESKTOP_FOLDER'] unless ENV['LWFS_DESKTOP_FOLDER'].nil?
+    SRC_DIR.replace(prefix + '/LWFS_work')
+    if ENV['LWFS_USE_OUTPUT_FOLDER'] == '1'
+      OUT_DIR.replace(prefix + '/LWFS_work_output')
+    end
+  end
+
   EXCLUDE_PATTERN = /\/(_|[^\/]+\.lwfdata)\/.*$/
 
   if File.file?('lib/LWFS_VERSION')
@@ -126,15 +134,12 @@ configure do
     TARGETS = ENV['LWFS_TARGETS'].split(/,/)
   end
   RUBY_COMMAND = (RUBY_PLATFORM =~ /java/) ? 'jruby' : 'ruby'
+  SRC_DIR = ''
+  OUT_DIR = ''
   if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
     prefix = ENV['HOME']
     updateJSFL(glob(prefix + '/Library/Application Support/Adobe/Flash CS*/*/Configuration/Commands'))
-    SRC_DIR = prefix + '/Desktop/LWFS_work'
-    if ENV['LWFS_USE_OUTPUT_FOLDER'] == '1'
-      OUT_DIR = prefix + '/Desktop/LWFS_work_output'
-    else
-      OUT_DIR = nil
-    end
+    defineDirs(prefix + '/Desktop')
     OPEN_COMMAND = 'open'
     WATCH_SCRIPT = 'lib/watch.rb'
     LOG_FILE = '/dev/null'
@@ -142,23 +147,14 @@ configure do
     prefix = ENV['USERPROFILE'].gsub(/\\/, '/')
     updateJSFL(glob([prefix + '/AppData/Local/Adobe/Flash CS*/*/Configuration/Commands',
                      prefix + '/Local Settings/Application Data/Adobe/Flash CS*/*/Configuration/Commands']))
-    SRC_DIR = prefix + '/Desktop/LWFS_work'
-    if ENV['LWFS_USE_OUTPUT_FOLDER'] == '1'
-      OUT_DIR = prefix + '/Desktop/LWFS_work_output'
-    else
-      OUT_DIR = nil
-    end
+    defineDirs(prefix + '/Desktop') # '/Desktop' won't work for Windows XP
     OPEN_COMMAND = 'start'
     WATCH_SCRIPT = 'lib/watch.rb'
     LOG_FILE = 'NUL'
   elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
     prefix = ENV['HOME']
-    SRC_DIR = prefix + '/LWFS_work'
-    if ENV['LWFS_USE_OUTPUT_FOLDER'] == '1'
-      OUT_DIR = prefix + '/LWFS_work_output'
-    else
-      OUT_DIR = nil
-    end
+    # no updateJSFL
+    defineDirs(prefix + '/Desktop')
     OPEN_COMMAND = 'echo' # dummy
     WATCH_SCRIPT = 'lib/watch.rb'
     LOG_FILE = '/dev/null'
@@ -175,7 +171,7 @@ configure do
   FileUtils.mkdir_p(BASE_DIR)
   FileUtils.cp_r(glob('tmpl/*'), BASE_DIR)
   # ~/Desktop/LWFS_work_output
-  if not OUT_DIR.nil?
+  if OUT_DIR != ''
     FileUtils.mkdir_p(OUT_DIR) unless File.directory?(OUT_DIR)
     FileUtils.mkdir_p("#{OUT_DIR}/html5") unless File.directory?("#{OUT_DIR}/html5")
     FileUtils.mkdir_p("#{OUT_DIR}/unity") unless File.directory?("#{OUT_DIR}/unity")
@@ -189,7 +185,9 @@ configure do
     # js
     FileUtils.rm_rf("#{OUT_DIR}/html5/js")
     FileUtils.mkdir_p("#{OUT_DIR}/html5/js")
+    FileUtils.cp_r('tmpl/js/ajax.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/birdwatcher.js', "#{OUT_DIR}/html5/js")
+    FileUtils.cp_r('tmpl/js/loading.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/qrcode.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/test-html5.js', "#{OUT_DIR}/html5/js")
     glob('tmpl/js/lwf*.js').each do |f|
@@ -208,7 +206,7 @@ configure do
     while not postUpdate(PORT)
       sleep(1.0)
     end
-    $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR, PORT, IS_RUNNING)
+    $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR.encode(Encoding::default_external), PORT, IS_RUNNING)
   end
 end
 
@@ -816,7 +814,7 @@ def updateFolders(changes)
     FileUtils.mkdir_p(File.dirname(dst))
     FileUtils.mv(src, dst)
     rmdir_p(File.dirname(src))
-    if not OUT_DIR.nil?
+    if OUT_DIR != ''
       if File.read("#{DST_DIR}/#{name}/.status") =~ /OK/
         # html5
         FileUtils.rm_rf("#{OUT_DIR}/html5/list/#{name}")
