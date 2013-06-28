@@ -132,6 +132,7 @@ function createFilesObject(param){
         if(obj.type !== null) obj.layerName += suffix[obj.type];
         obj.option = deleteFileExtention(param[2]);
     }
+    obj.fileName = deleteNewline(obj.fileName);
     obj.script = getScriptFile(obj.fileName);
     if(obj.script === ''){
         obj.traceName[0] += '\n -> [Warning] not found or empty';
@@ -146,7 +147,7 @@ function deleteFileExtention(str){
 }
 
 function deleteNewline(str){
-   var newStr = str.replace(/\r\n/g, "");
+   var newStr = str.replace(/(\r)*\n/g, "");
    return newStr;
  }
 
