@@ -1426,6 +1426,8 @@ def parse_fill_styles(has_alpha)
       obj_id = get_word
       matrix = get_matrix
       matrix.scale_x /= 20.0
+      matrix.rotate_skew0 /= 20.0
+      matrix.rotate_skew1 /= 20.0
       matrix.scale_y /= 20.0
       if obj_id != 0xffff
         @fill_styles[i] = FillStyleBitmap.new(@objects[obj_id], matrix)
@@ -1574,72 +1576,11 @@ def parse_define_shape
           end
 
           if style.is_a?(FillStyleBitmap)
-            scaled = false
-
             texture = style.object
-            scaled = true if
-              texture.width != rect.width or texture.height != rect.height
-
-            a = style.matrix.scale_x
-            b = style.matrix.rotate_skew0
-            c = style.matrix.rotate_skew1
-            d = style.matrix.scale_y
-
-            if a != 1.0 or b != 0.0 or c != 0.0 or d != 1.0
-              md = a * d - b * c
-              if md != 0.0
-                ia = d / md
-                ib = -(b / md)
-                ic = -(c / md)
-                id = a / md
-                width = (rect.width * ia + rect.height * ib).round.abs
-                height = (rect.width * ic + rect.height * id).round.abs
-                info "  FIXED #{width} #{height}"
-                rect.width = width
-                rect.height = height
-                scaled = true
-              end
-            end
-
-            scaled = true if x_min != style.matrix.translate_x or
-              y_min != style.matrix.translate_y
-
-            if scaled
-              tw = texture.width * a + texture.height * b
-              th = texture.width * c + texture.height * d
-              info "  TEX:(#{texture.width}, #{texture.height})" +
-                "->(#{tw},#{th})"
-
-              tu = x_min - style.matrix.translate_x
-              tv = y_min - style.matrix.translate_y
-
-              u = (tu * ia + tv * ib).round
-              v = (tu * ic + tv * id).round
-
-              if rect.width > 0
-                while u < 0
-                  u += rect.width
-                end
-                while u >= rect.width
-                  u -= rect.width
-                end
-                u = 0 if u < 0
-              end
-
-              if rect.height > 0
-                while v < 0
-                  v += rect.height
-                end
-                while v >= rect.height
-                  v -= rect.height
-                end
-                v = 0 if v < 0
-              end
-            else
-              u = 0.0
-              v = 0.0
-            end
-            info "  UV (#{u}, #{v})"
+            rect.width = texture.width
+            rect.height = texture.height
+            u = 0.0
+            v = 0.0
           else
             texture = nil
             u = x_min
