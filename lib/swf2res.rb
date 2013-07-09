@@ -90,7 +90,7 @@ def swf2res(swf)
   
   textures = {}
   tname = File.dirname(lwf) + "/" + File.basename(lwf, ".*") + ".textures"
-  File.read(tname, :encoding => 'UTF-8').split.each do |texture|
+  File.read(tname, :encoding => 'UTF-8').split("\n").each do |texture|
     unless texture =~ /(.*)_rgb_[0-9a-f]{6}(.*)/ or
         texture =~ /(.*)_rgb_\d+,\d+,\d+(.*)/ or
         texture =~ /(.*)_rgba_[0-9a-f]{8}(.*)/ or
