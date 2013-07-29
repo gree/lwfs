@@ -8,6 +8,7 @@ require 'postupdate.rb'
 FOLDER = ARGV[0]
 PORT = ARGV[1]
 IS_RUNNING = ARGV[2]
+IGNORED_PATTERN = /#{ARGV[3]}/
 Thread.new do
   while true
     exit(0) unless File.exists?(IS_RUNNING)
@@ -50,7 +51,7 @@ callback = Proc.new do |modified, added, removed|
         prefix = $1
       end
       entry = entry.slice(prefix.length, entry.length - prefix.length)
-      $changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ /(^|\/)[.,]/
+      $changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ IGNORED_PATTERN
     end
     $changes.sort!
     $changes.uniq!

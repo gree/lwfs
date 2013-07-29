@@ -2,8 +2,9 @@ cd /d "%~dp0"
 set PATH=%~dp0ruby19\bin;%PATH%
 if exist "..\.lwfsrc" copy "..\.lwfsrc" tmp.bat & call tmp.bat
 set JRUBY_OPTS="--server -J-Djruby.jit.threshold=30"
-set LWFS_REMOTE_SERVER=
 set TZ=
+set LWFS_USE_REMOTE_SERVER=0
+set LWFS_LOG_FILE=../../lwfs.log
 cd lwfs
 
 ver | find "XP"

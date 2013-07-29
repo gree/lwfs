@@ -36,6 +36,65 @@ module Sinatra::Helpers
   end
 end
 
+def defineDirs(prefix)
+  prefix = ENV['LWFS_DESKTOP_FOLDER'] unless ENV['LWFS_DESKTOP_FOLDER'].nil?
+  prefix = prefix.gsub(/\\/, '/').encode(Encoding::UTF_8)
+  SRC_DIR.replace(prefix + '/LWFS_work')
+  OUT_DIR.replace(prefix + '/LWFS_work_output')
+end
+
+SRC_DIR = ''
+OUT_DIR = ''
+if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
+  defineDirs(ENV['HOME'] + '/Desktop')
+elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
+  defineDirs(ENV['USERPROFILE'].gsub(/\\/, '/') + '/Desktop') # '/Desktop' won't work for Windows XP
+elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
+  defineDirs(ENV['HOME'])
+end
+
+$lwfsconf = {
+  'REMOTE_SERVER' => 'dev-nakamaru-test.dev.gree.jp',
+  'BIRD_WATCHER_SERVER' => 'jsprof.dev.gree.jp:3000',
+  'IGNORED_PATTERN' => '[,#].*|.*\.sw[op]|.*~',
+  'ALLOWED_PREFIX_PATTERN' => '',
+  'TARGETS' =>
+  [
+   'webkitcss',
+   'canvas',
+   'webgl',
+   'native',
+   'cocos2d',
+   'unity'
+  ],
+  'USE_OUTPUT_FOLDER' => true,
+  'ROOT_OVERRIDES' =>
+  [
+    #['PROJECT/PREFIX/', 'http://dev-nakamaru-test.dev.gree.jp/lwfrevs/20130702_083513_m0700/']
+  ],
+  'FRAME_RATE' => 0,
+  'FRAME_STEP' => 0,
+  'DISPLAY_SCALE' => 0,
+  'SCREEN_SIZE' => '0x0'
+}
+['lwfs.conf', "#{SRC_DIR}/lwfs.conf"].each do |f|
+  if File.file?(f)
+    begin
+      lwfsconf = JSON.parse(File.read(f))
+      lwfsconf.each do |k, v|
+        $lwfsconf[k] = v
+      end
+    rescue
+    end
+  end
+end
+if ENV['LWFS_USE_REMOTE_SERVER'] != '1'
+  $lwfsconf['REMOTE_SERVER'] = nil
+end
+if not $lwfsconf['USE_OUTPUT_FOLDER']
+  OUT_DIR.replace('')
+end
+
 $log = Logger.new((ENV['LWFS_LOG_FILE'].nil?) ? STDOUT : ENV['LWFS_LOG_FILE'], 10)
 $updated_jsfls = []
 $mutex_p = Mutex.new
@@ -56,22 +115,12 @@ Thread.new do
   end
 end
 
-def sameFile?(f0, f1)
-  return false unless (File.file?(f0) and File.file?(f1))
-  f0_s = File.stat(f0)
-  f1_s = File.stat(f1)
-  # cp_r with :preserve => true seems too expensive on windows. we
-  # omit it now and thus mtime will change.
-  return false if (f0_s.mtime > f1_s.mtime || f0_s.size != f1_s.size)
-  FileUtils.cmp(f0, f1)
-end
-
 configure do
   set :port, 10080
   set :public_folder, File.dirname(__FILE__) + '/htdocs'
 
   def updateJSFL(folders)
-    ['LWF_Publish.jsfl', 'include JavaScript for LWF.jsfl'].each do |jsfl|
+    ['Publish for LWF.jsfl', 'include JavaScript for LWF.jsfl'].each do |jsfl|
       src_file = "lib/#{jsfl}"
       folders.each do |folder|
         dst_file = "#{folder}/#{jsfl}"
@@ -91,71 +140,44 @@ configure do
     src_s.mtime > dst_s.mtime and not FileUtils.cmp(src, dst)
   end
 
-  def defineDirs(prefix)
-    prefix = ENV['LWFS_DESKTOP_FOLDER'] unless ENV['LWFS_DESKTOP_FOLDER'].nil?
-    prefix = prefix.gsub(/\\/, '/').encode(Encoding::UTF_8)
-    SRC_DIR.replace(prefix + '/LWFS_work')
-    if ENV['LWFS_USE_OUTPUT_FOLDER'] == '1'
-      OUT_DIR.replace(prefix + '/LWFS_work_output')
-    end
-  end
-
-  EXCLUDE_PATTERN = /\/(_|[^\/]+\.lwfdata)\/.*$/
-
   if File.file?('lib/LWFS_VERSION')
     VERSION = File.read('lib/LWFS_VERSION').chomp
   else
     VERSION = 'development'
   end
-  if ENV['LWFS_FRAME_RATE'].nil?
-    FRAME_RATE = 0
+  IGNORED_PATTERN = Regexp.new('(^|\/)(' +
+                               $lwfsconf['IGNORED_PATTERN'] +
+                               '|_(/.*)*' +
+                               '|.*\.lwfdata(/.*)*' +
+                               ')$')
+  if $lwfsconf['ALLOWED_PREFIX_PATTERN'] != ''
+    ALLOWED_PREFIX_PATTERN = Regexp.new('^(' + $lwfsconf['ALLOWED_PREFIX_PATTERN'] + ')')
   else
-    FRAME_RATE = ENV['LWFS_FRAME_RATE'].to_i
+    ALLOWED_PREFIX_PATTERN = nil
   end
-  if ENV['LWFS_FRAME_STEP'].nil?
-    FRAME_STEP = 0
-  else
-    FRAME_STEP = ENV['LWFS_FRAME_STEP'].to_i
-  end
-  if ENV['LWFS_DISPLAY_SCALE'].nil?
-    DISPLAY_SCALE = 0
-  else
-    DISPLAY_SCALE = ENV['LWFS_DISPLAY_SCALE'].to_f
-  end
-  if ENV['LWFS_SCREEN_SIZE'].nil?
-    SCREEN_SIZE = '0x0'
-  else
-    SCREEN_SIZE = ENV['LWFS_SCREEN_SIZE']
-  end
-  REMOTE_SERVER = ENV['LWFS_REMOTE_SERVER']
-  BIRD_WATCHER_SERVER = ENV['LWFS_BIRD_WATCHER_SERVER']
-  if ENV['LWFS_TARGETS'].nil?
-    TARGETS = ['webkitcss', 'canvas', 'webgl']
-  else
-    TARGETS = ENV['LWFS_TARGETS'].split(/,/)
-  end
+  FRAME_RATE = $lwfsconf['FRAME_RATE'].to_i
+  FRAME_STEP = $lwfsconf['FRAME_STEP'].to_i
+  DISPLAY_SCALE = $lwfsconf['DISPLAY_SCALE'].to_f
+  SCREEN_SIZE = $lwfsconf['SCREEN_SIZE']
+  REMOTE_SERVER = $lwfsconf['REMOTE_SERVER']
+  BIRD_WATCHER_SERVER = $lwfsconf['BIRD_WATCHER_SERVER']
+  TARGETS = $lwfsconf['TARGETS']
   RUBY_COMMAND = (RUBY_PLATFORM =~ /java/) ? 'jruby' : 'ruby'
-  SRC_DIR = ''
-  OUT_DIR = ''
   if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
     prefix = ENV['HOME']
-    updateJSFL(glob(prefix + '/Library/Application Support/Adobe/Flash CS*/*/Configuration/Commands'))
-    defineDirs(prefix + '/Desktop')
+    updateJSFL(glob(prefix + '/Library/Application Support/Adobe/Flash C[CS]*/*/Configuration/Commands'))
     OPEN_COMMAND = 'open'
     WATCH_SCRIPT = 'lib/watch.rb'
     LOG_FILE = '/dev/null'
   elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
     prefix = ENV['USERPROFILE'].gsub(/\\/, '/')
-    updateJSFL(glob([prefix + '/AppData/Local/Adobe/Flash CS*/*/Configuration/Commands',
-                     prefix + '/Local Settings/Application Data/Adobe/Flash CS*/*/Configuration/Commands']))
-    defineDirs(prefix + '/Desktop') # '/Desktop' won't work for Windows XP
+    updateJSFL(glob([prefix + '/AppData/Local/Adobe/Flash C[CS]*/*/Configuration/Commands',
+                     prefix + '/Local Settings/Application Data/Adobe/Flash C[CS]*/*/Configuration/Commands']))
     OPEN_COMMAND = 'start'
     WATCH_SCRIPT = 'lib/watch.rb'
     LOG_FILE = 'NUL'
   elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
-    prefix = ENV['HOME']
     # no updateJSFL
-    defineDirs(prefix + '/Desktop')
     OPEN_COMMAND = 'echo' # dummy
     WATCH_SCRIPT = 'lib/watch.rb'
     LOG_FILE = '/dev/null'
@@ -207,7 +229,7 @@ configure do
     while not postUpdate(PORT)
       sleep(1.0)
     end
-    $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR.encode(Encoding::default_external), PORT, IS_RUNNING)
+    $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR.encode(Encoding::default_external), PORT, IS_RUNNING, IGNORED_PATTERN.to_s)
   end
 end
 
@@ -261,11 +283,14 @@ post '/update/*' do |target|
           prefix = $1
         end
         entry = entry.slice(prefix.length, entry.length - prefix.length)
-        $changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ /(^|\/)[.,]/
+        $changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ IGNORED_PATTERN
       end
     end
     $changes.sort!
     $changes.uniq!
+    if not ALLOWED_PREFIX_PATTERN.nil?
+      $changes.select!{|c| c =~ ALLOWED_PREFIX_PATTERN}
+    end
     if $is_in_post
       $is_interrupted = true
       return
@@ -387,10 +412,10 @@ end
 
 def cp_r(src, dst)
   # FileUtils.cp_r(src, dst)
-  glob("#{src}/*").each do |f|
+  glob("#{src}/*", IGNORED_PATTERN).each do |f|
     checkInterruption(__LINE__, 0.001)
     if File.file?(f) and not (f =~ /\/index-[^\/]+\.html$/i)
-      if f =~ /(swf|fla|json|conf|html|xml|js|png|jpg|jpeg)$/i
+      if f =~ /(swf|fla|json|conf|html|xml|js|lua|png|jpg|jpeg)$/i
         FileUtils.cp(f, dst)
         #FileUtils.ln(f, dst)
       end
@@ -453,10 +478,12 @@ def sync()
           $log.info("copied #{src} to #{dst} #{Time.now - t}")
         end
       else
-        t = Time.now
-        FileUtils.mkdir_p(dst)
-        cp_r(src, dst)
-        $log.info("copied #{src} to #{dst} #{Time.now - t}")
+        if not (IGNORED_PATTERN =~ src)
+          t = Time.now
+          FileUtils.mkdir_p(dst)
+          cp_r(src, dst)
+          $log.info("copied #{src} to #{dst} #{Time.now - t}")
+        end
       end
     end
   end
@@ -478,9 +505,10 @@ def diff(src, dst)
           "#{src}/swf2lwf.conf",
           "#{src}/index.html",
           "#{src}/**/*.xml",
-          "#{src}/**/*.js"]).each do |src_file|
+          "#{src}/**/*.js",
+          "#{src}/**/*.lua"]).each do |src_file|
       file = src_file.sub(/#{src}\//, '')
-      next if file =~ EXCLUDE_PATTERN
+      next if file =~ IGNORED_PATTERN
       dst_file = "#{dst}/#{file}"
       return true unless File.exists?(dst_file)
     end
@@ -491,9 +519,10 @@ def diff(src, dst)
           "#{dst}/swf2lwf.conf",
           "#{dst}/index.html",
           "#{dst}/**/*.xml",
-          "#{dst}/**/*.js"]).each do |dst_file|
+          "#{dst}/**/*.js",
+          "#{dst}/**/*.lua"]).each do |dst_file|
       file = dst_file.sub(/#{dst}\//, '')
-      next if file =~ EXCLUDE_PATTERN
+      next if file =~ IGNORED_PATTERN
       src_file = "#{src}/#{file}"
       return true unless File.exists?(src_file)
       return true unless sameFile?(src_file, dst_file)
@@ -502,7 +531,7 @@ def diff(src, dst)
           "#{src}/**/*.jpg",
           "#{src}/**/*.jpeg"]).each do |src_file|
       file = src_file.sub(/#{src}\//, '')
-      next if file =~ EXCLUDE_PATTERN
+      next if file =~ IGNORED_PATTERN
       dst_file = "#{dst}/#{file}"
       return true unless File.exists?(dst_file)
     end
@@ -510,7 +539,7 @@ def diff(src, dst)
           "#{dst}/**/*.jpg",
           "#{dst}/**/*.jpeg"]).each do |dst_file|
       file = dst_file.sub(/#{dst}\//, '')
-      next if file =~ EXCLUDE_PATTERN
+      next if file =~ IGNORED_PATTERN
       src_file = "#{src}/#{file}"
       return true unless File.exists?(src_file)
       return true unless sameFile?(src_file, dst_file)
@@ -603,6 +632,10 @@ end
 
 def outputOK(update_time, folder, name, prefix, commandline, warnings)
   relative = '../' * (name.split('/').count + 1)
+  root_override = relative
+  $lwfsconf['ROOT_OVERRIDES'].each do |e|
+    root_override = e[1] if name.index(e[0]) == 0
+  end
   if warnings != ''
     content = <<-"EOF"
 <!DOCTYPE HTML>
@@ -650,8 +683,8 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
     begin
       lwfconf = JSON.parse(File.read("#{folder}/#{prefix}.lwfconf"))
       x = y = 0
-      if not lwfconf["init"].empty?
-        lwfconf["init"].each do |cmd|
+      if not lwfconf['init'].empty?
+        lwfconf['init'].each do |cmd|
           if cmd.length == 4 and cmd[0] == '_root' and cmd[1] == 'moveTo'
             x = cmd[2]
             y = cmd[3]
@@ -670,11 +703,32 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
   if userscripts == ''
     userscripts = "    <script type=\"text/javascript\">/* no user script is found */</script>\n"
   end
+  userluascripts = ''
+  glob("#{folder}/*.lua").each do |lua|
+    userluascripts += "-- #{File.basename(lua)}\n"
+    userluascripts += File.read(lua).gsub(/\r\n?/, "\n").chomp
+    userluascripts += "\n\n"
+  end
+  if userscripts != ''
+    userluascripts = userluascripts.gsub(/"/, '\"').gsub(/$/, '\\n"').gsub(/^/, '              + "')
+    userluascripts = <<-"EOF"
+    <script type="text/javascript" charset="UTF-8">
+      window["testlwf_lua"] = function(lwf) {
+          var script
+              = ""
+#{userluascripts};
+          lwf.execScript(script);
+          lwf.execScript("if type(init) == \\"function\\" then init() end\\n");
+          lwf.setUpdateScript("if type(update) == \\"function\\" then update() end\\n");
+      };
+    </script>
+    EOF
+  end
   ['webkitcss', 'canvas', 'webgl'].each do |target|
     next unless TARGETS.include?(target)
     case target
-    when 'webgl'
-      lwfjs = 'lwf_webgl.js'
+    when 'xxxx'
+      lwfjs = 'lwf_xxxx.js'
     else
       lwfjs = 'lwf.js'
     end
@@ -708,9 +762,10 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
     <link rel="stylesheet" href="#{relative}css/viewer.css" />
     <script type="text/javascript" src="#{relative}js/ajax.js"></script>
     <script type="text/javascript" src="#{relative}js/qrcode.js"></script>
-    <script type="text/javascript" src="#{relative}#{(rel == 'release') ? 'js' : 'js_debug'}/#{lwfjs}"></script>
+    <script type="text/javascript" src="#{root_override}#{(rel == 'release') ? 'js' : 'js_debug'}/#{lwfjs}"></script>
     <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
     <script type="text/javascript">
+      window["testlwf_root_override"] = "#{root_override}";
       window["testlwf_name"] = "#{name}";
       window["testlwf_html5target"] = "#{target}";
       window["testlwf_commandline"] = "#{commandline}";
@@ -978,9 +1033,19 @@ def updateTopIndex(update_time, is_start = false)
   end
 end
 
+def sameFile?(f0, f1)
+  return false unless (File.file?(f0) and File.file?(f1))
+  f0_s = File.stat(f0)
+  f1_s = File.stat(f1)
+  # cp_r with :preserve => true seems too expensive on windows. we
+  # omit it now and thus mtime will change.
+  return false if (f0_s.mtime > f1_s.mtime || f0_s.size != f1_s.size)
+  FileUtils.cmp(f0, f1)
+end
+
 def lastModified(folder)
   tmax = Time.at(0)
-  glob("#{folder}/**/*").each do |file|
+  glob("#{folder}/**/*", IGNORED_PATTERN).each do |file|
     file = file.encode('UTF-8')
     next if File.directory?(file)
     t = File.mtime(file)

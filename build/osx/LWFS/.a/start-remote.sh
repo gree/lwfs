@@ -19,7 +19,8 @@ if [ -f $BASE/../.lwfsrc ]; then
   source $BASE/tmp.rc
 fi
 unset TZ
-export LWFS_REMOTE_SERVER
+export LWFS_USE_REMOTE_SERVER=1
+export LWFS_LOG_FILE='../../lwfs.log'
 
 # app
 cd $BASE/lwfs
