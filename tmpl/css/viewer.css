@@ -24,7 +24,7 @@ div.error {
     color: red;
     background-color: white;
 }
-#fps_canvas {
+canvas.graph {
     padding: 5px;
     vertical-align: middle;
     -webkit-user-select: none;
@@ -40,4 +40,9 @@ div.error {
     -webkit-user-select: none;
     -webkit-tap-highlight-color: rgba(255,255,255,0);
     -webkit-tap-callout: none;
+}
+#stageWrapper {
+    border-style: solid;
+    border-color: rgb(200,200,200);
+    border-width: 1px;
 }
