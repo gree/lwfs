@@ -1787,6 +1787,7 @@ def parse_define_bits_jpeg
 end
 alias parse_define_bits_jpeg2 parse_define_bits_jpeg
 alias parse_define_bits_jpeg3 parse_define_bits_jpeg
+alias parse_define_bits_jpeg4 parse_define_bits_jpeg
 
 def parse_define_bits_lossless
   obj_id = get_word
@@ -1907,6 +1908,7 @@ def parse_define_font2
   @objects[obj_id] = font
   @fontname_map[font.name] = font
 end
+alias parse_define_font3 parse_define_font2
 
 def parse_define_text
   error "Text should be 'Dynamic Text'."
@@ -2080,8 +2082,35 @@ end
 
 def parse_place_object2
   init_bits
-  has_actions, has_clipping_depth, has_name, has_morph_position,
-    has_color_transform, has_matrix, has_obj_id, has_move = get_flags(8)
+  if @tag_parser == :parse_place_object3
+    has_actions, has_clipping_depth, has_name, has_morph_position,
+      has_color_transform, has_matrix, has_obj_id, has_move, reserved,
+      has_opaque_background, has_visible, has_image, has_classname,
+      has_cache_as_bitmap, has_blend_mode, has_filter_list = get_flags(16)
+  else
+    has_actions, has_clipping_depth, has_name, has_morph_position,
+      has_color_transform, has_matrix, has_obj_id, has_move = get_flags(8)
+    reserved = has_opaque_background = has_visible = has_image = has_classname =
+      has_cache_as_bitmap = has_blend_mode = has_filter_list = false
+  end
+  if $DEBUG
+    info "  actions=#{has_actions ? 1 : 0}" +
+      " clipping_depth=#{has_clipping_depth ? 1 : 0}" +
+      " name=#{has_name ? 1 : 0}" +
+      " morph_position=#{has_morph_position ? 1 : 0}" +
+      " color_transform=#{has_color_transform ? 1 : 0}" +
+      " matrix=#{has_matrix ? 1 : 0}"
+    info "  obj_id=#{has_obj_id ? 1 : 0}" +
+      " move=#{has_move ? 1 : 0}" +
+      " reserved=#{reserved ? 1 : 0}" +
+      " opaque_background=#{has_opaque_background ? 1 : 0}" +
+      " visible=#{has_visible ? 1 : 0}" +
+      " image=#{has_image ? 1 : 0}" +
+      " classname=#{has_classname ? 1 : 0}"
+    info "  cache_as_bitmap=#{has_cache_as_bitmap ? 1 : 0}" +
+      " blend_mode=#{has_blend_mode ? 1 : 0}" +
+      " filter_list=#{has_filter_list ? 1 : 0}"
+  end
   depth = get_word
   prev_control = @current_movie.display_list_prev[depth]
   obj_id = get_word if has_obj_id
@@ -2103,6 +2132,96 @@ def parse_place_object2
   morph_position = get_word if has_morph_position
   name = get_string if has_name
   clipping_depth = get_word if has_clipping_depth
+
+  if has_filter_list
+    n = get_byte
+    n.times do
+      has_dropshadow, has_blur, has_glow, has_bevel, has_gradientglow,
+        has_convolution, has_colormatrix, has_gradientbevel = get_flags(8)
+      if has_dropshadow
+        get_rgba
+        get_dword
+        get_dword
+        get_dword
+        get_dword
+        get_word
+        get_flags(8)
+      end
+      if has_blur
+        get_dword
+        get_dword
+        get_flags(8)
+      end
+      if has_glow
+        get_rgba
+        get_dword
+        get_dword
+        get_word
+        get_flags(8)
+      end
+      if has_bevel
+        get_rgba
+        get_rgba
+        get_dword
+        get_dword
+        get_dword
+        get_dword
+        get_word
+        get_flags(8)
+      end
+      if has_gradientglow
+        n = get_byte
+      end
+      if has_convolution
+        x = get_byte
+        y = get_byte
+        get_dword
+        get_dword
+        (x * y).times do
+          get_dword
+        end
+        get_rgba
+        get_flags(8)
+      end
+      if has_colormatrix
+        20.times do
+          get_dword
+        end
+      end
+      if has_gradientbevel
+        nc = get_byte
+        nc.times do
+          get_rgba
+        end
+        nc.times do
+          get_byte
+        end
+        get_dword
+        get_dword
+        get_dword
+        get_dword
+        get_word
+        get_flags(8)
+        nc = get_byte
+        nc.times do
+          get_rgba
+        end
+        nc.times do
+          get_byte
+        end
+        get_dword
+        get_dword
+        get_dword
+        get_dword
+        get_word
+        get_flags(8)
+      end
+    end
+  end
+  blend_mode = get_byte if has_blend_mode
+  bitmap_cache = get_byte if has_cache_as_bitmap
+  get_byte if has_visible
+  get_rgba if has_visible
 
   if has_obj_id
     place = Place.new
@@ -2257,6 +2376,7 @@ def parse_export
     end
   end
 end
+alias parse_symbol_class parse_export
 
 Tags = {
    1 => :parse_show_frame,
@@ -2324,8 +2444,10 @@ Tags = {
   73 => :parse_define_font_align_zones,
   74 => :parse_csm_text_settings,
   75 => :parse_define_font3,
+  76 => :parse_symbol_class,
   77 => :parse_metadata,
   78 => :parse_define_scaling_grid,
+  82 => :parse_do_abc,
   83 => :parse_define_shape4,
   84 => :parse_define_morph_shape2,
   86 => :parse_define_scene_and_frame_label_data,
@@ -2363,7 +2485,15 @@ def parse(filename)
   @swf.force_encoding("ASCII-8BIT") if RUBY_VERSION >= "1.9.0"
 
   magic, @version, length = @swf.unpack('a3cV')
-  warn "SWF Format Version is not 7 (#{@version})" if @version > 7
+  case @version
+  when 7
+  when 20
+    if RUBY_VERSION < "1.9.1"
+      error "Requires Ruby 1.9.1 or later for SWF Format Version #{@version}"
+    end
+  else
+    warn "SWF Format Version #{@version} is not supported"
+  end
 
   case magic
   when 'FWS'
@@ -2396,6 +2526,13 @@ def parse(filename)
     root_movie_id = @objects.keys.sort.last + 1
   end
   @objects[root_movie_id] = @root_movie
+
+  empty_movie = Movie.new(nil)
+  empty_movie.add_frame
+  empty_movie.linkage_name = "_empty"
+  empty_movie.reference
+  empty_movie_id = root_movie_id + 1
+  @objects[empty_movie_id] = empty_movie
 end
 
 def add_matrix(matrix)
@@ -2473,7 +2610,7 @@ def add_actions(actions)
         @actionBytes += to_u32(action[1].size)
         @actions += [action[1].size, 0, 0, 0]
         action[1].each do |target|
-          info sprintf("  [%s]", target)
+          info sprintf("      [%s]", target)
           case target
           when :ROOT
             @actionBytes += to_u32(LWF_INSTANCE_TARGET_ROOT)
@@ -2483,7 +2620,7 @@ def add_actions(actions)
             @actions += [LWF_INSTANCE_TARGET_PARENT, 0, 0, 0]
           else
             instanceNameId = @map_instanceName[target]
-            info sprintf("    %d\n", instanceNameId)
+            info sprintf("      %d\n", instanceNameId)
             if instanceNameId.nil?
               error("Instance(#{target}) not found")
               instanceNameId = 0
@@ -2504,6 +2641,7 @@ def add_actions(actions)
         @actionBytes += to_u32(eventId)
         @actions += [eventId, 0, 0, 0]
       when :CALL
+        info sprintf("      [%s]", action[1])
         stringId = @strings[action[1]]
         @actionBytes += to_u32(stringId)
         @actions += [stringId, 0, 0, 0]
@@ -2531,6 +2669,7 @@ def add_object(obj, objectType, objectId)
     @map_object[lwfObject.to_a] = lwfObjectId
   end
   @map_objectId[obj] = lwfObjectId
+  lwfObjectId
 end
 
 LWFObjects = [
@@ -2576,7 +2715,7 @@ def create_instance_name(x, y)
 end
 
 def parse_xflxml(xml, isRootMovie = false)
-  return unless xml =~ /\/\*\s*(js|lua)/
+  return unless xml =~ /Actionscript/
   if defined?(LibXML)
     doc = LibXML::XML::Document.string(xml)
     entries = doc.find('//xfl:script', 'xfl'=>'http://ns.adobe.com/xfl/2008/')
@@ -2632,6 +2771,12 @@ def parse_xflxml(xml, isRootMovie = false)
           skip += $1.length
           if script_index.nil?
             case s
+            when /^(\/\*\s*)(as)(\s*\001|\s+)/i
+              type = "frame"
+              lang = :ActionScript
+              script_index = i + $1.length + $2.length + $3.length
+              skip += $2.length + $3.length
+              script_nest = nest
             when /^(\/\*\s*)(js|js_load|js_postLoad|js_enterFrame|js_unload)(\s*\001|\s+)/i
               case $2.downcase
               when "js"
@@ -2799,6 +2944,11 @@ def parse_xflxml(xml, isRootMovie = false)
           skip += $1.length
           if script_index.nil?
             case s
+            when /^(\/\*\s*)(as)(\s*\001|\s+)/i
+              lang = :ActionScript
+              script_index = i + $1.length + $2.length + $3.length
+              skip += $2.length + $3.length
+              script_nest = nest
             when /^(\/\*\s*)(js)(\s*\001|\s+)/i
               lang = :JavaScript
               script_index = i + $1.length + $2.length + $3.length
@@ -2914,6 +3064,76 @@ def add_lwfbutton(button)
   add_object(button, LWF_OBJECT_BUTTON, lwfButtonId)
 end
 
+def add_bitmap(texture, matrixId, u = nil, v = nil, width = nil, height = nil)
+  unless texture.nil?
+    if u.nil?
+      u = 0
+      v = 0
+      width = texture.width
+      height = texture.height
+      matrixId = 0
+    end
+    textureFragmentId = @map_textureFragment[texture]
+    if textureFragmentId.nil?
+      textureFragmentId = @data_textureFragment.size
+      @map_textureFragment[texture] = textureFragmentId
+      @data_textureFragment.push LWFTextureFragment.new(texture)
+    end
+  end
+  textureFragmentId = -1 if textureFragmentId.nil?
+
+  if u != 0 or v != 0 or texture.nil? or
+      width != texture.width or height != texture.height
+    unless texture.nil? or texture.filename.nil?
+      warn "bitmap(#{texture.filename} " +
+        "#{texture.width}x#{texture.height}) is specified UVWH" +
+          "(#{u},#{v})-(#{width},#{height})."
+    end
+    attribute = 0
+    if texture
+      case texture.filename
+      when /_REPEAT_S_/
+        attribute = 1
+      when /_REPEAT_T_/
+        attribute = 2
+      when /_REPEAT_ST_/, /_REPEAT_TS_/
+        attribute = 3
+      end
+      u = u.to_f / texture.width.to_f
+      v = v.to_f / texture.height.to_f
+      w = width.to_f / texture.width.to_f
+      h = height.to_f / texture.height.to_f
+    else
+      u = 0
+      v = 0
+      w = 0
+      h = 0
+    end
+    lwfBitmapEx = LWFBitmapEx.new(matrixId,
+      textureFragmentId, attribute, u, v, w, h)
+    lwfBitmapExId = @map_bitmapEx[lwfBitmapEx.to_a]
+    if lwfBitmapExId.nil?
+      lwfBitmapExId = @data_bitmapEx.size
+      @data_bitmapEx.push lwfBitmapEx
+      @map_bitmapEx[lwfBitmapEx.to_a] = lwfBitmapExId
+    end
+    info "  bitmapEx #{lwfBitmapExId} " +
+      "textureFragmentId=#{textureFragmentId} " +
+      "attribute=#{attribute} #{u},#{v},#{w},#{h}"
+    return [LWF_GRAPHICOBJECT_BITMAPEX, lwfBitmapExId]
+  else
+    lwfBitmap = LWFBitmap.new(matrixId, textureFragmentId)
+    lwfBitmapId = @map_bitmap[lwfBitmap.to_a]
+    if lwfBitmapId.nil?
+      lwfBitmapId = @data_bitmap.size
+      @data_bitmap.push lwfBitmap
+      @map_bitmap[lwfBitmap.to_a] = lwfBitmapId
+    end
+    info "  bitmap #{lwfBitmapId} textureFragmentId=#{textureFragmentId}"
+    return [LWF_GRAPHICOBJECT_BITMAP, lwfBitmapId]
+  end
+end
+
 def swf2lwf(*args)
   args.each do |arg|
     unless File.file?(arg)
@@ -2947,6 +3167,7 @@ def swf2lwf(*args)
   @particle_name_map = Hash.new
   @program_object_name_map = Hash.new
   @movie_linkage_name_map = Hash.new
+  @movie_linkage_name_map["_empty"] = true
   @fontname_map = Hash.new
   @constantpool_map = Hash.new
   @textures = Array.new
@@ -3164,68 +3385,8 @@ def swf2lwf(*args)
         case gobj
         when Bitmap
           texture = gobj.texture
-          unless texture.nil?
-            textureFragmentId = @map_textureFragment[texture]
-            if textureFragmentId.nil?
-              textureFragmentId = @data_textureFragment.size
-              @map_textureFragment[texture] = textureFragmentId
-              @data_textureFragment.push LWFTextureFragment.new(texture)
-            end
-          end
-          textureFragmentId = -1 if textureFragmentId.nil?
-
-          if gobj.u != 0.0 or gobj.v != 0.0 or texture.nil? or
-              gobj.width != texture.width or gobj.height != texture.height
-            unless texture.nil? or texture.filename.nil?
-              warn "bitmap(#{texture.filename} " +
-                "#{texture.width}x#{texture.height}) is specified UVWH" +
-                  "(#{gobj.u},#{gobj.v})-(#{gobj.width},#{gobj.height})."
-            end
-            attribute = 0
-            if texture
-              case texture.filename
-              when /_REPEAT_S_/
-                attribute = 1
-              when /_REPEAT_T_/
-                attribute = 2
-              when /_REPEAT_ST_/, /_REPEAT_TS_/
-                attribute = 3
-              end
-              u = gobj.u.to_f / texture.width.to_f
-              v = gobj.v.to_f / texture.height.to_f
-              w = gobj.width.to_f / texture.width.to_f
-              h = gobj.height.to_f / texture.height.to_f
-            else
-              u = 0
-              v = 0
-              w = 0
-              h = 0
-            end
-            lwfBitmapEx = LWFBitmapEx.new(matrixId,
-              textureFragmentId, attribute, u, v, w, h)
-            lwfBitmapExId = @map_bitmapEx[lwfBitmapEx.to_a]
-            if lwfBitmapExId.nil?
-              lwfBitmapExId = @data_bitmapEx.size
-              @data_bitmapEx.push lwfBitmapEx
-              @map_bitmapEx[lwfBitmapEx.to_a] = lwfBitmapExId
-            end
-            type = LWF_GRAPHICOBJECT_BITMAPEX
-            gobjId = lwfBitmapExId
-            info "  bitmapEx #{gobjId} " +
-              "textureFragmentId=#{textureFragmentId} " +
-              "attribute=#{attribute} #{u},#{v},#{w},#{h}"
-          else
-            lwfBitmap = LWFBitmap.new(matrixId, textureFragmentId)
-            lwfBitmapId = @map_bitmap[lwfBitmap.to_a]
-            if lwfBitmapId.nil?
-              lwfBitmapId = @data_bitmap.size
-              @data_bitmap.push lwfBitmap
-              @map_bitmap[lwfBitmap.to_a] = lwfBitmapId
-            end
-            type = LWF_GRAPHICOBJECT_BITMAP
-            gobjId = lwfBitmapId
-            info "  bitmap #{gobjId} textureFragmentId=#{textureFragmentId}"
-          end
+          type, gobjId = add_bitmap(
+            texture, matrixId, gobj.u, gobj.v, gobj.width, gobj.height)
 
         when Text
           if gobj.stroke_color.nil?
@@ -3332,8 +3493,15 @@ def swf2lwf(*args)
               lwfObjectId = @map_objectId[place.object]
             end
             if lwfObjectId.nil?
-              lwfObjectId = -1
-              error "object error"
+              if place.object.class == Texture
+                type, gobjId =
+                  add_bitmap(place.object, add_matrix(Matrix.new))
+                lwfObjectId = add_object(
+                  place.object, GRAPHICOBJECT_CONVTABLE[type], gobjId)
+              else
+                lwfObjectId = -1
+                error "object error"
+              end
             end
 
             lwfPlace = LWFControlPLACE.new(place.depth - 1, lwfObjectId,
@@ -3495,11 +3663,18 @@ def swf2lwf(*args)
 
   @data_textureFragment.each do |lwfTextureFragment|
     texture = lwfTextureFragment.texture
+    filename = check_texturename(texture.filename)
+    if filename
+      coloredFragment = true
+    else
+      filename = texture.filename
+      coloredFragment = false
+    end
 
     tinfo = nil
     @textureatlasdicts.each do |textureatlasdict|
-      tinfo = textureatlasdict["frames"][File.basename(texture.filename)]
-      if tinfo
+      tinfo = textureatlasdict["frames"][File.basename(filename)]
+      if tinfo and !coloredFragment
         textureatlas = textureatlasdict["meta"]["texture"]
         textureatlasId = textureatlasdict["meta"]["textureId"]
         if textureatlasId.nil?
@@ -3524,17 +3699,28 @@ def swf2lwf(*args)
         break
       end
     end
-    next unless tinfo.nil?
+    next if tinfo and !coloredFragment
 
+    if tinfo
+      w = tinfo["frame"]["w"].to_i
+      h = tinfo["frame"]["h"].to_i
+      x = tinfo["spriteSourceSize"]["x"].to_i
+      y = tinfo["spriteSourceSize"]["y"].to_i
+    else
+      w = texture.width
+      h = texture.height
+      x = 0
+      y = 0
+    end
     textureId = @map_texture[texture]
     if textureId.nil?
       textureId = @data_texture.size
       @map_texture[texture] = textureId
       @data_texture.push LWFTexture.new(texture.name, @strings[texture.name],
-        texture.format, texture.width, texture.height, texture.scale)
+        texture.format, w, h, texture.scale)
     end
     lwfTextureFragment.set(@strings[texture.name],
-      textureId, false, 0, 0, 0, 0, texture.width, texture.height)
+      textureId, false, x, y, 0, 0, w, h)
   end
 
   @option |= OPTION_USE_SCRIPT unless @using_script_funcname_map.empty?
