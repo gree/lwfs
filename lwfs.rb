@@ -673,6 +673,13 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
     status = 'OK'
     favicon = 'favicon-blue.png'
   end
+  lwfstats = {:w => 0, :h => 0}
+  File.open("#{folder}/#{prefix}.lwfdata/#{prefix}.stats", 'r') do |fp|
+    if fp.read() =~ /^stage: (\d+)x(\d+)$/
+      lwfstats[:w] = $1.to_i
+      lwfstats[:h] = $2.to_i
+    end
+  end
   screensize = {:w => 0, :h => 0}
   if SCREEN_SIZE =~ /(\d+)x(\d+)/
     screensize[:w] = $1.to_i
@@ -772,6 +779,10 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
       window["testlwf_warn"] = #{warnings != ''};
       window["testlwf_lwf"] = "_/#{prefix}.lwf";
       window["testlwf_lwfjs"] = "#{lwfjs}";
+      window["testlwf_lwfstats"] = {
+          "w": #{lwfstats[:w]},
+          "h": #{lwfstats[:h]}
+      };
       window["testlwf_config"] = {
           "fr": #{FRAME_RATE},
           "fs": #{FRAME_STEP},

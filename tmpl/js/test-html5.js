@@ -3,6 +3,8 @@
     var ua = navigator.userAgent;
     var isIOS = /(iPhone|iPad)/.test(ua);
     var isAndroid = /Android/.test(ua);
+    var isChrome = /Chrome/.test(ua);
+    var isStageResizable = ! (isAndroid && ! isChrome && (window['testlwf_html5target'] == 'webgl'));
     var osVersion = 'unknown';
     if (isIOS) {
         var i = ua.indexOf('OS ');
@@ -47,6 +49,9 @@
     var stageEventReceiver = null;
     var stageWrapper = null;
     var progressBar = null;
+    var stage_scale = 1;
+    var stage_w = 0;
+    var stage_h = 0;
 
     window.performance = window.performance || {};
     window.performance.now
@@ -102,7 +107,6 @@
             stage = document.createElement('canvas');
         }
         stage.id = 'stage';
-        stage.width = stage.height = 0;
         return stage;
     };
 
@@ -159,22 +163,24 @@
             }
             var x0 = i0 * 2;
             var y0 = (1 - this.data[i0] / this.max) * (this.h - 1);
+            var x1 = 0;
+            var y1 = 0;
             this.ctx.fillStyle = "rgb(240,240,240)";
             this.ctx.fillRect(x0, 0, (i1 - i0) * 2, this.h);
             this.ctx.fillStyle = "rgb(0,0,0)";
             this.ctx.beginPath();
             this.ctx.moveTo(x0, y0);
             for (var i = i0 + 1; i <= i1; i++) {
-                var x1 = i * 2;
-                var y1 = (1 - this.data[i] / this.max) * (this.h - 1);
+                x1 = i * 2;
+                y1 = (1 - this.data[i] / this.max) * (this.h - 1);
                 this.ctx.lineTo(x1, y1);
             }
-            if (x1 + 2 < this.w) {
-                this.ctx.moveTo(x1 + 1, 0);
-                this.ctx.lineTo(x1 + 1, this.h - 1);
+            if (x1 < this.w) {
+                this.ctx.moveTo(x1 + 2, 0);
+                this.ctx.lineTo(x1 + 2, this.h - 1);
             }
             this.ctx.stroke();
-            if (this.i * 2 >= this.w) {
+            if (x1 >= this.w) {
                 this.i = 0;
             }
         };
@@ -224,9 +230,6 @@
         var updateInfo;
         var iw0 = 0;
         var ih0 = 0;
-        var stage_scale = 1;
-        var stage_w = 0;
-        var stage_h = 0;
         inPlay = true;
         fr0 = lwf.frameRate;
         lwf.rootMovie.moveTo(config.rootoffset.x, config.rootoffset.y);
@@ -261,11 +264,10 @@
                 if (window['testlwf_html5target'] == 'webkitcss') {
                     dpr = 1;
                 }
-                var iw;
+                var iw, ih;
                 if (isMobile) {
                     iw = window.innerWidth;
                     ih = iw * lwf.height / lwf.width;
-                    //ih = window.innerHeight;
                 } else if (ss.w && ss.h) {
                     iw = ss.w / 2;
                     ih = ss.h / 2;
@@ -278,44 +280,46 @@
                 if (iw0 != iw || ih0 != ih) {
                     iw0 = iw;
                     ih0 = ih;
-                    iw = Math.round(iw);
-                    ih = Math.round(ih);
-                    if (stageWrapper) {
-                        stageWrapper.style.width = iw + 'px';
-                        stageWrapper.style.height = ih + 'px';
-                    }
-                    var s = Math.min(iw / lwf.width, ih / lwf.height);
-                    stage_w = Math.round(lwf.width * s);
-                    stage_h = Math.round(lwf.height * s);
-                    var ox = Math.round((iw - stage_w) / 2);
-                    var oy = Math.round((ih - stage_h) / 2);
-                    stage.style.left = ox + 'px';
-                    stage.style.top = oy + 'px';
-                    stage.style.width = stage_w + 'px';
-                    stage.style.height = stage_h + 'px';
-                    stageEventReceiver.style.left = ox + 'px';
-                    stageEventReceiver.style.top = oy + 'px';
-                    stageEventReceiver.style.width = stage_w + 'px';
-                    stageEventReceiver.style.height = stage_h + 'px';
-                    if (isMobile) {
-                        if (isIOS) {
-                            window.scrollTo(0, 0);
-                        } else if (isAndroid) {
-                            window.scrollTo(0, 1);
+                    if (isStageResizable) {
+                        iw = Math.round(iw);
+                        ih = Math.round(ih);
+                        if (stageWrapper) {
+                            stageWrapper.style.width = iw + 'px';
+                            stageWrapper.style.height = ih + 'px';
                         }
+                        var s = Math.min(iw / lwf.width, ih / lwf.height);
+                        stage_w = Math.round(lwf.width * s);
+                        stage_h = Math.round(lwf.height * s);
+                        var ox = Math.round((iw - stage_w) / 2);
+                        var oy = Math.round((ih - stage_h) / 2);
+                        stage.style.left = ox + 'px';
+                        stage.style.top = oy + 'px';
+                        stage.style.width = stage_w + 'px';
+                        stage.style.height = stage_h + 'px';
+                        stageEventReceiver.style.left = ox + 'px';
+                        stageEventReceiver.style.top = oy + 'px';
+                        stageEventReceiver.style.width = stage_w + 'px';
+                        stageEventReceiver.style.height = stage_h + 'px';
+                        stage.width = Math.round(stage_w * dpr);
+                        stage.height = Math.round(stage_h * dpr);
+                        stage_scale = stage_w / stage.width;
                     }
-                    stage.width = Math.round(stage_w * dpr);
-                    stage.height = Math.round(stage_h * dpr);
-                    stage_scale = stage_w / stage.width;
                     lwf.property.clear();
                     if (stage_h / stage_w >= lwf.height / lwf.width) {
                         lwf.fitForWidth(stage.width, stage.height);
                     } else {
                         lwf.fitForHeight(stage.width, stage.height);
                     }
-                }
-                if (window['testlwf_html5target'] == 'webkitcss') {
-                    lwf.setTextScale(window.devicePixelRatio);
+                    if (window['testlwf_html5target'] == 'webkitcss') {
+                        lwf.setTextScale(window.devicePixelRatio);
+                    }
+                    if (isMobile && window['testlwf_html5target'] != 'native') {
+                        if (isIOS) {
+                            window.scrollTo(0, 0);
+                        } else if (isAndroid) {
+                            window.scrollTo(0, 1);
+                        }
+                    }
                 }
             }
             if (! isMobile) {
@@ -353,7 +357,7 @@
             if (! isMobile || mode == 'debug') {
                 fps.num01 = Math.round(1000.0 / dt);
                 if (dps.graph) {
-                    dps.num01 = lwf.rendererFactory.drawCalls
+                    dps.num01 = lwf.rendererFactory.drawCalls;
                     dps.numi += dps.num01;
                 }
                 if (++exec_count % 60 == 0) {
@@ -689,13 +693,24 @@
             mode = 'birdwatcher';
         }
         if (isMobile) {
+            var lwfstats = window['testlwf_lwfstats'];
+            var ds = (config.ds) ? config.ds : 1;
+            var dpr = window.devicePixelRatio;
+            if (window['testlwf_html5target'] == 'webkitcss') {
+                dpr = 1;
+            }
+            stage_w = Math.round(window.innerWidth * ds);
+            stage_h = Math.round(window.innerWidth * lwfstats.h / lwfstats.w * ds);
             stage = createStage();
             stage.style.position = 'absolute';
             stage.style.left = '0px';
             stage.style.top = '0px';
-            stage.style.right = '0px';
-            stage.style.bottom = '0px';
+            stage.style.width = stage_w + 'px';
+            stage.style.height = stage_h + 'px';
             stage.style.zIndex = 0;
+            stage.width = Math.round(stage_w * dpr);
+            stage.height = Math.round(stage_h * dpr);
+            stage_scale = stage_w / stage.width;
             document.body.appendChild(stage);
             progressBar = document.createElement('div');
             progressBar.className = 'info';
@@ -710,8 +725,8 @@
             stageEventReceiver.style.position = 'absolute';
             stageEventReceiver.style.left = '0px';
             stageEventReceiver.style.top = '0px';
-            stageEventReceiver.style.right = '0px';
-            stageEventReceiver.style.bottom = '0px';
+            stageEventReceiver.style.width = stage_w + 'px';
+            stageEventReceiver.style.height = stage_h + 'px';
             stageEventReceiver.style.zIndex = 10;
             document.body.appendChild(stageEventReceiver);
             if (mode == 'debug') {
