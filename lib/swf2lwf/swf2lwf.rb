@@ -33,6 +33,7 @@ require 'chunky_png'
 require 'json'
 require 'rkelly'
 require 'zip/zip'
+require 'actioncompiler'
 begin
   require 'rubygems'
   require 'libxml'
@@ -277,6 +278,29 @@ def escape(str)
   str = URI.encode(str)
   str = str.gsub(/(%[\da-fA-F][\da-fA-F])+/) {|m| '__' + m.gsub(/%/, '') + '__'}
   return str
+end
+
+def compile_as(script, funcname)
+  src = @lwfpath + ".as"
+  dst = @lwfpath + ".asbin"
+
+  as = script.gsub(/fscommand(\s*\(\s*")/, 'geturl1\1FSCommand:').gsub(/(?<t>tellTarget\s*\([^\(]+\)\s*)(?<p>\{(?:[^{}]|\g<p>)*\})/, '\k<t>\k<p>;') + "\n"
+
+  info funcname
+  info "==========================================================="
+  info script
+  info "-----------------------------------------------------------"
+  info as
+  info "-----------------------------------------------------------"
+
+  @swf = ActionCompiler::compile(as) + [].pack('x')
+  @swf.force_encoding("ASCII-8BIT") if RUBY_VERSION >= "1.9.0"
+  @pos = 0
+  info "  size: #{@swf.size}"
+
+  actions = parse_action
+  info actions.to_s
+  return actions
 end
 
 class LWFData
@@ -1133,7 +1157,8 @@ end
 
 class Movie < SWFObject
   attr_accessor :frames, :labels, :depth_max,
-    :display_list_prev, :display_list, :parent_movie, :linkage_name, :actions, :linkage_name_lambdas
+    :display_list_prev, :display_list, :parent_movie, :linkage_name, :actions,
+    :linkage_name_lambdas
   def initialize(movie)
     super()
     @frames = Array.new
@@ -1189,7 +1214,8 @@ end
 
 class Button < SWFObject
   attr_accessor :width, :height,
-    :matrix, :color_transform, :actions, :name, :type, :script_actions
+    :matrix, :color_transform, :actions, :name, :type, :script_actions,
+    :linkage_name_lambdas
   def initialize(width, height, matrix, color_transform)
     super()
     @width = width
@@ -1199,6 +1225,7 @@ class Button < SWFObject
     @actions = Array.new
     @script_actions = Hash.new
     @name = nil
+    @linkage_name_lambdas = []
   end
 
   def add_action(action)
@@ -1763,6 +1790,8 @@ def parse_action
       elsif url =~ /^FSCommand:skip$/i
         info "    SKIP"
         return actions
+      else
+        warn sprintf("SWF uses unknown fscommand url[#{url}] target[#{target}]")
       end
 
     else
@@ -2250,18 +2279,35 @@ def parse_place_object2
               when "rollOut"
                 condition = ROLLOUT
               end
-              button.add_script_action(
-                place, [condition, [[:CALL, funcname]], 0])
-              @using_script_funcname_map[funcname] =
-                @script_funcname_map[funcname]
+              as = @script_funcname_map[funcname][:ActionScript]
+              unless as.nil?
+                button.add_script_action(place, [condition, as, 0])
+                @script_funcname_map[funcname].delete(:ActionScript)
+              end
+              if @script_funcname_map[funcname].empty?
+                @script_funcname_map.delete(funcname)
+              else
+                button.add_script_action(
+                  place, [condition, [[:CALL, funcname]], 0])
+                @using_script_funcname_map[funcname] =
+                  @script_funcname_map[funcname]
+              end
             end
           end
         end
       }
-      if @current_movie.linkage_name.nil?
-        @current_movie.linkage_name_lambdas.push(l)
+      if @version >= 20
+        if button.name.nil?
+          button.linkage_name_lambdas.push(l)
+        else
+          l.call
+        end
       else
-        l.call
+        if @current_movie.linkage_name.nil?
+          @current_movie.linkage_name_lambdas.push(l)
+        else
+          l.call
+        end
       end
     end
     @objects[obj_id].reference
@@ -2362,6 +2408,12 @@ def parse_export
         @objects[obj_id].type = :PROGRAMOBJECT
       else
         @objects[obj_id].name = name
+        unless object.linkage_name_lambdas.nil?
+          object.linkage_name_lambdas.each do |l|
+            l.call
+          end
+          object.linkage_name_lambdas = nil
+        end
       end
     elsif object.is_a?(Movie)
       @movie_linkage_name_map[name] = true
@@ -2477,14 +2529,14 @@ def parse_tags
   end
 end
 
-def parse(filename)
+def load_swf(filename)
   @filename = filename
   f = File.open(@filename, 'rb')
-  @swf = f.read
+  swf = f.read
   f.close
-  @swf.force_encoding("ASCII-8BIT") if RUBY_VERSION >= "1.9.0"
+  swf.force_encoding("ASCII-8BIT") if RUBY_VERSION >= "1.9.0"
 
-  magic, @version, length = @swf.unpack('a3cV')
+  magic, @version, length = swf.unpack('a3cV')
   case @version
   when 7
   when 20
@@ -2499,15 +2551,19 @@ def parse(filename)
   when 'FWS'
   when 'CWS'
     begin
-      data = Zlib::Inflate.inflate(@swf[8, @swf.size - 8])
-      @swf = ['FWS', @version, data.length].pack('a3cV') + data
+      data = Zlib::Inflate.inflate(swf[8, swf.size - 8])
+      swf = ['FWS', @version, data.length].pack('a3cV') + data
     rescue
       error "Failed to extract."
     end
   else
     error "It is not SWF."
   end
+  @swf_data = swf
+end
 
+def parse_swf()
+  @swf = @swf_data
   @pos = 8
   @stage = get_stage
   @frame_rate = get_byte / 256.0 + get_byte
@@ -2633,11 +2689,13 @@ def add_actions(actions)
         stringId = @strings[action[1]]
         if stringId.nil?
           error("Label(#{action[1]}) not found")
+          stringId = -1
         end
         @actionBytes += to_u32(stringId)
         @actions += [stringId, 0, 0, 0]
       when :EVENT
         eventId = @map_event[action[1]]
+        info sprintf("      [%d]", eventId)
         @actionBytes += to_u32(eventId)
         @actions += [eventId, 0, 0, 0]
       when :CALL
@@ -2736,6 +2794,29 @@ def parse_xflxml(xml, isRootMovie = false)
       timeline = layer.parent.parent
       item = timeline.parent.parent
 
+      instance_linkage_name = nil
+      instance_name = nil
+      frame.each do |ee|
+        begin
+          if ee.name == "elements"
+            ee.each do |eee|
+              begin
+                if eee.name == "DOMSymbolInstance"
+                  instance_linkage_name =
+                    @library_name_map[eee.attributes["libraryItemName"]]
+                  instance_linkage_name =
+                    escape(instance_linkage_name).gsub(/(\/|%2F)/, '_')
+                  instance_name = eee.attributes["name"]
+                  instance_name = escape(instance_name)
+                end
+              rescue NoMethodError
+              end
+            end
+          end
+        rescue NoMethodError
+        end
+      end
+
       linkageName = timeline.attributes["name"]
       if item.name == "DOMSymbolItem"
         lid = item.attributes["linkageIdentifier"]
@@ -2762,6 +2843,14 @@ def parse_xflxml(xml, isRootMovie = false)
         if pos
           i += pos
         else
+          if @version >= 20
+            scripts[:ActionScript] ||= {}
+            scripts[:ActionScript]["frame"] ||= ""
+            s.sub!(/^[\s\001]*\001/, '')
+            s.sub!(/[\s\001]+$/, '')
+            s.gsub!(/\001/, "\n")
+            scripts[:ActionScript]["frame"] += s
+          end
           break
         end
         s = text[i, text.length - i]
@@ -2845,12 +2934,35 @@ def parse_xflxml(xml, isRootMovie = false)
         types.each do |type, script|
           if script =~ /\W/
             if type == "frame"
-              @script_map[name] ||= Hash.new
-              @script_map[name][index] ||= Hash.new
               funcname = "#{name}_#{index}_#{depth}"
-              @script_map[name][index][depth] = funcname
-              @script_funcname_map[funcname] ||= {}
-              @script_funcname_map[funcname][lang] = script
+              frame_action = true
+              if lang == :ActionScript
+                if instance_linkage_name
+                  script.gsub(/on\s*\(\s*(?<c>press|release|rollOver|rollOut)\s*\)\s*(?<p>\{(?:[^{}]|\g<p>)*\})/) do |m|
+                    event = $~[:c]
+                    btnscript = $~[:p]
+                    btnscript = btnscript.slice(1, btnscript.length - 2)
+                    script_name = "#{name}_#{index}_" +
+                      "#{instance_linkage_name}_#{instance_name}"
+                    funcname = "#{script_name}_#{event}"
+                    btnscript = compile_as(btnscript, funcname)
+                    @instance_script_map[script_name] ||= Hash.new
+                    @instance_script_map[script_name][event] ||= Hash.new
+                    @instance_script_map[script_name][event] = funcname
+                    @script_funcname_map[funcname] ||= {}
+                    @script_funcname_map[funcname][lang] = btnscript
+                    frame_action = false
+                  end
+                end
+                script = compile_as(script, funcname) if frame_action
+              end
+              if frame_action
+                @script_map[name] ||= Hash.new
+                @script_map[name][index] ||= Hash.new
+                @script_map[name][index][depth] = funcname
+                @script_funcname_map[funcname] ||= {}
+                @script_funcname_map[funcname][lang] = script
+              end
             else
               funcname = "#{name}_#{type}"
               @using_script_funcname_map[funcname] ||= {}
@@ -2867,12 +2979,15 @@ def parse_xflxml(xml, isRootMovie = false)
       layers = layer.parent
       item = layer.parent.parent.parent.parent
 
-      instance_linkage_name = symbol_instance.attributes["libraryItemName"]
-      instance_linkage_name = escape(instance_linkage_name).gsub(/(\/|%2F)/, '_')
+      instance_linkage_name =
+        @library_name_map[symbol_instance.attributes["libraryItemName"]]
+      instance_linkage_name =
+        escape(instance_linkage_name).gsub(/(\/|%2F)/, '_')
       instance_name = symbol_instance.attributes["name"]
       instance_name = escape(instance_name)
       if instance_name.nil? or instance_name.empty?
-        em = symbol_instance.send(elementsMsg).find(){|elm| elm.name == "matrix"}
+        em =
+          symbol_instance.send(elementsMsg).find(){|elm| elm.name == "matrix"}
         if em.nil?
           instance_name = create_instance_name(0, 0)
         else
@@ -2944,11 +3059,6 @@ def parse_xflxml(xml, isRootMovie = false)
           skip += $1.length
           if script_index.nil?
             case s
-            when /^(\/\*\s*)(as)(\s*\001|\s+)/i
-              lang = :ActionScript
-              script_index = i + $1.length + $2.length + $3.length
-              skip += $2.length + $3.length
-              script_nest = nest
             when /^(\/\*\s*)(js)(\s*\001|\s+)/i
               lang = :JavaScript
               script_index = i + $1.length + $2.length + $3.length
@@ -2981,6 +3091,18 @@ def parse_xflxml(xml, isRootMovie = false)
   end
 end
 
+def decode_linkageName(body)
+  line = body.split(/\n/)[0]
+  line.force_encoding("UTF-8") if RUBY_VERSION >= "1.9.0"
+  if line =~ /DOMSymbolItem/
+    line =~ /\s+name="([^"]+)"/
+    name = $1
+    line =~ /\s+linkageIdentifier="([^"]+)"/
+    linkageIdentifier = $1
+    @library_name_map[name] = linkageIdentifier if name and linkageIdentifier
+  end
+end
+
 def parse_fla(lwfbasedir)
   if File.file?(@fla)
     root_xmls = []
@@ -2994,7 +3116,9 @@ def parse_fla(lwfbasedir)
           end
         elsif entry.name =~ /^LIBRARY\/.*\.xml$/
           entry.get_input_stream do |io|
-            other_xmls.push(io.read)
+            body = io.read
+            decode_linkageName(body)
+            other_xmls.push(body)
           end
         end
       end
@@ -3015,11 +3139,17 @@ def parse_fla(lwfbasedir)
       return
     end
 
-    parse_xflxml(File.read(xml), true)
-
+    other_xmls = []
     Find.find(xfldir + "/LIBRARY") do |f|
       next unless f =~ /\.xml$/
-      parse_xflxml(File.read(f))
+      body = File.read(f)
+      decode_linkageName(body)
+      other_xmls.push(body)
+    end
+
+    parse_xflxml(File.read(xml), true)
+    other_xmls.each do |xml|
+      parse_xflxml(xml)
     end
   end
 end
@@ -3157,7 +3287,6 @@ def swf2lwf(*args)
   @logfile = File.open(@lwfpath + '.txt', 'wb')
   @logfile.sync = true
   @logfile.puts Time.now.ctime
-  parse_fla(lwfbasedir) unless @fla.nil?
   @option = 0
   @objects = Hash.new
   @button_map = Hash.new
@@ -3175,8 +3304,11 @@ def swf2lwf(*args)
   @text_name_map = Hash.new
   @string_map = Hash.new
   @background_color = 0
+  @library_name_map = Hash.new
 
-  parse(swffile)
+  load_swf(swffile)
+  parse_fla(lwfbasedir) unless @fla.nil?
+  parse_swf()
 
   LWFObjects.each do |s|
     eval <<-EOF
@@ -3577,12 +3709,24 @@ def swf2lwf(*args)
           if scripts
             scripts.sort{|a,b| a[0] <=> b[0]}.each do |o|
               funcname = o[1]
-              @using_script_funcname_map[funcname] =
-                @script_funcname_map[funcname]
-              control = ControlACTION.new([[:CALL, funcname]])
-              lwfControlActionSrcs.push control
-              lwfControlActions.push LWFControl.new(
-                  LWF_CONTROL_ACTION, add_actions(control.actions))
+              as = @script_funcname_map[funcname][:ActionScript]
+              unless as.nil?
+                control = ControlACTION.new(as)
+                lwfControlActionSrcs.push control
+                lwfControlActions.push LWFControl.new(
+                    LWF_CONTROL_ACTION, add_actions(control.actions))
+                @script_funcname_map[funcname].delete(:ActionScript)
+              end
+              if @script_funcname_map[funcname].empty?
+                @script_funcname_map.delete(funcname)
+              else
+                @using_script_funcname_map[funcname] =
+                  @script_funcname_map[funcname]
+                control = ControlACTION.new([[:CALL, funcname]])
+                lwfControlActionSrcs.push control
+                lwfControlActions.push LWFControl.new(
+                    LWF_CONTROL_ACTION, add_actions(control.actions))
+              end
             end
           end
         end
@@ -3952,6 +4096,7 @@ local _root
           js.write <<-EOL
 	};
         EOL
+
         when :Lua
           lua.write <<-EOL
 
