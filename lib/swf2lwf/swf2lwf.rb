@@ -19,7 +19,8 @@
 #    misrepresented as being the original software.
 # 3. This notice may not be removed or altered from any source distribution.
 #
-$:.unshift File.dirname(__FILE__) + '/lib'
+libdir = File.dirname(__FILE__) + '/lib'
+$:.unshift libdir
 require 'yaml'
 require 'zlib'
 require 'kconv'
@@ -33,7 +34,20 @@ require 'chunky_png'
 require 'json'
 require 'rkelly'
 require 'zip/zip'
-require 'actioncompiler'
+ACTIONCOMPILER_VERSION = "1.0.0"
+begin
+  require 'actioncompiler'
+rescue LoadError
+  RUBY_VERSION =~ /^(\d+\.\d+)\./
+  version = $1
+  platform = RUBY_PLATFORM
+  platform = $1 if platform =~ /(.*darwin).*/
+  platformdir = libdir + '/' + version + '/' + platform + '/'
+  begin
+    require platformdir + 'actioncompiler'
+  rescue LoadError
+  end
+end
 begin
   require 'rubygems'
   require 'libxml'
@@ -293,7 +307,25 @@ def compile_as(script, funcname)
   info as
   info "-----------------------------------------------------------"
 
-  @swf = ActionCompiler::compile(as) + [].pack('x')
+  begin
+    raise if ActionCompiler::version() != ACTIONCOMPILER_VERSION
+    @swf = ActionCompiler::compile(as)
+  rescue
+    unless @actioncompiler_error
+      @actioncompiler_error = true
+      error(<<EOL)
+can't load actioncompiler module.
+Please install actioncompiler gem like the following.
+--
+cd lwf/tools/libming
+gem build actioncompiler.gemspec
+gem install actioncompiler-#{ACTIONCOMPILER_VERSION}.gem
+
+EOL
+    end
+    @swf = ""
+  end
+  @swf += [].pack('x')
   @swf.force_encoding("ASCII-8BIT") if RUBY_VERSION >= "1.9.0"
   @pos = 0
   info "  size: #{@swf.size}"
