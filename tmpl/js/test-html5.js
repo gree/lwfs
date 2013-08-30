@@ -4,7 +4,7 @@
     var isIOS = /(iPhone|iPad)/.test(ua);
     var isAndroid = /Android/.test(ua);
     var isChrome = /Chrome/.test(ua);
-    var isStageResizable = ! (isAndroid && ! isChrome && (window['testlwf_html5target'] == 'webgl'));
+    var isBuggyWebGL = (isAndroid && ! isChrome && (window['testlwf_html5target'] == 'webgl'));
     var osVersion = 'unknown';
     if (isIOS) {
         var i = ua.indexOf('OS ');
@@ -110,7 +110,7 @@
         return stage;
     };
 
-    Graph = (function() {
+    var Graph = (function() {
         var MARGIN_SCALE = 1.2;
         function Graph(w, h, m) {
             this.w = w;
@@ -280,7 +280,7 @@
                 if (iw0 != iw || ih0 != ih) {
                     iw0 = iw;
                     ih0 = ih;
-                    if (isStageResizable) {
+                    if (! isBuggyWebGL) {
                         iw = Math.round(iw);
                         ih = Math.round(ih);
                         if (stageWrapper) {
@@ -470,13 +470,6 @@
             elm.textContent = info;
         };
         stage.lwf = lwf;
-        fr = (config.fr) ? config.fr : 0;
-        fs = (config.fs) ? config.fs : 1;
-        ds = (config.ds) ? config.ds : 1;
-        if (config.ss.w && config.ss.h) {
-            ss.w = config.ss.w;
-            ss.h = config.ss.h;
-        }
         {
             var bgColor = lwf.backgroundColor;
             var a = (bgColor >> 24) & 0xff;
@@ -669,22 +662,29 @@
             'ss': window['testlwf_config']['ss'],
             'rootoffset': window['testlwf_config']['rootoffset']
         };
-        if (/fr=([0-9]+)/.test(window.location.search)) {
+        if (/[?&]fr=([0-9]+)/.test(window.location.search)) {
             config.fr = parseInt(RegExp.$1, 10);
             isConfigurable = false;
         }
-        if (/fs=([0-9]+)/.test(window.location.search)) {
+        if (/[?&]fs=([0-9]+)/.test(window.location.search)) {
             config.fs = parseInt(RegExp.$1, 10);
             isConfigurable = false;
         }
-        if (/ds=([0-9.]+)/.test(window.location.search)) {
+        if (/[?&]ds=([0-9.]+)/.test(window.location.search)) {
             config.ds = parseFloat(RegExp.$1);
             isConfigurable = false;
         }
-        if (/ss=([0-9.]+)x([0-9.]+)/.test(window.location.search)) {
+        if (/[?&]ss=([0-9.]+)x([0-9.]+)/.test(window.location.search)) {
             config.ss.w = parseInt(RegExp.$1);
             config.ss.h = parseInt(RegExp.$2);
             isConfigurable = false;
+        }
+        fr = (config.fr) ? config.fr : 0;
+        fs = (config.fs) ? config.fs : 1;
+        ds = (config.ds) ? config.ds : 1;
+        if (config.ss.w && config.ss.h) {
+            ss.w = config.ss.w;
+            ss.h = config.ss.h;
         }
         mode = 'release';
         if (/-debug\.html$/.test(window.location.pathname)) {
@@ -694,7 +694,6 @@
         }
         if (isMobile) {
             var lwfstats = window['testlwf_lwfstats'];
-            var ds = (config.ds) ? config.ds : 1;
             var dpr = window.devicePixelRatio;
             if (window['testlwf_html5target'] == 'webkitcss') {
                 dpr = 1;
@@ -712,6 +711,22 @@
             stage.height = Math.round(stage_h * dpr);
             stage_scale = stage_w / stage.width;
             document.body.appendChild(stage);
+            if (isBuggyWebGL) {
+                // ugly patch for buggy webgl
+                var viewport = WebGLRenderingContext.prototype.viewport;
+                WebGLRenderingContext.prototype.viewport = function(x, y, w, h) {
+                    var t = screen.height;
+                    t--;
+                    t |= t >> 1;
+                    t |= t >> 2;
+                    t |= t >> 4;
+                    t |= t >> 8;
+                    t |= t >> 16;
+                    t++;
+                    h *= h / t;
+                    viewport.call(this, x, y, w, h);
+                };
+            }
             progressBar = document.createElement('div');
             progressBar.className = 'info';
             progressBar.style.position = 'absolute';
@@ -790,7 +805,7 @@
             {
                 var div = document.createElement('div');
                 div.className = 'info';
-                div.innerHTML = "<a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '" + window['testlwf_name'] + "'}); return false;\">force to update</a>";
+                div.innerHTML = "<a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '" + window['testlwf_name'] + "', 'force': true}); return false;\">force to update</a>";
                 lpart.appendChild(div);
             }
             {
@@ -951,7 +966,7 @@
             }
             stageEventReceiver = stage = createStage();
             stage.style.position = 'relative';
-            stageWrapper = document.createElement('div')
+            stageWrapper = document.createElement('div');
             stageWrapper.id = 'stageWrapper';
             stageWrapper.style.visibility = 'hidden';
             stageWrapper.appendChild(stage);
