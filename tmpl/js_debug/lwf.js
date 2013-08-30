@@ -1577,7 +1577,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     LWFLoader.prototype.load = function(d) {
-      var a, animationBytes, animations, bitmapMap, c, c2, c3, code, data, eventMap, filename, header, i, instanceNameMap, l, labelMap, m, map, movieLinkageMap, movieLinkageNameMap, o, programObjectMap, s, str, stringBytes, stringDatas, stringMap, t, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _n, _o, _p, _q, _r, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _s;
+      var a, animationBytes, animations, bitmapMap, c, c2, c3, c4, code, data, eventMap, filename, header, i, instanceNameMap, l, labelMap, m, map, movieLinkageMap, movieLinkageNameMap, o, programObjectMap, s, str, stringBytes, stringDatas, stringMap, t, _i, _j, _k, _l, _len, _len1, _len2, _len3, _len4, _m, _n, _o, _p, _q, _r, _ref, _ref1, _ref2, _ref3, _ref4, _ref5, _ref6, _ref7, _ref8, _s;
       this.d = d;
       this.index = 0;
       header = this.loadHeader();
@@ -1874,20 +1874,27 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         str = "";
         i = 0;
         while (i < s.length) {
-          c = s.charCodeAt(i);
+          c = s.charCodeAt(i) & 255;
           if (c < 128) {
             str += String.fromCharCode(c);
             ++i;
-          } else if (c > 191 && c < 224) {
+          } else if ((c >> 5) === 6) {
             c2 = s.charCodeAt(i + 1);
             str += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
             i += 2;
-          } else {
+          } else if ((c >> 4) === 14) {
             c2 = s.charCodeAt(i + 1);
             c3 = s.charCodeAt(i + 2);
             code = ((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63);
             str += String.fromCharCode(code);
             i += 3;
+          } else {
+            c2 = s.charCodeAt(i + 1);
+            c3 = s.charCodeAt(i + 2);
+            c4 = s.charCodeAt(i + 3);
+            code = ((c & 7) << 18) | ((c2 & 63) << 12) | ((c3 & 63) << 6) | (c4 << 63);
+            str += String.fromCharCode(code);
+            i += 4;
           }
         }
         stringMap[str] = data.strings.length;
@@ -2876,6 +2883,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Button.prototype.linkButton = function() {
+      if (this.lwf.focus === this) {
+        this.lwf.focusOnLink = true;
+      }
       this.buttonLink = this.lwf.buttonHead;
       this.lwf.buttonHead = this;
     };
@@ -3204,6 +3214,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this._rotation = 0;
       this._alpha = 1;
       this.depth = -1;
+      this.visible = true;
       this.dirtyMatrix = true;
       this.dirtyMatrixSR = false;
       this.dirtyColorTransform = true;
@@ -3214,7 +3225,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     }
 
     BitmapClip.prototype.updateMatrix = function(m) {
-      var c, dst, radian, s;
+      var c, dst, radian, s, x, y;
       if (this.dirtyMatrixSR) {
         radian = this._rotation * Math.PI / 180;
         if (radian === 0) {
@@ -3230,13 +3241,15 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         this.mScaleY = this._scaleY * c;
         this.dirtyMatrixSR = false;
       }
+      x = this._x - this._regX;
+      y = this._y - this._regY;
       dst = this.matrix;
       dst.scaleX = m.scaleX * this.mScaleX + m.skew0 * this.mSkew1;
       dst.skew0 = m.scaleX * this.mSkew0 + m.skew0 * this.mScaleY;
-      dst.translateX = m.scaleX * this._x + m.skew0 * this._y + m.translateX + m.scaleX * this._regX + m.skew0 * this._regY + dst.scaleX * -this._regX + dst.skew0 * -this._regY;
+      dst.translateX = m.scaleX * x + m.skew0 * y + m.translateX + m.scaleX * this._regX + m.skew0 * this._regY + dst.scaleX * -this._regX + dst.skew0 * -this._regY;
       dst.skew1 = m.skew1 * this.mScaleX + m.scaleY * this.mSkew1;
       dst.scaleY = m.skew1 * this.mSkew0 + m.scaleY * this.mScaleY;
-      dst.translateY = m.skew1 * this._x + m.scaleY * this._y + m.translateY + m.skew1 * this._regX + m.scaleY * this._regY + dst.skew1 * -this._regX + dst.scaleY * -this._regY;
+      dst.translateY = m.skew1 * x + m.scaleY * y + m.translateY + m.skew1 * this._regX + m.scaleY * this._regY + dst.skew1 * -this._regX + dst.scaleY * -this._regY;
       this.dirtyMatrix = false;
     };
 
@@ -3873,7 +3886,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       this.bitmapClips[depth] = bitmap;
       bitmap.depth = depth;
+      bitmap.name = linkageName;
       return bitmap;
+    };
+
+    Movie.prototype.getAttachedBitmaps = function() {
+      return this.bitmapClips;
     };
 
     Movie.prototype.getAttachedBitmap = function(depth) {
@@ -4615,7 +4633,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         for (_j = 0, _len = _ref2.length; _j < _len; _j++) {
           bitmapClip = _ref2[_j];
           if (bitmapClip != null) {
-            bitmapClip.render(v, rOffset);
+            bitmapClip.render(v && bitmapClip.visible, rOffset);
           }
         }
       }
@@ -5760,7 +5778,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
         this.buttonHead = null;
         if (this.interactive && this.rootMovie.hasButton) {
+          this.focusOnLink = false;
           this.rootMovie.linkButton();
+          if (this.focus !== null && !this.focusOnLink) {
+            this.focus.rollOut();
+            this.focus = null;
+          }
         }
       }
       needUpdate = this.isLWFAttached;
@@ -7035,6 +7058,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   Movie.prototype["getAttachedLWF"] = Movie.prototype.getAttachedLWF;
 
   Movie.prototype["getAttachedMovie"] = Movie.prototype.getAttachedMovie;
+
+  Movie.prototype["getAttachedBitmaps"] = Movie.prototype.getAttachedBitmaps;
 
   Movie.prototype["getBounds"] = Movie.prototype.getBounds;
 
@@ -8464,7 +8489,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.onloaddata = function(settings, data, url) {
-      var lwfUrl;
+      var lwfUrl, needsToLoadScript, _ref2, _ref3;
       if (!((data != null) && data.check())) {
         settings.error.push({
           url: url,
@@ -8475,17 +8500,18 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       settings["name"] = data.name();
       this.checkTextures(settings, data);
+      needsToLoadScript = data.useScript && (((_ref2 = global["LWF"]) != null ? (_ref3 = _ref2["Script"]) != null ? _ref3[data.name()] : void 0 : void 0) == null);
       lwfUrl = settings["lwf"];
       this.cache[lwfUrl].data = data;
       settings.total = settings._textures.length + 1;
-      if (data.useScript) {
+      if (needsToLoadScript) {
         settings.total++;
       }
       settings.loadedCount = 1;
       if (settings["onprogress"] != null) {
         settings["onprogress"].call(settings, settings.loadedCount, settings.total);
       }
-      if (data.useScript) {
+      if (needsToLoadScript) {
         this.loadJS(settings, data);
       } else {
         this.loadImages(settings, data);
@@ -8576,7 +8602,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.loadLWFData = function(settings, url) {
-      var head, lwfUrl, m, name, onload, script, useArrayBuffer, useWorker, useWorkerWithArrayBuffer, xhr, _base,
+      var data, head, lwfUrl, m, name, onload, script, str, useArrayBuffer, useWorker, useWorkerWithArrayBuffer, xhr, _base, _ref2, _ref3,
         _this = this;
       onload = settings["onload"];
       useWorker = false;
@@ -8590,6 +8616,15 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       m = url.match(/([^\/]+)\.lwf\.js/i);
       if (m != null) {
         name = m[1].toLowerCase();
+        str = (_ref2 = global["LWF"]) != null ? (_ref3 = _ref2["DataScript"]) != null ? _ref3[name] : void 0 : void 0;
+        if (str != null) {
+          data = {
+            type: "base64",
+            data: str
+          };
+          this.dispatchOnloaddata(settings, url, useWorker, useArrayBuffer, useWorkerWithArrayBuffer, data);
+          return;
+        }
         head = document.getElementsByTagName('head')[0];
         script = document.createElement("script");
         script.type = "text/javascript";
@@ -8613,8 +8648,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           return onload.call(settings, null);
         };
         script.onload = function() {
-          var data, str, _ref2, _ref3;
-          str = (_ref2 = global["LWF"]) != null ? (_ref3 = _ref2["DataScript"]) != null ? _ref3[name] : void 0 : void 0;
+          var _ref4, _ref5;
+          str = (_ref4 = global["LWF"]) != null ? (_ref5 = _ref4["DataScript"]) != null ? _ref5[name] : void 0 : void 0;
           head.removeChild(script);
           script = script.onload = script.onabort = script.onerror = null;
           if (str != null) {
@@ -8666,7 +8701,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         return onload.call(settings, null);
       };
       xhr.onreadystatechange = function() {
-        var data;
         if (xhr.readyState !== 4) {
           return;
         }
@@ -10142,7 +10176,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
   WebGLBitmapContext = (function() {
     function WebGLBitmapContext(factory, data, bitmapEx) {
-      var bh, bu, bv, bw, d, dh, dw, filename, fragment, gl, h, image, scale, texdata, th, tw, u, u0, u1, v, v0, v1, w, x, x0, x1, y, y0, y1;
+      var bh, bu, bv, bw, d, filename, fragment, gl, h, image, scale, texdata, th, tw, u, u0, u1, v, v0, v1, w, x, x0, x1, y, y0, y1;
       this.factory = factory;
       this.data = data;
       fragment = data.textureFragments[bitmapEx.textureFragmentId];
@@ -10199,13 +10233,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           y: y0
         }
       ];
-      dw = 2.0 * tw;
-      dh = 2.0 * th;
       if (fragment.rotated === 0) {
-        u0 = (2 * u + 1) / dw;
-        v0 = (2 * v + 1) / dh;
-        u1 = u0 + (w * 2 - 2) / dw;
-        v1 = v0 + (h * 2 - 1) / dh;
+        u0 = u / tw;
+        v0 = v / th;
+        u1 = (u + w) / tw;
+        v1 = (v + h) / th;
         this.uv = [
           {
             u: u1,
@@ -10222,10 +10254,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           }
         ];
       } else {
-        u0 = (2 * u + 1) / dw;
-        v0 = (2 * v + 1) / dh;
-        u1 = u0 + (h * 2 - 2) / dw;
-        v1 = v0 + (w * 2 - 1) / dh;
+        u0 = u / tw;
+        v0 = v / th;
+        u1 = (u + h) / tw;
+        v1 = (v + w) / th;
         this.uv = [
           {
             u: u0,
