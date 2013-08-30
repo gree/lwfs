@@ -190,9 +190,19 @@ configure do
   # ~/Desktop/LWFS_work
   FileUtils.mkdir_p(SRC_DIR) unless File.directory?(SRC_DIR)
   # htdocs/lwfs
-  FileUtils.mv('htdocs/lwfs', '.htdocs_lwfs.' + Time.now.to_f.to_s) if File.directory?('htdocs/lwfs')
-  FileUtils.mkdir_p(BASE_DIR)
-  FileUtils.cp_r(glob('tmpl/*'), BASE_DIR)
+  if File.exists?("#{BASE_DIR}/.serial") and FileUtils.cmp('lib/SERIAL', "#{BASE_DIR}/.serial")
+    glob("#{BASE_DIR}/*").each do |f|
+      if f != "#{BASE_DIR}/list"
+        FileUtils.rm_rf(f)
+      end
+    end
+    FileUtils.cp_r(glob('tmpl/*'), BASE_DIR)
+  else
+    FileUtils.mv('htdocs/lwfs', '.htdocs_lwfs.' + Time.now.to_f.to_s) if File.directory?('htdocs/lwfs')
+    FileUtils.mkdir_p(BASE_DIR)
+    FileUtils.cp_r(glob('tmpl/*'), BASE_DIR)
+    FileUtils.cp('lib/SERIAL', "#{BASE_DIR}/.serial")
+  end
   # ~/Desktop/LWFS_work_output
   if OUT_DIR != ''
     FileUtils.mkdir_p(OUT_DIR) unless File.directory?(OUT_DIR)
@@ -271,8 +281,9 @@ end
 
 post '/update/*' do |target|
   $mutex_i.synchronize do
+    new_changes = []
     if params[:arg]
-      $changes += params[:arg].split("\n")
+      new_changes = params[:arg].split("\n")
     else
       glob("#{SRC_DIR}/**/*").each do |entry|
         prefix = "#{SRC_DIR}/"
@@ -283,9 +294,16 @@ post '/update/*' do |target|
           prefix = $1
         end
         entry = entry.slice(prefix.length, entry.length - prefix.length)
-        $changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ IGNORED_PATTERN
+        new_changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ IGNORED_PATTERN
       end
     end
+    if params[:force]
+      new_changes.each do |name|
+        dst = "#{DST_DIR}/#{name}/.status"
+        FileUtils.rm_f(dst);
+      end
+    end
+    $changes += new_changes
     $changes.sort!
     $changes.uniq!
     if not ALLOWED_PREFIX_PATTERN.nil?
@@ -333,7 +351,7 @@ post '/update/*' do |target|
         t1 = Time.now
         checkInterruption(__LINE__, 1.0)
         t2 = Time.now
-        changes = {:vanishes => [], :updates => []}
+        changes = {:vanishes => [], :updates => [], :unchanges => []}
         begin
           changes = sync()
         rescue => e
@@ -453,21 +471,27 @@ def sync()
   end
   t2 = Time.now
   # added/updated folders
-  updates = $changes.dup
-  updates.each do |name|
+  changes = $changes.dup
+  changes.each do |name|
     $mutex_p.synchronize do
       updateLoadingStatus("#{DST_DIR}/#{name}/", true);
     end
   end
   rsync() unless REMOTE_SERVER.nil?
-  updates.each do |name|
+  updates = []
+  unchanges = []
+  changes.each do |name|
     checkInterruption(__LINE__, 0.001)
     src = "#{SRC_DIR}/#{name}"
     dst = "#{DST_DIR}/#{name}"
     next unless File.exists?(src)
     next if File.file?(src) and not (src =~ /\.swf$/)
-    begin
+    if File.exists?("#{dst}/.status") and not diff(src, dst)
+      $log.info("unchanged " + name)
+      unchanges.push(name)
+    else
       $log.info("updated " + name)
+      updates.push(name)
       dst = "#{DST_DIR}/.tmp.#{name}"
       if File.file?(src)
         if /\.swf$/ =~ src
@@ -489,7 +513,7 @@ def sync()
   end
   t3 = Time.now
   $log.info("sync finished #{t3 - t0} #{t3 - t2} #{t2 - t1} #{t1 - t0}")
-  {:vanishes => vanishes, :updates => updates}
+  {:vanishes => vanishes, :updates => updates, :unchanges => unchanges}
 end
 
 def diff(src, dst)
@@ -551,6 +575,20 @@ end
 def convert(changes)
   # convert added or updated folders
   update_time = Time.now.to_f
+  changes[:unchanges].each do |name|
+    folder = "#{DST_DIR}/#{name}"
+    next unless File.exists?(folder)  # vanished folders
+    $log.info("converting (unchanged) #{name}...")
+    if File.file?("#{folder}/index.html")
+      outputRaw(update_time, folder)
+    elsif File.file?("#{folder}/main.js") and File.file?("#{folder}/myApp.js") and File.file?("#{folder}/resource.js")
+      outputCocos2d(update_time, folder, name)
+    elsif File.readlines("#{folder}/.status")[0] =~ /OK/
+      outputOK(update_time, folder, name, '', '')
+    else
+      outputNG(update_time, folder, name, '', '', '')
+    end
+  end
   changes[:updates].each do |name|
     folder = "#{DST_DIR}/.tmp.#{name}"
     next unless File.exists?(folder)  # vanished folders
@@ -561,7 +599,7 @@ def convert(changes)
       swfs = glob("#{folder}/*.swf")
       prefix = ''
       if swfs.count == 0
-        outputNG(update_time, folder, name, prefix, '', 'found no swf.', '')
+        outputNG(update_time, folder, name, prefix, '', 'found no swf.')
       else
         swf = swfs[0]
         swfs.each do |path|
@@ -579,10 +617,10 @@ def convert(changes)
         end
         commandline = "swf2lwf#{(ret['args'].length > 0) ? ' ' : ''}#{ret['args'].join(' ')}"
         if not ret['is_error']
-          outputOK(update_time, folder, name, prefix, commandline, getWarnings(folder, name, prefix))
+          outputOK(update_time, folder, name, prefix, commandline)
         else
           # ret['message'] contains warnings.
-          outputNG(update_time, folder, name, prefix, commandline, ret['message'], '')
+          outputNG(update_time, folder, name, prefix, commandline, ret['message'])
         end
       end
     end
@@ -590,21 +628,13 @@ def convert(changes)
   end
 end
 
-def getWarnings(folder, name, prefix)
-  warnings = ''
-  if File.file?("#{folder}/#{prefix}.lwfdata/#{prefix}.txt")
-    count = 0
-    File.foreach("#{folder}/#{prefix}.lwfdata/#{prefix}.txt") do |line|
-      if count > 0
-        warnings += line
-      end
-      count += 1
-    end
-  end
-  warnings
-end
-
 def outputRaw(update_time, folder)
+  if File.exists?("#{folder}/.status")
+    lines = File.readlines("#{folder}/.status")
+    update_time = lines[1].chomp
+    #folder = lines[2].chomp
+    FileUtils.rm_f(glob("#{folder}/index-*.html"))
+  end
   ['webkitcss', 'canvas'].each do |target|
     next unless TARGETS.include?(target)
     content = <<-"EOF"
@@ -616,21 +646,38 @@ def outputRaw(update_time, folder)
   </body>
 </html>
     EOF
-#    $mutex_p.synchronize do
-      File.open("#{folder}/index-#{target}.html", 'w') do |fp|
-        fp.write(content)
-      end
-#    end
-  end
-#  $mutex_p.synchronize do
-    File.open("#{folder}/.status", 'w') do |fp|
-      fp.write('as-is')
+    File.open("#{folder}/index-#{target}.html", 'w') do |fp|
+      fp.write(content)
     end
-    updateLoadingStatus("#{folder}/", false, update_time);
-#  end
+  end
+  File.open("#{folder}/.status", 'w') do |fp|
+    fp.puts('as-is')
+    fp.puts(update_time)
+    fp.puts(folder)
+  end
+  updateLoadingStatus("#{folder}/", false, update_time);
 end
 
-def outputOK(update_time, folder, name, prefix, commandline, warnings)
+def outputOK(update_time, folder, name, prefix, commandline)
+  if File.exists?("#{folder}/.status")
+    lines = File.readlines("#{folder}/.status")
+    update_time = lines[1].chomp
+    #folder = lines[2].chomp
+    name = lines[3].chomp
+    prefix = lines[4].chomp
+    commandline = lines[5].chomp
+    FileUtils.rm_f(glob("#{folder}/index-*.html"))
+  end
+  warnings = ''
+  if File.file?("#{folder}/#{prefix}.lwfdata/#{prefix}.txt")
+    count = 0
+    File.foreach("#{folder}/#{prefix}.lwfdata/#{prefix}.txt") do |line|
+      if count > 0
+        warnings += line
+      end
+      count += 1
+    end
+  end
   relative = '../' * (name.split('/').count + 1)
   root_override = relative
   $lwfsconf['ROOT_OVERRIDES'].each do |e|
@@ -660,11 +707,9 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
   </body>
 </html>
     EOF
-#    $mutex_p.synchronize do
-      File.open("#{folder}/index-warn.html", 'w') do |fp|
-        fp.write(content)
-      end
-#    end
+    File.open("#{folder}/index-warn.html", 'w') do |fp|
+      fp.write(content)
+    end
   end
   if commandline =~ / -p / or warnings != ''
     status = (commandline =~ / -p /) ? 'OK??' : 'OK?'
@@ -770,7 +815,6 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
     <script type="text/javascript" src="#{relative}js/ajax.js"></script>
     <script type="text/javascript" src="#{relative}js/qrcode.js"></script>
     <script type="text/javascript" src="#{root_override}#{(rel == 'release') ? 'js' : 'js_debug'}/#{lwfjs}"></script>
-    <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
     <script type="text/javascript">
       window["testlwf_root_override"] = "#{root_override}";
       window["testlwf_name"] = "#{name}";
@@ -797,6 +841,7 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
           }
       };
     </script>
+    <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
 #{userscripts.chomp}
 #{birdwatcher.chomp}
   </head>
@@ -805,22 +850,34 @@ def outputOK(update_time, folder, name, prefix, commandline, warnings)
   </body>
 </html>
       EOF
-#      $mutex_p.synchronize do
-        File.open("#{folder}/index-#{target}#{(rel == 'release') ? '' : '-' + rel}.html", 'w') do |fp|
-          fp.write(content)
-        end
-#      end
+      File.open("#{folder}/index-#{target}#{(rel == 'release') ? '' : '-' + rel}.html", 'w') do |fp|
+        fp.write(content)
+      end
     end
   end
-#  $mutex_p.synchronize do
-    File.open("#{folder}/.status", 'w') do |fp|
-      fp.write(status)
-    end
-    updateLoadingStatus("#{folder}/", false, update_time);
-#  end
+  File.open("#{folder}/.status", 'w') do |fp|
+    fp.puts(status)
+    fp.puts(update_time)
+    fp.puts(folder)
+    fp.puts(name)
+    fp.puts(prefix)
+    fp.puts(commandline)
+  end
+  updateLoadingStatus("#{folder}/", false, update_time);
 end
 
-def outputNG(update_time, folder, name, prefix, commandline, msg, warnings)
+def outputNG(update_time, folder, name, prefix, commandline, msg)
+  if File.exists?("#{folder}/.status")
+    lines = File.readlines("#{folder}/.status")
+    update_time = lines[1].chomp
+    #folder = lines[2].chomp
+    name = lines[3].chomp
+    prefix = lines[4].chomp
+    commandline = lines[5].chomp
+    msg = lines[6].chomp
+    FileUtils.rm_f(glob("#{folder}/index-*.html"))
+  end
+  msg.gsub!(/\n/, '<br/>')
   relative = '../' * (name.split('/').count + 1)
   content = <<-"EOF"
 <!DOCTYPE HTML>
@@ -838,16 +895,10 @@ def outputNG(update_time, folder, name, prefix, commandline, msg, warnings)
     <div id="wrapper">
       <div id="header">
         <h1>ERROR: #{name}<span id="loading_icon"></span></h1>
-        <div class="info"><a href="javascript:void(0)" onClick="Ajax.post('http://localhost:10080/update/', {'arg': '#{name}'}); return false;">force to update</a></div>
+        <div class="info"><a href="javascript:void(0)" onClick="Ajax.post('http://localhost:10080/update/', {'arg': '#{name}', 'force': true}); return false;">force to update</a></div>
         <div class="info">(#{commandline})</div>
-        <div class="info">#{msg.gsub(/\n/, '<br/>')}</div>
+        <div class="info">#{msg}</div>
   EOF
-  if warnings != ''
-    content += <<-"EOF"
-        <h1>WARNINGS: #{name}</h1>
-        <div class="info">#{warnings.gsub(/\n/, '<br/>')}</div>
-    EOF
-  end
   content += <<-"EOF"
       </div>
     </div>
@@ -855,17 +906,19 @@ def outputNG(update_time, folder, name, prefix, commandline, msg, warnings)
   </body>
 </html>
   EOF
-#  $mutex_p.synchronize do
-    File.open("#{folder}/index-err.html", 'w') do |fp|
-      fp.write(content)
-    end
-#  end
-#  $mutex_p.synchronize do
-    File.open("#{folder}/.status", 'w') do |fp|
-      fp.write('NG')
-    end
-    updateLoadingStatus("#{folder}/", false, update_time);
-#  end
+  File.open("#{folder}/index-err.html", 'w') do |fp|
+    fp.write(content)
+  end
+  File.open("#{folder}/.status", 'w') do |fp|
+    fp.puts('NG')
+    fp.puts(update_time)
+    fp.puts(folder)
+    fp.puts(name)
+    fp.puts(prefix)
+    fp.puts(commandline)
+    fp.puts(msg)
+  end
+  updateLoadingStatus("#{folder}/", false, update_time);
 end
 
 def updateFolders(changes)
@@ -882,7 +935,7 @@ def updateFolders(changes)
     FileUtils.mv(src, dst)
     rmdir_p(File.dirname(src))
     if OUT_DIR != ''
-      if File.read("#{DST_DIR}/#{name}/.status") =~ /OK/
+      if File.readlines("#{DST_DIR}/#{name}/.status")[0] =~ /OK/
         # html5
         FileUtils.rm_rf("#{OUT_DIR}/html5/list/#{name}")
         rmdir_p("#{OUT_DIR}/html5/list/#{name}")
@@ -972,7 +1025,7 @@ def updateTopIndex(update_time, is_start = false)
         <div id="lpart">
           <h1>lwfs<span id="loading_icon"></span></h1>
           <p>(version: #{VERSION})</p>
-          <p><a href="javascript:void(0)" onClick=\"Ajax.post('http://localhost:10080/update/'); return false;\">force to update all</a></p>
+          <p><a href="javascript:void(0)" onClick=\"Ajax.post('http://localhost:10080/update/', {'force': true}); return false;\">force to update all</a></p>
         </div>
         <div id="rpart">
           <span id="qr"></span>
@@ -993,11 +1046,11 @@ def updateTopIndex(update_time, is_start = false)
   content += '        </thead>'
   content += '        <tbody>'
   names.each do |name|
-    status = File.read("#{DST_DIR}/#{name}/.status")
+    status = File.readlines("#{DST_DIR}/#{name}/.status")[0].chomp
     prefix = ''
     date = lastModified("#{DST_DIR}/#{name}")
     date = date.strftime('%F %T')
-    content += "          <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td><td class=\"center\"><a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '#{name}'}); return false;\">u</a></td>"
+    content += "          <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td><td class=\"center\"><a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '#{name}', 'force': true}); return false;\">u</a></td>"
     if status != 'NG'
       ['webkitcss', 'canvas', 'webgl'].each do |target|
         next unless TARGETS.include?(target)
