@@ -5,8 +5,7 @@ build: testtag clean
 	unzip -q ruby19.zip -d tmp/LWFS/LWFS/.a
 	mkdir -p tmp/LWFS/LWFS/.a/lwfs
 	cp -a ../../{lib,lwfs.rb,lwfs.ru,lwfs.conf,tmpl} tmp/LWFS/LWFS/.a/lwfs
-	mkdir -p tmp/LWFS/LWFS/.a/lwfs/htdocs/lwfs
-	find tmp/LWFS | grep '/\.git' | xargs rm -rf
+	find tmp/LWFS | grep '/\.git.*' | xargs rm -rf
 	find tmp/LWFS | grep '/\.DS_Store' | xargs rm -rf
 	chmod -R 755 tmp/LWFS
 	TAG=`cat ../TAG`; \
