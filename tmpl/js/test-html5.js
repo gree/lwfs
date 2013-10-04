@@ -4,7 +4,8 @@
     var isIOS = /(iPhone|iPad)/.test(ua);
     var isAndroid = /Android/.test(ua);
     var isChrome = /Chrome/.test(ua);
-    var isBuggyWebGL = (isAndroid && ! isChrome && (window['testlwf_html5target'] == 'webgl'));
+    var isBuggyWebKitCSS = (isAndroid && / SC-0/.test(ua) && window['testlwf_html5target'] == 'webkitcss');
+    var isBuggyWebGL = (isAndroid && ! isChrome && window['testlwf_html5target'] == 'webgl');
     var osVersion = 'unknown';
     if (isIOS) {
         var i = ua.indexOf('OS ');
@@ -37,13 +38,13 @@
     var fps = {
         num01: 0,
         num60: 0,
-        graph: null
+        stats: null
     };
     var dps = {
         num01: 0,
         num60: 0,
         numi: 0,
-        graph: null
+        stats: null
     };
     var stage = null;
     var stageEventReceiver = null;
@@ -110,9 +111,9 @@
         return stage;
     };
 
-    var Graph = (function() {
+    var Stats = (function() {
         var MARGIN_SCALE = 1.2;
-        function Graph(w, h, m) {
+        function Stats(w, h, m) {
             this.w = w;
             this.h = h;
             this.m = m;
@@ -127,64 +128,73 @@
             this.div.className = 'info';
             this.div.style.backgroundColor = '#ffffff';
             this.div.style.opacity = '1';
-            this.canvas = document.createElement('canvas');
-            this.canvas.className = 'graph';
-            //this.canvas.width = Math.round(w * window.devicePixelRatio);
-            this.canvas.width = w;
-            //this.canvas.height = Math.round(h * window.devicePixelRatio);
-            this.canvas.height = h;
-            this.canvas.style.width = w + 'px';
-            this.canvas.style.height = h + 'px';
-            this.ctx = this.canvas.getContext('2d');
-            this.ctx.lineWidth = 1;
-            this.ctx.fillStyle = "rgb(240,240,240)";
-            this.ctx.fillRect(0, 0, w, h);
-            this.div.appendChild(this.canvas);
-            this.txt = document.createElement('span');
-            this.txt.style.width = (320 - w) + 'px';
-            this.txt.style.height = h + 'px';
-            this.div.appendChild(this.txt);
-        }
-        Graph.prototype.update = function(v) {
-            this.data[this.i] = v;
-            if (this.i == 0) {
-                this.i++;
-                return;
+            if (! isMobile || window['testlwf_statsdisplay']['graph']) {
+                this.canvas = document.createElement('canvas');
+                this.canvas.className = 'graph';
+                //this.canvas.width = Math.round(w * window.devicePixelRatio);
+                this.canvas.width = w;
+                //this.canvas.height = Math.round(h * window.devicePixelRatio);
+                this.canvas.height = h;
+                this.canvas.style.width = w + 'px';
+                this.canvas.style.height = h + 'px';
+                this.ctx = this.canvas.getContext('2d');
+                this.ctx.lineWidth = 1;
+                this.ctx.fillStyle = "rgb(240,240,240)";
+                this.ctx.fillRect(0, 0, w, h);
+                this.div.appendChild(this.canvas);
             }
-            var i0 = this.i - 1;
-            var i1 = this.i;
-            this.i++;
-            if (! this.m) {
-                var max = Math.max(v * MARGIN_SCALE, this.max);
-                if (this.max != max) {
-                    this.max = max;
-                    i0 = 0;
+            if (! isMobile || window['testlwf_statsdisplay']['text']) {
+                this.txt = document.createElement('span');
+                this.txt.style.width = (320 - w) + 'px';
+                this.txt.style.height = h + 'px';
+                this.div.appendChild(this.txt);
+            }
+        }
+        Stats.prototype.update = function(v, t) {
+            if (this.canvas) {
+                this.data[this.i] = v;
+                if (this.i == 0) {
+                    this.i++;
+                    return;
+                }
+                var i0 = this.i - 1;
+                var i1 = this.i;
+                this.i++;
+                if (! this.m) {
+                    var max = Math.max(v * MARGIN_SCALE, this.max);
+                    if (this.max != max) {
+                        this.max = max;
+                        i0 = 0;
+                    }
+                }
+                var x0 = i0 * 2;
+                var y0 = (1 - this.data[i0] / this.max) * (this.h - 1);
+                var x1 = 0;
+                var y1 = 0;
+                this.ctx.fillStyle = "rgb(240,240,240)";
+                this.ctx.fillRect(x0, 0, (i1 - i0) * 2, this.h);
+                this.ctx.fillStyle = "rgb(0,0,0)";
+                this.ctx.beginPath();
+                this.ctx.moveTo(x0, y0);
+                for (var i = i0 + 1; i <= i1; i++) {
+                    x1 = i * 2;
+                    y1 = (1 - this.data[i] / this.max) * (this.h - 1);
+                    this.ctx.lineTo(x1, y1);
+                }
+                if (x1 < this.w) {
+                    this.ctx.moveTo(x1 + 2, 0);
+                    this.ctx.lineTo(x1 + 2, this.h - 1);
+                }
+                this.ctx.stroke();
+                if (x1 >= this.w) {
+                    this.i = 0;
                 }
             }
-            var x0 = i0 * 2;
-            var y0 = (1 - this.data[i0] / this.max) * (this.h - 1);
-            var x1 = 0;
-            var y1 = 0;
-            this.ctx.fillStyle = "rgb(240,240,240)";
-            this.ctx.fillRect(x0, 0, (i1 - i0) * 2, this.h);
-            this.ctx.fillStyle = "rgb(0,0,0)";
-            this.ctx.beginPath();
-            this.ctx.moveTo(x0, y0);
-            for (var i = i0 + 1; i <= i1; i++) {
-                x1 = i * 2;
-                y1 = (1 - this.data[i] / this.max) * (this.h - 1);
-                this.ctx.lineTo(x1, y1);
-            }
-            if (x1 < this.w) {
-                this.ctx.moveTo(x1 + 2, 0);
-                this.ctx.lineTo(x1 + 2, this.h - 1);
-            }
-            this.ctx.stroke();
-            if (x1 >= this.w) {
-                this.i = 0;
+            if (this.txt) {
+                this.txt.textContent = t;
             }
         };
-        return Graph;
+        return Stats;
     })();
 
     playLWF = function(lwf) {
@@ -265,18 +275,20 @@
                     dpr = 1;
                 }
                 var iw, ih;
-                if (isMobile) {
+                if (ss.w && ss.h) {
+                    iw = ss.w;
+                    ih = ss.h;
+                } else if (isMobile) {
                     iw = window.innerWidth;
-                    ih = iw * lwf.height / lwf.width;
-                } else if (ss.w && ss.h) {
-                    iw = ss.w / 2;
-                    ih = ss.h / 2;
+                    ih = window.innerHeight + ((isAndroid) ? 1 : 0);
                 } else {
                     iw = lwf.width;
                     ih = iw * lwf.height / lwf.width;
                 }
                 iw *= ds;
                 ih *= ds;
+                var mx = 0;
+                var my = 0;
                 if (iw0 != iw || ih0 != ih) {
                     iw0 = iw;
                     ih0 = ih;
@@ -290,8 +302,30 @@
                         var s = Math.min(iw / lwf.width, ih / lwf.height);
                         stage_w = Math.round(lwf.width * s);
                         stage_h = Math.round(lwf.height * s);
-                        var ox = Math.round((iw - stage_w) / 2);
-                        var oy = Math.round((ih - stage_h) / 2);
+                        var ox = 0;
+                        if (config.stage.halign == -1) {
+                            ox = 0;
+                        } else if (config.stage.halign == 1) {
+                            ox = Math.round(iw - stage_w);
+                        } else {
+                            ox = Math.round((iw - stage_w) / 2);
+                        }
+                        var oy = 0;
+                        if (config.stage.valign == -1) {
+                            oy = 0;
+                        } else if (config.stage.valign == 1) {
+                            oy = Math.round(ih - stage_h);
+                        } else {
+                            oy = Math.round((ih - stage_h) / 2);
+                        }
+                        if (config.stage.elastic) {
+                            stage_w = iw;
+                            stage_h = ih;
+                            mx = ox;
+                            my = oy;
+                            ox = 0;
+                            oy = 0;
+                        }
                         stage.style.left = ox + 'px';
                         stage.style.top = oy + 'px';
                         stage.style.width = stage_w + 'px';
@@ -309,6 +343,9 @@
                         lwf.fitForWidth(stage.width, stage.height);
                     } else {
                         lwf.fitForHeight(stage.width, stage.height);
+                    }
+                    if (config.stage.elastic) {
+                        lwf.property.moveTo(mx, my);
                     }
                     if (window['testlwf_html5target'] == 'webkitcss') {
                         lwf.setTextScale(window.devicePixelRatio);
@@ -356,28 +393,42 @@
             }
             if (! isMobile || mode == 'debug') {
                 fps.num01 = Math.round(1000.0 / dt);
-                if (dps.graph) {
+                if (dps.stats) {
                     dps.num01 = lwf.rendererFactory.drawCalls;
                     dps.numi += dps.num01;
                 }
                 if (++exec_count % 60 == 0) {
                     fps.num60 = Math.round(60000.0 / (t1 - t0_60));
-                    if (dps.graph) {
+                    if (dps.stats) {
                         dps.num60 = Math.round(dps.numi / 60);
                         dps.numi = 0;
                     }
                     t0_60 = t1;
                     exec_count = 0;
                 }
-                if (fps.graph) {
+                if (fps.stats) {
                     var info = '';
                     if (! isMobile && mode == 'debug') {
                         var stats = {
                             max_depth: 0,
                             elements: {}
                         };
+                        var activeHierarchy = -1;
                         var inspector = function(obj, hierarchy, depth, rIndex) {
-                            stats.elements[obj.constructor.name] = (stats.elements[obj.constructor.name] | 0) + 1;
+                            if (obj.constructor.name == 'Movie') {
+                                if (! obj.active) {
+                                    if (activeHierarchy == -1) {
+                                        activeHierarchy = hierarchy;
+                                    }
+                                } else {
+                                    if (hierarchy <= activeHierarchy) {
+                                        activeHierarchy = -1;
+                                    }
+                                }
+                            }
+                            stats.elements[obj.constructor.name]
+                                = (stats.elements[obj.constructor.name] | 0)
+                                + ((activeHierarchy == -1) ? 1 : 0);
                             stats.max_depth = (depth > stats.max_depth) ? depth : stats.max_depth;
                         };
                         lwf.inspect(inspector);
@@ -389,12 +440,10 @@
                             info += ', #' + n + ':' + stats.elements[n];
                         }
                     }
-                    fps.graph.txt.textContent = i2a(fps.num60, 3) + 'fps(avg)' + info;
-                    fps.graph.update(fps.num01);
+                    fps.stats.update(fps.num01, i2a(fps.num60, 3) + 'fps(avg)' + info);
                 }
-                if (dps.graph) {
-                    dps.graph.txt.textContent = i2a(dps.num60, 3) + ' drawCalls(avg)';
-                    dps.graph.update(dps.num01);
+                if (dps.stats) {
+                    dps.stats.update(dps.num01, i2a(dps.num60, 3) + ' drawCalls(avg)');
                 }
             }
         };
@@ -417,6 +466,9 @@
             if (! isMobile) {
                 x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
                 y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
+            } else {
+                x -= stage.offsetLeft;
+                y -= stage.offsetTop;
             }
             x /= stage_scale;
             y /= stage_scale;
@@ -441,6 +493,9 @@
             if (! isMobile) {
                 x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
                 y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
+            } else {
+                x -= stage.offsetLeft;
+                y -= stage.offsetTop;
             }
             x /= stage_scale;
             y /= stage_scale;
@@ -655,13 +710,7 @@
         }
     };
     var onpageshow = function() {
-        config = {
-            'fr': window['testlwf_config']['fr'],
-            'fs': window['testlwf_config']['fs'],
-            'ds': window['testlwf_config']['ds'],
-            'ss': window['testlwf_config']['ss'],
-            'rootoffset': window['testlwf_config']['rootoffset']
-        };
+        config = window['testlwf_config'];
         if (/[?&]fr=([0-9]+)/.test(window.location.search)) {
             config.fr = parseInt(RegExp.$1, 10);
             isConfigurable = false;
@@ -745,20 +794,20 @@
             stageEventReceiver.style.zIndex = 10;
             document.body.appendChild(stageEventReceiver);
             if (mode == 'debug') {
-                fps.graph = new Graph(220, 24, 60);
-                document.body.appendChild(fps.graph.div);
-                fps.graph.div.style.position = 'absolute';
-                fps.graph.div.style.left = '0px';
-                fps.graph.div.style.top = '32px';
-                fps.graph.div.style.zIndex = 10000;
-                document.body.appendChild(fps.graph.div);
+                fps.stats = new Stats(220, 24, 60);
+                document.body.appendChild(fps.stats.div);
+                fps.stats.div.style.position = 'absolute';
+                fps.stats.div.style.left = '0px';
+                fps.stats.div.style.top = '32px';
+                fps.stats.div.style.zIndex = 10000;
+                document.body.appendChild(fps.stats.div);
                 if (window['testlwf_html5target'] == 'webgl') {
-                    dps.graph = new Graph(220, 24, 0);
-                    dps.graph.div.style.position = 'absolute';
-                    dps.graph.div.style.left = '0px';
-                    dps.graph.div.style.top = '60px';
-                    dps.graph.div.style.zIndex = 10000;
-                    document.body.appendChild(dps.graph.div);
+                    dps.stats = new Stats(220, 24, 0);
+                    dps.stats.div.style.position = 'absolute';
+                    dps.stats.div.style.left = '0px';
+                    dps.stats.div.style.top = '60px';
+                    dps.stats.div.style.zIndex = 10000;
+                    document.body.appendChild(dps.stats.div);
                 }
             }
             {
@@ -894,11 +943,11 @@
                 ];
                 var resize = function(event) {
                     if (/([0-9]+)x([0-9]+)/.test(event.target.textContent)) {
-                        ss.w = parseInt(RegExp.$1);
-                        ss.h = parseInt(RegExp.$2);
+                        ss.w = parseInt(RegExp.$1) / 2;
+                        ss.h = parseInt(RegExp.$2) / 2;
                     } else {
-                        ss.w = 0;
-                        ss.h = 0;
+                        ss.w = config.ss.w;
+                        ss.h = config.ss.h;
                     }
                     return false;
                 };
@@ -933,6 +982,7 @@
             {
                 var div = document.createElement('div');
                 div.className = 'info_wrapped';
+                div.id = 'usage';
                 div.textContent
                     = 'SPACE: rewind, S: pause/resume, F: step, '
                     + ((config.fr) ? '' : 'DOWN/UP/0: frame rate, ')
@@ -948,12 +998,12 @@
                 footer.appendChild(div);
             }
             {
-                fps.graph = new Graph(220, 24, 60);
-                lpart.appendChild(fps.graph.div);
+                fps.stats = new Stats(220, 24, 60);
+                lpart.appendChild(fps.stats.div);
             }
             if (mode == 'debug' && window['testlwf_html5target'] == 'webgl') {
-                dps.graph = new Graph(220, 24, 0);
-                lpart.appendChild(dps.graph.div);
+                dps.stats = new Stats(220, 24, 0);
+                lpart.appendChild(dps.stats.div);
             }
             header.appendChild(lpart);
             header.appendChild(rpart);
@@ -1022,6 +1072,9 @@
                     };
                 }
             }
+        }
+        if (isBuggyWebKitCSS) {
+            params['quirkyClearRect'] = true;
         }
         if (window['testlwf_settings'] != null) {
             var settings = window['testlwf_settings'];

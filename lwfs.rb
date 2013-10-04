@@ -53,9 +53,10 @@ elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
   defineDirs(ENV['HOME'])
 end
 
+$log = Logger.new((ENV['LWFS_LOG_FILE'].nil?) ? STDOUT : ENV['LWFS_LOG_FILE'], 10)
 $lwfsconf = {
-  'REMOTE_SERVER' => 'dev-nakamaru-test.dev.gree.jp',
-  'BIRD_WATCHER_SERVER' => 'jsprof.dev.gree.jp:3000',
+  'REMOTE_SERVER' => 'remote.server.name',
+  'BIRD_WATCHER_SERVER' => 'birdwatcher.server.name:3000',
   'IGNORED_PATTERN' => '[,#].*|.*\.sw[op]|.*~',
   'ALLOWED_PREFIX_PATTERN' => '',
   'TARGETS' =>
@@ -70,12 +71,21 @@ $lwfsconf = {
   'USE_OUTPUT_FOLDER' => true,
   'ROOT_OVERRIDES' =>
   [
-    #['PROJECT/PREFIX/', 'http://dev-nakamaru-test.dev.gree.jp/lwfrevs/20130702_083513_m0700/']
+    #['PROJECT/PREFIX/', 'http://remote.server.name/lwfrevs/20130702_083513_m0700/']
   ],
   'FRAME_RATE' => 0,
   'FRAME_STEP' => 0,
   'DISPLAY_SCALE' => 0,
-  'SCREEN_SIZE' => '0x0'
+  'SCREEN_SIZE' => '0x0',
+  'STAGE' => {
+    'ELASTIC' => false,
+    'HALIGN' => 0,
+    'VALIGN' => -1
+  },
+  'STATS_DISPLAY' => {
+    'GRAPH' => false,
+    'TEXT' => true
+  }
 }
 ['lwfs.conf', "#{SRC_DIR}/lwfs.conf"].each do |f|
   if File.file?(f)
@@ -84,7 +94,9 @@ $lwfsconf = {
       lwfsconf.each do |k, v|
         $lwfsconf[k] = v
       end
-    rescue
+    rescue => e
+      $log.error(e.to_s)
+      $log.error(e.backtrace.to_s)
     end
   end
 end
@@ -95,7 +107,6 @@ if not $lwfsconf['USE_OUTPUT_FOLDER']
   OUT_DIR.replace('')
 end
 
-$log = Logger.new((ENV['LWFS_LOG_FILE'].nil?) ? STDOUT : ENV['LWFS_LOG_FILE'], 10)
 $updated_jsfls = []
 $mutex_p = Mutex.new
 $mutex_i = Mutex.new
@@ -162,6 +173,7 @@ configure do
   REMOTE_SERVER = $lwfsconf['REMOTE_SERVER']
   BIRD_WATCHER_SERVER = $lwfsconf['BIRD_WATCHER_SERVER']
   TARGETS = $lwfsconf['TARGETS']
+  STATS_DISPLAY = $lwfsconf['STATS_DISPLAY']
   RUBY_COMMAND = (RUBY_PLATFORM =~ /java/) ? 'jruby' : 'ruby'
   if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
     prefix = ENV['HOME']
@@ -289,9 +301,9 @@ post '/update/*' do |target|
         prefix = "#{SRC_DIR}/"
         entry = entry.slice(prefix.length, entry.length - prefix.length)
         prefix = ''
-        if entry =~ /^([A-Z0-9][A-Z0-9_\-\/]*)/
+        if entry =~ /^([A-Z][A-Z0-9_\-]*)((\/[A-Z][A-Z0-9_\-]*)*)(\/?)/
           # fully captal characters represent projects and allow nested folders.
-          prefix = $1
+          prefix = $1 + $2 + $4
         end
         entry = entry.slice(prefix.length, entry.length - prefix.length)
         new_changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ IGNORED_PATTERN
@@ -629,6 +641,7 @@ def convert(changes)
 end
 
 def outputRaw(update_time, folder)
+  index_update_time = update_time
   if File.exists?("#{folder}/.status")
     lines = File.readlines("#{folder}/.status")
     update_time = lines[1].chomp
@@ -655,10 +668,11 @@ def outputRaw(update_time, folder)
     fp.puts(update_time)
     fp.puts(folder)
   end
-  updateLoadingStatus("#{folder}/", false, update_time);
+  updateLoadingStatus("#{folder}/", false, index_update_time);
 end
 
 def outputOK(update_time, folder, name, prefix, commandline)
+  index_update_time = update_time
   if File.exists?("#{folder}/.status")
     lines = File.readlines("#{folder}/.status")
     update_time = lines[1].chomp
@@ -703,7 +717,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
         <div class="info">#{warnings.gsub(/\n/, '<br/>')}</div>
       </div>
     </div>
-    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{update_time}"></script>
+    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{index_update_time}"></script>
   </body>
 </html>
     EOF
@@ -838,7 +852,16 @@ def outputOK(update_time, folder, name, prefix, commandline)
           "rootoffset": {
               "x": #{rootoffset[:x]},
               "y": #{rootoffset[:y]}
+          },
+          "stage": {
+              "elastic": #{$lwfsconf['STAGE']['ELASTIC']},
+              "halign": #{$lwfsconf['STAGE']['HALIGN']},  // -1, 0, 1
+              "valign": #{$lwfsconf['STAGE']['VALIGN']}   // -1, 0, 1
           }
+      };
+      window["testlwf_statsdisplay"] = {
+          "graph": #{STATS_DISPLAY['GRAPH']},
+          "text": #{STATS_DISPLAY['TEXT']}
       };
     </script>
     <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
@@ -846,7 +869,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
 #{birdwatcher.chomp}
   </head>
   <body>
-    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{update_time}"></script>
+    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{index_update_time}"></script>
   </body>
 </html>
       EOF
@@ -863,10 +886,11 @@ def outputOK(update_time, folder, name, prefix, commandline)
     fp.puts(prefix)
     fp.puts(commandline)
   end
-  updateLoadingStatus("#{folder}/", false, update_time);
+  updateLoadingStatus("#{folder}/", false, index_update_time);
 end
 
 def outputNG(update_time, folder, name, prefix, commandline, msg)
+  index_update_time = update_time
   if File.exists?("#{folder}/.status")
     lines = File.readlines("#{folder}/.status")
     update_time = lines[1].chomp
@@ -902,7 +926,7 @@ def outputNG(update_time, folder, name, prefix, commandline, msg)
   content += <<-"EOF"
       </div>
     </div>
-    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{update_time}"></script>
+    <script type="text/javascript" src="#{relative}js/loading.js" interval="1" update_time="#{index_update_time}"></script>
   </body>
 </html>
   EOF
@@ -918,7 +942,7 @@ def outputNG(update_time, folder, name, prefix, commandline, msg)
     fp.puts(commandline)
     fp.puts(msg)
   end
-  updateLoadingStatus("#{folder}/", false, update_time);
+  updateLoadingStatus("#{folder}/", false, index_update_time);
 end
 
 def updateFolders(changes)
@@ -989,6 +1013,7 @@ def updateLoadingStatus(dir, is_in_conversion, update_time = nil)
 end
 
 def updateTopIndex(update_time, is_start = false)
+  index_update_time = update_time
   names = []
   if not is_start
     glob("#{DST_DIR}/*/**/.status").each do |entry|
@@ -1075,7 +1100,7 @@ def updateTopIndex(update_time, is_start = false)
   content += <<-"EOF"
       </table>
     </div>
-    <script type="text/javascript" src="../js/loading.js" interval="1" update_time="#{update_time}"></script>
+    <script type="text/javascript" src="../js/loading.js" interval="1" update_time="#{index_update_time}"></script>
     <script type="text/javascript">
       $(document).ready(function() {
           $('#sorter').dataTable({
@@ -1093,7 +1118,7 @@ def updateTopIndex(update_time, is_start = false)
     File.open("#{DST_DIR}/index.html", 'w') do |fp|
       fp.write(content)
     end
-    updateLoadingStatus("#{DST_DIR}/", is_start, update_time)
+    updateLoadingStatus("#{DST_DIR}/", is_start, index_update_time)
   end
 end
 
