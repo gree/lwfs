@@ -127,6 +127,10 @@ Ruby
   https://github.com/rdoc/rdoc/blob/master/LICENSE.rdoc
   (GPL2)
 
+* ruby-lzma
+  https://github.com/KojiNakamaru/ruby-lzma/blob/develop/lib/lzma.rb
+  (public domain)
+
 * sinatra
   https://github.com/sinatra/sinatra/blob/master/LICENSE
   (MIT)

@@ -19,14 +19,14 @@
 # 3. This notice may not be removed or altered from any source distribution.
 #
 require 'base64'
-require 'zlib'
+require 'lzma'
 
 def lwf2lwfjs(*args)
   lwf = args[0]
   lwf =~ /([^\/]*)\.lwf$/
   lwfname = $1.downcase
 
-  str = Base64.encode64(Zlib::Deflate.deflate(File.binread(lwf), 9))
+  str = Base64.encode64(LZMA.compress(File.binread(lwf)))
 
   f = File.open(lwf.sub(/\.lwf$/, '.lwf.js'), "wb")
   f.print <<-EOL

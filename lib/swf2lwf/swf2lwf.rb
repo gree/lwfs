@@ -3384,7 +3384,7 @@ def swf2lwf(*args)
     textureatlas.filename = meta["image"]
     textureatlas.format =
       TEXTUREFORMAT_PREMULTIPLIEDALPHA if meta["preMultipliedAlpha"]
-    textureatlas.scale = meta["scale"].to_f if meta["scale"]
+    textureatlas.scale = meta["scale"] ? meta["scale"].to_f : 1.0
     @textures.push textureatlas
     textureatlasdict["meta"]["texture"] = textureatlas
     @textureatlasdicts.push textureatlasdict
@@ -3420,6 +3420,9 @@ def swf2lwf(*args)
           x = tinfo["spriteSourceSize"]["x"].to_i
           y = tinfo["spriteSourceSize"]["y"].to_i
           filename = textureatlasdict["meta"]["texture"].filename
+          if w != texture.width or h != texture.height
+            warn "Texture [#{texture.name}] size(#{texture.width}x#{texture.height}) is not same as TextureAtlas [#{filename}/#{origName}] size(#{w}x#{h})"
+          end
           texture.name += "_atlas_#{filename}" +
             "_info_#{r ? 1 : 0}_#{u}_#{v}_#{w}_#{h}_#{x}_#{y}"
           break
@@ -3851,10 +3854,11 @@ def swf2lwf(*args)
     end
 
     tinfo = nil
+    textureatlas = nil
     @textureatlasdicts.each do |textureatlasdict|
       tinfo = textureatlasdict["frames"][File.basename(filename)]
+      textureatlas = textureatlasdict["meta"]["texture"]
       if tinfo and !coloredFragment
-        textureatlas = textureatlasdict["meta"]["texture"]
         textureatlasId = textureatlasdict["meta"]["textureId"]
         if textureatlasId.nil?
           textureatlas.ref
@@ -3885,6 +3889,9 @@ def swf2lwf(*args)
       h = tinfo["frame"]["h"].to_i
       x = tinfo["spriteSourceSize"]["x"].to_i
       y = tinfo["spriteSourceSize"]["y"].to_i
+      texture.width = w
+      texture.height = h
+      texture.scale = textureatlas.scale
     else
       w = texture.width
       h = texture.height

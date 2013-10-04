@@ -6609,6 +6609,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       var func, _ref1;
       this.active = true;
       this.parent = parent;
+      this.setTextScale(parent.lwf.textScale);
       func = (_ref1 = this.functions) != null ? _ref1['init'] : void 0;
       if (func != null) {
         func.call(this);
