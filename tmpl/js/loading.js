@@ -25,32 +25,30 @@
             (window.onpageshow !== undefined) ? 'pageshow' : 'load',
             function() {
                 var elm = document.getElementById('loading_icon');
-                if (elm != null) {
-                    var checkStatus = function() {
-                        var xhr = new XMLHttpRequest();
-                        xhr.open('GET', window.location.href.replace(/[^\/]+$/, '') + '.loading', true);
-                        xhr.onreadystatechange = function() {
-                            if (xhr.readyState === 4) {
-                                if (xhr.status === 200) {
-                                    var res = JSON.parse(xhr.responseText);
-                                    if (res.update_time !== undefined && res.update_time != UPDATE_TIME) {
-                                        setTimeout(
-                                            function() {
-                                                window.location.reload();
-                                            },
-                                            100);
-                                    } else if (elm != null) {
-                                        elm.style.visibility = (res.is_in_conversion) ? 'visible' : 'hidden';
-                                    }
+                var checkStatus = function() {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', window.location.href.replace(/[^\/]+$/, '') + '.loading', true);
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4) {
+                            if (xhr.status === 200) {
+                                var res = JSON.parse(xhr.responseText);
+                                if (res.update_time !== undefined && res.update_time != UPDATE_TIME) {
+                                    setTimeout(
+                                        function() {
+                                            window.location.reload();
+                                        },
+                                        100);
+                                } else if (elm != null) {
+                                    elm.style.visibility = (res.is_in_conversion) ? 'visible' : 'hidden';
                                 }
                             }
-                        };
-                        xhr.setRequestHeader('If-Modified-Since', 'Thu, 01 Jun 1970 00:00:00 GMT');
-                        xhr.send('');
-                        setTimeout(checkStatus, INTERVAL);
+                        }
                     };
+                    xhr.setRequestHeader('If-Modified-Since', 'Thu, 01 Jun 1970 00:00:00 GMT');
+                    xhr.send('');
                     setTimeout(checkStatus, INTERVAL);
-                }
+                };
+                setTimeout(checkStatus, INTERVAL);
             },
             false);
     }
