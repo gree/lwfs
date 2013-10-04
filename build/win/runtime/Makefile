@@ -81,6 +81,7 @@ gems:
 	bash -c 'source _bashrc; gem install sinatra'
 	bash -c 'source _bashrc; gem install thin'
 	bash -c 'source _bashrc; gem install uuidtools'
+	bash -c 'source _bashrc; gem install ../../../vendor/cache/ruby-lzma-*[0-9].gem'
 	bash -c 'source _bashrc; gem install ../../../vendor/cache/libxml-ruby-*[0-9].gem'
 	bash -c 'source _bashrc; gem install ../../../vendor/cache/rb-img-*[0-9].gem'
 
@@ -102,5 +103,9 @@ updateruby:
 	chmod -R 755 ruby19
 	find ruby19 -name '*.o' | xargs rm -f
 	rm -rf ruby19/lib/ruby/gems/1.9.1/cache/*
-	zip -qr9 ../ruby19.zip ruby19
+	rm -rf ruby19/lib/ruby/gems/1.9.1/doc/*
+	rm -rf ruby19/lib/libmsvcrt-ruby191.dll.a
+	rm -rf ruby19/lib/libmsvcrt-ruby191-static.a
+	rm -rf ruby19/lib/tcltk
+	zip -Xqr9 ../ruby19.zip ruby19
 	rm -rf ruby19
