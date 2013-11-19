@@ -11,6 +11,14 @@ Installation
 2. Remove previously installed LWFS applications.
 3. Copy this folder onto your drive, such as under /Application.
 
+Note on Mavericks
+------------------
+Mavericks requires an apple script downloaded "to be signed," but
+start.app and stop.app here are not signed. For now after extracting
+LWFS*.zip, please execute below on the terminal:
+
+  xattr -d -r com.apple.quarantine LWFS
+
 
 Start/Stop LWFS
 ===============
