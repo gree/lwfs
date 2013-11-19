@@ -1,6 +1,6 @@
 (function() {
-    INTERVAL = 500;
-    UPDATE_TIME = '0';
+    var INTERVAL = 500;
+    var UPDATE_TIME = '0';
     // cf. http://d.hatena.ne.jp/amachang/20061201/1164986067
     var currentScript
         = (function (e) {
