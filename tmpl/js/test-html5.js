@@ -6,6 +6,7 @@
     var isChrome = /Chrome/.test(ua);
     var isBuggyWebKitCSS = (isAndroid && / SC-0/.test(ua) && window['testlwf_html5target'] == 'webkitcss');
     var isBuggyWebGL = (isAndroid && ! isChrome && window['testlwf_html5target'] == 'webgl');
+    var isBuggyTouchEvent = (isAndroid && (isChrome || / SC-0/.test(ua)));
     var osVersion = 'unknown';
     if (isIOS) {
         var i = ua.indexOf('OS ');
@@ -33,7 +34,7 @@
         h: 0
     };
     var isConfigurable = true;
-    var config = null;
+    var config = window['testlwf_config'];
     var mode = 'release';
     var fps = {
         num01: 0,
@@ -460,13 +461,10 @@
                 x = t.pageX;
                 y = t.pageY;
             } else {
-                x = e.clientX;
-                y = e.clientY;
+                x = e.offsetX;
+                y = e.offsetY;
             }
-            if (! isMobile) {
-                x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
-                y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
-            } else {
+            if (isMobile) {
                 x -= stage.offsetLeft;
                 y -= stage.offsetTop;
             }
@@ -487,13 +485,10 @@
                 x = t.pageX;
                 y = t.pageY;
             } else {
-                x = e.clientX;
-                y = e.clientY;
+                x = e.offsetX;
+                y = e.offsetY;
             }
-            if (! isMobile) {
-                x += document.body.scrollLeft + document.documentElement.scrollLeft - stage.offsetLeft;
-                y += document.body.scrollTop + document.documentElement.scrollTop - stage.offsetTop;
-            } else {
+            if (isMobile) {
                 x -= stage.offsetLeft;
                 y -= stage.offsetTop;
             }
@@ -668,6 +663,10 @@
         };
         requestAnimationFrame(onexec);
         if (isTouchEventEnabled) {
+            if (isBuggyTouchEvent) {
+                // cf. http://stackoverflow.com/questions/16703157/android-4-chrome-hit-testing-issue-on-touch-events-after-css-transform
+                document.body.addEventListener('touchstart', function() {});
+            }
             if (isIOS) {
                 stageEventReceiver.addEventListener('gestureend', ongestureend, false);
             }
@@ -710,7 +709,6 @@
         }
     };
     var onpageshow = function() {
-        config = window['testlwf_config'];
         if (/[?&]fr=([0-9]+)/.test(window.location.search)) {
             config.fr = parseInt(RegExp.$1, 10);
             isConfigurable = false;
@@ -760,22 +758,15 @@
             stage.height = Math.round(stage_h * dpr);
             stage_scale = stage_w / stage.width;
             document.body.appendChild(stage);
-            if (isBuggyWebGL) {
-                // ugly patch for buggy webgl
-                var viewport = WebGLRenderingContext.prototype.viewport;
-                WebGLRenderingContext.prototype.viewport = function(x, y, w, h) {
-                    var t = screen.height;
-                    t--;
-                    t |= t >> 1;
-                    t |= t >> 2;
-                    t |= t >> 4;
-                    t |= t >> 8;
-                    t |= t >> 16;
-                    t++;
-                    h *= h / t;
-                    viewport.call(this, x, y, w, h);
-                };
-            }
+            // if (isBuggyWebGL) {
+            //     // ugly patch for buggy webgl
+            //     var viewport = WebGLRenderingContext.prototype.viewport;
+            //     WebGLRenderingContext.prototype.viewport = function(x, y, w, h) {
+            //         // the default canva dimension (300x150) may cause the issue.
+            //         // cf. http://stackoverflow.com/questions/7792788/canvas-default-size
+            //         viewport.call(this, x, y, w, h * 2);
+            //     };
+            // }
             progressBar = document.createElement('div');
             progressBar.className = 'info';
             progressBar.style.position = 'absolute';
@@ -912,7 +903,11 @@
                 div.className = 'info';
                 var warnings = '';
                 if (/ -p /.test(window['testlwf_commandline'])) {
-                    warnings = 'images are extracted from the swf.';
+                    if (/\.swf\/index-.*\.html/.test(window.location.href)) {
+                        warnings = 'images are extracted from the swf (note: for a swf file directly under LWFS_work/ images are always extracted -- please put a swf file and corresponding image files into a sub folder under LWFS_work/).';
+                    } else {
+                        warnings = 'images are extracted from the swf.';
+                    }
                 }
                 if (window['testlwf_warn']) {
                     if (warnings != '') {
@@ -922,8 +917,8 @@
                 }
                 div.innerHTML
                     = (warnings != '')
-                    ? '<span style="background-color:yellow">warning: ' + warnings + '</span>'
-                    : '<span>warning: none.</span>';
+                    ? '<p style="background-color:yellow;white-space:pre-wrap;">warning: ' + warnings + '</p>'
+                    : '<p>warning: none.</p>';
                 lpart.appendChild(div);
             }
             {
@@ -1091,7 +1086,7 @@
         }
         return LWF.ResourceCache.get().loadLWF(params);
     };
-    if (isAndroid && /^(2\.1|1\.6)/.test(osVersion)) {
+    if (! config.use_page_show_hide_events || (isAndroid && /^(2\.1|1\.6)/.test(osVersion))) {
         window.addEventListener('unload', onpagehide, false);
         window.addEventListener('load', onpageshow, false);
     } else {
