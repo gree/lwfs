@@ -73,6 +73,7 @@ $lwfsconf = {
   [
     #['PROJECT/PREFIX/', 'http://remote.server.name/lwfrevs/20130702_083513_m0700/']
   ],
+  'USE_PAGE_SHOW_HIDE_EVENTS' => false,
   'FRAME_RATE' => 0,
   'FRAME_STEP' => 0,
   'DISPLAY_SCALE' => 0,
@@ -445,7 +446,7 @@ def cp_r(src, dst)
   glob("#{src}/*", IGNORED_PATTERN).each do |f|
     checkInterruption(__LINE__, 0.001)
     if File.file?(f) and not (f =~ /\/index-[^\/]+\.html$/i)
-      if f =~ /(swf|fla|json|conf|html|xml|js|lua|png|jpg|jpeg)$/i
+      if f =~ /(swf|fla|json|conf|html|xml|js|lua|png|jpg|jpeg|gif)$/i
         FileUtils.cp(f, dst)
         #FileUtils.ln(f, dst)
       end
@@ -565,7 +566,8 @@ def diff(src, dst)
     end
     glob(["#{src}/**/*.png",
           "#{src}/**/*.jpg",
-          "#{src}/**/*.jpeg"]).each do |src_file|
+          "#{src}/**/*.jpeg",
+          "#{src}/**/*.gif"]).each do |src_file|
       file = src_file.sub(/#{src}\//, '')
       next if file =~ IGNORED_PATTERN
       dst_file = "#{dst}/#{file}"
@@ -573,7 +575,8 @@ def diff(src, dst)
     end
     glob(["#{dst}/**/*.png",
           "#{dst}/**/*.jpg",
-          "#{dst}/**/*.jpeg"]).each do |dst_file|
+          "#{dst}/**/*.jpeg",
+          "#{dst}/**/*.gif"]).each do |dst_file|
       file = dst_file.sub(/#{dst}\//, '')
       next if file =~ IGNORED_PATTERN
       src_file = "#{src}/#{file}"
@@ -842,6 +845,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
           "h": #{lwfstats[:h]}
       };
       window["testlwf_config"] = {
+          "use_page_show_hide_events": #{$lwfsconf['USE_PAGE_SHOW_HIDE_EVENTS']},
           "fr": #{FRAME_RATE},
           "fs": #{FRAME_STEP},
           "ds": #{DISPLAY_SCALE},
