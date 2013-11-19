@@ -33,7 +33,7 @@ def swf2res(swf)
 
   args = []
   args.push('-i')  # ignore unknown actionscript command.
-  if glob("#{dirname}/**/*.jpg").count + glob("#{dirname}/**/*.png").count == 0
+  if glob("#{dirname}/**/*.png").count + glob("#{dirname}/**/*.jpg").count + glob("#{dirname}/**/*.jpeg").count + glob("#{dirname}/**/*.gif").count == 0
     args.push('-p')
   end
   if File.file?(swf2lwf_conf)
@@ -64,7 +64,7 @@ def swf2res(swf)
         errors += line if /^ERROR/ =~ line
       end
     end
-    raise errors unless errors.empty?
+    return {"is_error" => true, "message" => errors, "args" => args0} unless errors.empty?
     lwf2lwfjs(lwf)
     t1 = Time.now
     p t1 - t0
@@ -105,7 +105,7 @@ def swf2res(swf)
     ext_textures.unshift file
   end
   ext_textures.each do |file|
-    next unless file =~ /\.(png|jpg)$/
+    next unless file =~ /\.(png|jpg|jpeg|gif)$/
     next if file =~ /\.lwfdata\/xfl/
     name = File.basename(file)
     if textures[name]
