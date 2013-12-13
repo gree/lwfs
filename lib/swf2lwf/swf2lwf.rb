@@ -3991,7 +3991,9 @@ def swf2lwf(*args)
   LWFObjects.each do |s|
     eval <<-EOF
       @header += to_u32(@offset) + to_u32(@data_#{s}.size)
-      @data_#{s}.each{|o| @bytes_#{s} += o.to_bytes}
+      arr = Array.new
+      @data_#{s}.each{|o| arr.push(o.to_bytes)}
+      @bytes_#{s} = arr.join('')
       @offset += @bytes_#{s}.size
       @data += @bytes_#{s}
       @stats += sprintf("#{s}: %d\n", @data_#{s}.size)
