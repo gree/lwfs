@@ -4,5 +4,5 @@ $:.unshift(File.dirname(__FILE__)) unless
 require 'img.so'
 
 module Img
-  VERSION = '0.0.4'
+  VERSION = '0.0.7'
 end
