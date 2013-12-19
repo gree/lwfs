@@ -6,7 +6,7 @@ LWF
 
 * LWF
   https://github.com/gree/lwf/LICENSE
-  (zLib)
+  (zlib)
     * LWF depends on 3rd party software. The following contains details.
       https://github.com/gree/lwf/LICENSE.3RDPARTY
 
@@ -32,6 +32,14 @@ JavaScript
   http://www.d-project.com/qrcode/index.html
   http://www.opensource.org/licenses/mit-license.php
   (MIT)
+
+* underscore
+  https://github.com/jashkenas/underscore/blob/master/LICENSE
+  (MIT)
+
+* lwf-loader.js
+  https://github.com/gree/lwf-loader/blob/master/LICENSE
+  (zlib)
 
 Ruby
 ====
@@ -115,7 +123,7 @@ Ruby
 
 * rb-img
   gems/rb-img-0.0.5/LICENSE
-  (zLib)
+  (zlib)
     * rb-img depends on 3rd party software The following contains details.
       gems/rb-img-0.0.5/LICENSE.3RDPARTY
 
