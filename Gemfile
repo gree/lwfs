@@ -7,6 +7,8 @@ gem "ruby-lzma"
 gem "sinatra"
 gem "thin"
 gem "uuidtools"
+gem "actioncompiler"
+gem "rb-img"
 platforms :ruby, :mingw do
   if RUBY_PLATFORM =~ /darwin/
     gem "rb-fsevent"
