@@ -826,7 +826,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
     <link rel="stylesheet" href="#{relative}css/common.css" />
     <link rel="stylesheet" href="#{relative}css/viewer.css" />
     <script type="text/javascript" src="#{relative}js/qrcode.js"></script>
-    <script type="text/javascript" src="#{relative}js/lwf_native.js"></script>
+    <script type="text/javascript" src="#{relative}js/lwf.js"></script>
 #{(loaderscripts + userscripts).chomp}
     <script type="text/javascript" src="#{relative}js/lwf-loader-util.js"></script>
     <script type="text/javascript">
