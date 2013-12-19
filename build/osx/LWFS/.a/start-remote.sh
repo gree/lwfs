@@ -11,8 +11,12 @@ else
   export DYLD_LIBRARY_PATH=$RBH/lib
 fi
 export RUBYOPT='-Ku'
-export RUBYLIB=$RBH/lib/ruby/1.9.1:$RBH/lib/ruby/1.9.1/x86_64-darwin11.4.2
-export GEM_HOME=$RBH/lib/ruby/gems/1.9.1
+export RUBYLIB=$RBH/lib/ruby/1.9.1:$RBH/lib/ruby/1.9.1/i386-darwin10.8.0
+export GEM_HOME=$RBH/gems
+export GEM_PATH=$RBH/gems:$RBH/lib/ruby/1.9.1
+unset IRBRC
+unset MAGLEV_HOME
+unset RBXOPT
 export JRUBY_OPTS='--server -J-Djruby.jit.threshold=30'
 if [ -f $BASE/../.lwfsrc ]; then
   sed 's/set /export /' < $BASE/../.lwfsrc > $BASE/tmp.rc
@@ -24,6 +28,5 @@ export LWFS_LOG_FILE='../../lwfs.log'
 
 # app
 cd $BASE/lwfs
-chmod a+rwx htdocs/lwfs
 #ruby lwfs.rb
-ruby $RBH/lib/ruby/gems/1.9.1/bin/rackup lwfs.ru
+ruby $RBH/gems/bin/rackup lwfs.ru
