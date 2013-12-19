@@ -61,6 +61,7 @@ $lwfsconf = {
   'ALLOWED_PREFIX_PATTERN' => '',
   'TARGETS' =>
   [
+   'loader',
    'webkitcss',
    'canvas',
    'webgl',
@@ -86,7 +87,8 @@ $lwfsconf = {
   'STATS_DISPLAY' => {
     'GRAPH' => false,
     'TEXT' => true
-  }
+  },
+  'LWF_FORMAT_VERSION' => '0x121010'
 }
 ['lwfs.conf', "#{SRC_DIR}/lwfs.conf"].each do |f|
   if File.file?(f)
@@ -236,6 +238,8 @@ configure do
     FileUtils.cp_r('tmpl/js/loading.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/qrcode.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/test-html5.js', "#{OUT_DIR}/html5/js")
+    FileUtils.cp_r('tmpl/js/lwf-loader-all.min.js', "#{OUT_DIR}/html5/js")
+    FileUtils.cp_r('tmpl/js/underscore-min.js', "#{OUT_DIR}/html5/js")
     glob('tmpl/js/lwf*.js').each do |f|
       FileUtils.cp(f, "#{OUT_DIR}/html5/js") unless f =~ /(cocos2d|unity)/i
     end
@@ -247,7 +251,7 @@ configure do
     end
   end
   PORT = Sinatra::Application.port.to_s
-  Thread.new do 
+  Thread.new do
     sleep(0.5)
     while not postUpdate(PORT)
       sleep(1.0)
@@ -625,10 +629,11 @@ def convert(changes)
           end
         end
         prefix = File.basename(swf, '.swf')
-        ret = swf2res(swf)
+        ret = swf2res(swf, $lwfsconf['LWF_FORMAT_VERSION'])
         ret['args'].each do |s|
           s.sub!(/.*\.(swf|fla|json)$/, File.basename(s))
           s.sub!(/.*\/swf2lwf.conf$/, 'swf2lwf.conf')
+          s.sub!(/.*\/\.swf2lwf.conf$/, '.swf2lwf.conf')
         end
         commandline = "swf2lwf#{(ret['args'].length > 0) ? ' ' : ''}#{ret['args'].join(' ')}"
         if not ret['is_error']
@@ -651,7 +656,7 @@ def outputRaw(update_time, folder)
     #folder = lines[2].chomp
     FileUtils.rm_f(glob("#{folder}/index-*.html"))
   end
-  ['webkitcss', 'canvas'].each do |target|
+  ['loader', 'webkitcss', 'canvas'].each do |target|
     next unless TARGETS.include?(target)
     content = <<-"EOF"
 <html>
@@ -736,11 +741,15 @@ def outputOK(update_time, folder, name, prefix, commandline)
     favicon = 'favicon-blue.png'
   end
   lwfstats = {:w => 0, :h => 0}
-  File.open("#{folder}/#{prefix}.lwfdata/#{prefix}.stats", 'r') do |fp|
-    if fp.read() =~ /^stage: (\d+)x(\d+)$/
-      lwfstats[:w] = $1.to_i
-      lwfstats[:h] = $2.to_i
+  begin
+    File.open("#{folder}/#{prefix}.lwfdata/#{prefix}.stats", 'r') do |fp|
+      if fp.read() =~ /^stage: (\d+)x(\d+)$/
+        lwfstats[:w] = $1.to_i
+        lwfstats[:h] = $2.to_i
+      end
     end
+    header = File.binread("#{folder}/#{prefix}.lwfdata/#{prefix}.lwf", 7).unpack('C*')
+    lwfstats[:format_version] = sprintf("0x%02x%02x%02x", header[4], header[5], header[6])
   end
   screensize = {:w => 0, :h => 0}
   if SCREEN_SIZE =~ /(\d+)x(\d+)/
@@ -793,6 +802,112 @@ def outputOK(update_time, folder, name, prefix, commandline)
     </script>
     EOF
   end
+  loaderscripts = ''
+  if glob("#{folder}/underscore*.js").length == 0
+    loaderscripts += <<-"EOF"
+    <script type="text/javascript" src="#{relative}js/underscore-min.js"></script>
+    EOF
+  end
+  if glob("#{folder}/lwf-loader*.js").length == 0
+    loaderscripts += <<-"EOF"
+    <script type="text/javascript" src="#{relative}js/lwf-loader-all.min.js"></script>
+    EOF
+  end
+  ['loader'].each do |target|
+    next unless TARGETS.include?(target)
+    content = <<-"EOF"
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <title>LWF Loader: #{name}</title>
+    <link rel="shortcut icon" href="#{relative}img/#{favicon}" />
+    <link rel="icon" href="#{relative}img/#{favicon}" />
+    <link rel="stylesheet" href="#{relative}css/common.css" />
+    <link rel="stylesheet" href="#{relative}css/viewer.css" />
+    <script type="text/javascript" src="#{relative}js/qrcode.js"></script>
+    <script type="text/javascript" src="#{relative}js/lwf_native.js"></script>
+#{(loaderscripts + userscripts).chomp}
+    <script type="text/javascript" src="#{relative}js/lwf-loader-util.js"></script>
+    <script type="text/javascript">
+      var paramHandler = function (pElement) {
+          return {
+              handler: {
+                  loadError: function (e) {
+                      console.log(e);
+                  },
+                  exception: function (e) {
+                      console.log(e);
+                  }
+              }
+          }
+      };
+      var paramCallback = function (pElement) {
+          return {
+              callback: {
+                  onLoad: function (pLwf) {
+                      console.log(pLwf);
+                  }
+              }
+          }
+      };
+
+      var setting = _.isObject(window["testlwf_settings"]) ? _.clone(window["testlwf_settings"]) : {};
+      setting.lwf = "#{prefix}.lwf";
+      setting.prefix = "_/";
+
+      window["testlwf_root_override"] = "#{root_override}";
+      window["testlwf_name"] = "#{name}";
+      window["testlwf_html5target"] = "#{target}";
+      window["testlwf_commandline"] = "#{commandline}";
+      window["testlwf_warn"] = #{warnings != ''};
+
+      window["testlwf_config"] = {
+          "use_page_show_hide_events": #{$lwfsconf['USE_PAGE_SHOW_HIDE_EVENTS']},
+          "fr": #{FRAME_RATE},
+          "fs": #{FRAME_STEP},
+          "ds": #{DISPLAY_SCALE},
+          "ss": {
+              "w": #{screensize[:w]},
+              "h": #{screensize[:h]}
+          },
+          "rootoffset": {
+              "x": #{rootoffset[:x]},
+              "y": #{rootoffset[:y]}
+          },
+          "stage": {
+              "elastic": #{$lwfsconf['STAGE']['ELASTIC']},
+              "halign": #{$lwfsconf['STAGE']['HALIGN']},  // -1, 0, 1
+              "valign": #{$lwfsconf['STAGE']['VALIGN']}   // -1, 0, 1
+          }
+      };
+      window["testlwf_statsdisplay"] = {
+          "graph": #{STATS_DISPLAY['GRAPH']},
+          "text": #{STATS_DISPLAY['TEXT']}
+      };
+
+      var lwfLoader = new window.LwfLoader();
+      window.addEventListener('DOMContentLoaded', function() {
+        var element = document.getElementById('lwfs-sample');
+        lwfLoader.addInitializeHook(paramHandler);
+        lwfLoader.addInitializeHook(paramCallback);
+        lwfLoader.debug = true;
+        lwfLoader.playLWF(element, setting);
+      });
+
+    </script>
+  </head>
+  <body>
+    <div id="header" style="margin-left: 10px; margin-top: 10px;"></div>
+    <div id="lwfs-sample" class="lwf" style="margin-left: 10px; margin-top: 10px; position: relative;"></div>
+
+  </body>
+</html>
+    EOF
+    File.open("#{folder}/index-loader.html", 'w') do |fp|
+      fp.write(content)
+    end
+  end
   ['webkitcss', 'canvas', 'webgl'].each do |target|
     next unless TARGETS.include?(target)
     case target
@@ -842,7 +957,8 @@ def outputOK(update_time, folder, name, prefix, commandline)
       window["testlwf_lwfjs"] = "#{lwfjs}";
       window["testlwf_lwfstats"] = {
           "w": #{lwfstats[:w]},
-          "h": #{lwfstats[:h]}
+          "h": #{lwfstats[:h]},
+          "format_version": "#{lwfstats[:format_version]}"
       };
       window["testlwf_config"] = {
           "use_page_show_hide_events": #{$lwfsconf['USE_PAGE_SHOW_HIDE_EVENTS']},
@@ -869,6 +985,8 @@ def outputOK(update_time, folder, name, prefix, commandline)
       };
     </script>
     <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
+    <script type="text/javascript" src="#{relative}js/underscore-min.js"></script>
+    <script type="text/javascript" src="#{relative}js/lwf-loader-all.min.js"></script>
 #{userscripts.chomp}
 #{birdwatcher.chomp}
   </head>
@@ -1067,7 +1185,7 @@ def updateTopIndex(update_time, is_start = false)
   EOF
   content += '        <thead>'
   content += '          <tr><th>name</th><th></th>'
-  ['webkitcss', 'canvas', 'webgl'].each do |target|
+  ['loader', 'webkitcss', 'canvas', 'webgl'].each do |target|
     next unless TARGETS.include?(target)
     content += "<th>#{target}</th>"
   end
@@ -1081,7 +1199,7 @@ def updateTopIndex(update_time, is_start = false)
     date = date.strftime('%F %T')
     content += "          <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td><td class=\"center\"><a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '#{name}', 'force': true}); return false;\">u</a></td>"
     if status != 'NG'
-      ['webkitcss', 'canvas', 'webgl'].each do |target|
+      ['loader', 'webkitcss', 'canvas', 'webgl'].each do |target|
         next unless TARGETS.include?(target)
         if File.file?("#{DST_DIR}/#{name}/index-#{target}.html")
           content += "<td class=\"center\"><a href=\"#{name}/index-#{target}.html\" target=\"_blank\">#{target}</a></td>"
@@ -1091,7 +1209,7 @@ def updateTopIndex(update_time, is_start = false)
       end
       content += "<td class=\"center\">#{status}</td>"
     else
-      ['webkitcss', 'canvas', 'webgl'].each do |target|
+      ['loader', 'webkitcss', 'canvas', 'webgl'].each do |target|
         next unless TARGETS.include?(target)
         content += "<td class=\"center\">-</td>"
       end

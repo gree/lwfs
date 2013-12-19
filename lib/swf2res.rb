@@ -6,7 +6,9 @@ require 'glob.rb'
 require 'swf2lwf/swf2lwf.rb'
 require 'lwf2lwfjs/lwf2lwfjs.rb'
 
-def swf2res(swf)
+SCRIPT_ROOT = File.dirname __FILE__
+
+def swf2res(swf, lwf_format_version = nil)
   return {"is_error" => true, "message" => 'The file is not swf.'} unless swf =~ /\.swf$/
 
   ext_textures = []
@@ -39,6 +41,12 @@ def swf2res(swf)
   if File.file?(swf2lwf_conf)
     args.push('-c')
     args.push(swf2lwf_conf)
+  elsif not lwf_format_version.nil?
+    File.open("#{dirname}/.swf2lwf.conf", 'w') do |fp|
+      fp.write(File.read("#{SCRIPT_ROOT}/swf2lwf/swf2lwf.conf").gsub(/^.*format:.*\n$/, '') + "format: #{lwf_format_version}\n")
+    end
+    args.push('-c')
+    args.push("#{dirname}/.swf2lwf.conf")
   end
   if File.file?(xfl)
     args.push('-f')

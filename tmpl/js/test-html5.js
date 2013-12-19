@@ -513,10 +513,11 @@
             isRewinding = true;
         };
         updateInfo = function() {
+            var lwfstats = window['testlwf_lwfstats'];
             var info = '';
             var elm = document.getElementById('info1');
             var fps = (lwf) ? lwf.frameRate : 0;
-            info = '(x' + ds.toFixed(2) + ', ' + stage_w + 'x' + stage_h + ', ' + fps + 'fps, ' + fs + 'fs)';
+            info = '(format: ' + lwfstats['format_version'] + ')' + '(x' + ds.toFixed(2) + ', ' + stage_w + 'x' + stage_h + ', ' + fps + 'fps, ' + fs + 'fs)';
             elm.textContent = info;
         };
         stage.lwf = lwf;
