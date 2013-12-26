@@ -1,50 +1,18 @@
 (function() {
+  window['lwfs_loader_mode'] = true;
 
-    var isIOS = /(iPhone|iPad)/.test(navigator.userAgent);
-    var isAndroid = /Android/.test(navigator.userAgent);
-    var isMobile = isIOS || isAndroid;
-    var stageWrapper = null;
-    var isConfigurable = true;
-    var config = window['testlwf_config'];
-    var mode = 'release';
-    var fps = {
-        num01: 0,
-        num60: 0,
-        stats: null
-    };
-    var dps = {
-        num01: 0,
-        num60: 0,
-        numi: 0,
-        stats: null
-    };
+  var isAndroid = /Android/.test(navigator.userAgent);
+  var isiOS = /(iPhone|iPad|iPod)/.test(navigator.userAgent);
+  var isMobile = isiOS || isAndroid;
 
+  var onpageshow = function() {
+    var header = document.getElementById('header');
+    var lpart = document.createElement('div');
+    lpart.id = 'lpart';
+    var rpart = document.createElement('div');
+    rpart.id = 'rpart';
 
-    onProgress = function(loaded_count, total) {
-        if (progressBar) {
-            if (loaded_count < total) {
-                progressBar.textContent = 'loading: ' + i2a(Math.round(100 * loaded_count / total), 3) + '%';
-            } else {
-                if (progressBar) {
-                    progressBar.parentNode.removeChild(progressBar);
-                    progressBar = null;
-                }
-            }
-        }
-    };
-
-    var onpagehide = function() {
-    };
-
-    var onpageshow = function() {
-
-      var header = document.getElementById('header');
-
-      var lpart = document.createElement('div');
-      lpart.id = 'lpart';
-      var rpart = document.createElement('div');
-      rpart.id = 'rpart';
-
+    if (!isMobile) {
       {
           var qr = document.createElement('span');
           qr.id = 'qr';
@@ -65,16 +33,16 @@
       }
 
       {
-        var div = document.createElement('div');
-        div.className = 'info_wrapped';
-        div.textContent = '(' + window['testlwf_commandline'] + ')';
-        lpart.appendChild(div);
+        var div_commandline = document.createElement('div');
+        div_commandline.className = 'info_wrapped';
+        div_commandline.textContent = '(' + window['testlwf_commandline'] + ')';
+        lpart.appendChild(div_commandline);
       }
 
       {
-        var div = document.createElement('div');
-        div.className = 'info_wrapped';
-        div.id = 'renderer_in_use';
+        var div_renderer = document.createElement('div');
+        div_renderer.className = 'info_wrapped';
+        div_renderer.id = 'renderer_in_use';
 
         var renderer = window.lwfLoader.getRenderer();
 
@@ -88,11 +56,10 @@
           renderer = 'Native Renderer';
         }
 
-
-        div.innerHTML
+        div_renderer.innerHTML
           = '<br>Currently Running on: ' + renderer;
 
-        lpart.appendChild(div);
+        lpart.appendChild(div_renderer);
       }
 
       {
@@ -112,9 +79,7 @@
         ];
 
         var resize = function(event) {
-          var myStage = document.getElementById("lwfs-sample");
-          console.log("Stage Width: " + myStage.style.width);
-          console.log("Stage Height: " + myStage.style.height);
+          var myStage = document.getElementById('lwfs-sample');
 
           if (/([0-9]+)x([0-9]+)/.test(event.target.textContent)) {
             var inputWidth = parseInt(RegExp.$1);
@@ -157,11 +122,36 @@
         lpart.appendChild(div);
       }
 
+      {
+        var div_fps = document.createElement('div');
+        div_fps.className = 'info_wrapped';
+        div_fps.id = 'current_fps';
+
+        div_fps.innerHTML
+          = 'Current FPS(avg): ' + window.lwfLoader.getCurrentFPS() + 'fps';
+
+        lpart.appendChild(div_fps);
+      }
+
+      var myStage = document.getElementById('lwfs-sample');
+      myStage.style.marginLeft = '10px';
+      myStage.style.marginTop = '10px';
+
       header.appendChild(lpart);
       header.appendChild(rpart);
+    } else {
+      window.lwfLoader.debug = false;
 
-    };
+      var headerElement = document.getElementById('header');
+      headerElement.style.display = 'none';
+    }
+  };
 
-    window.addEventListener('pagehide', onpagehide, false);
-    window.addEventListener('pageshow', onpageshow, false);
+  if (!isMobile) {
+    setInterval(function(){
+      document.getElementById('current_fps').innerHTML = 'Current FPS(avg): ' + window.lwfLoader.getCurrentFPS() + 'fps';
+    },1000);
+  }
+
+  window.addEventListener('pageshow', onpageshow, false);
 }).call(this);
