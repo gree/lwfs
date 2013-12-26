@@ -803,12 +803,12 @@ def outputOK(update_time, folder, name, prefix, commandline)
     EOF
   end
   loaderscripts = ''
-  if glob("#{folder}/underscore*.js").length == 0
+  if glob("#{folder}/*underscore*.js").length == 0
     loaderscripts += <<-"EOF"
     <script type="text/javascript" src="#{relative}js/underscore-min.js"></script>
     EOF
   end
-  if glob("#{folder}/lwf-loader*.js").length == 0
+  if glob("#{folder}/*lwf-loader*.js").length == 0
     loaderscripts += <<-"EOF"
     <script type="text/javascript" src="#{relative}js/lwf-loader-all.min.js"></script>
     EOF
@@ -891,7 +891,6 @@ def outputOK(update_time, folder, name, prefix, commandline)
         var element = document.getElementById('lwfs-sample');
         lwfLoader.addInitializeHook(paramHandler);
         lwfLoader.addInitializeHook(paramCallback);
-        lwfLoader.debug = true;
         lwfLoader.playLWF(element, setting);
       });
 
@@ -899,7 +898,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
   </head>
   <body>
     <div id="header" style="margin-left: 10px; margin-top: 10px;"></div>
-    <div id="lwfs-sample" class="lwf" style="margin-left: 10px; margin-top: 10px; position: relative;"></div>
+    <div id="lwfs-sample" class="lwf" style="position: relative;"></div>
 
   </body>
 </html>
@@ -985,8 +984,6 @@ def outputOK(update_time, folder, name, prefix, commandline)
       };
     </script>
     <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
-    <script type="text/javascript" src="#{relative}js/underscore-min.js"></script>
-    <script type="text/javascript" src="#{relative}js/lwf-loader-all.min.js"></script>
 #{userscripts.chomp}
 #{birdwatcher.chomp}
   </head>
