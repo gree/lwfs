@@ -2363,10 +2363,6 @@ def parse_place_object2
       current_movie = @current_movie
       frame_no = @current_movie.frames.size
       l = lambda {
-        if current_movie.linkage_name.nil?
-          current_movie.linkage_name_lambdas.push(l)
-          return
-        end
         script_name = "#{current_movie.linkage_name}_" +
           "#{frame_no}_#{button.name}_#{instance_name}"
         m = @instance_script_map[script_name]
@@ -2400,7 +2396,7 @@ def parse_place_object2
           end
         end
       }
-      if @version >= 8
+      if @version >= 20
         if button.name.nil?
           button.linkage_name_lambdas.push(l)
         else
@@ -3034,7 +3030,7 @@ def parse_xflxml(xml, isRootMovie = false)
         i += skip
       end
 
-      re = /on\s*\(\s*(?<c>press|release|rollOver|rollOut)\s*\)\s*(?<p>\{(?:[^{}]|\g<p>)*\})/
+      re = Regexp.new("on\s*\(\s*(?<c>press|release|rollOver|rollOut)\s*\)\s*(?<p>\{(?:[^{}]|\g<p>)*\})")
       scripts.each do |lang, types|
         types.each do |type, script|
           if script =~ /\W/
@@ -3117,101 +3113,80 @@ def parse_xflxml(xml, isRootMovie = false)
       i = 0
       nest = 0
       text = e.send(textMsg).strip.gsub(/\n/, "\001")
-      if @version == 8
-        re = /on\s*\(\s*(?<c>press|release|rollOver|rollOut)\s*\)\s*(?<p>\{(?:[^{}]|\g<p>)*\})/
-        text.gsub(re) do |m|
-          event = $~[:c]
-          btnscript = $~[:p]
-          btnscript.sub!(/^[\s\001]*\001/, '')
-          btnscript.sub!(/[\s\001]+$/, '')
-          btnscript.gsub!(/\001/, "\n")
-          btnscript = btnscript.slice(1, btnscript.length - 2)
-          script_name = "#{name}_#{index}_" +
-            "#{instance_linkage_name}_#{instance_name}"
-          funcname = "#{script_name}_#{event}"
-          btnscript = compile_as(btnscript, funcname)
-          @instance_script_map[script_name] ||= Hash.new
-          @instance_script_map[script_name][event] ||= Hash.new
-          @instance_script_map[script_name][event] = funcname
-          @script_funcname_map[funcname] ||= {}
-          @script_funcname_map[funcname][:ActionScript] = btnscript
+      while i < text.length
+        s = text[i, text.length - i]
+        pos = (/((on|onClipEvent)([\s\001]*)(\([\s\001]*)([a-zA-Z]+)([\s\001]*\))|on[\s\001]*\([\s\001]*keyPress[\s\001]*".*"[\s\001]*\)|\{\s*|\}\s*|\/\*\s*|\*\/\s*)/ =~ s)
+        if pos
+          i += pos
+        else
+          break
         end
-      else
-        while i < text.length
-          s = text[i, text.length - i]
-          pos = (/((on|onClipEvent)([\s\001]*)(\([\s\001]*)([a-zA-Z]+)([\s\001]*\))|on[\s\001]*\([\s\001]*keyPress[\s\001]*".*"[\s\001]*\)|\{\s*|\}\s*|\/\*\s*|\*\/\s*)/ =~ s)
-          if pos
-            i += pos
-          else
-            break
-          end
-          s = text[i, text.length - i]
-          skip = 0
-          case s
-          when /^(on|onClipEvent)([\s\001]*)(\([\s\001]*)([a-zA-Z]+)([\s\001]*\))/
-            skip += $1.length + $2.length + $3.length + $4.length + $5.length
-            event = $4 if event_nest == 0
-          when /^(on[\s\001]*\([\s\001]*keyPress[\s\001]*".*"[\s\001]*\))/
-            skip += $1.length
-            event = "keyPress"
-          when /^(\{\s*)/
-            skip += $1.length
-            event_nest += 1
-          when /^(\}\s*)/
-            skip += $1.length
-            event_nest -= 1
-            if event_nest == 0
-              scripts.each do |lang, script|
-                if script =~ /\W/
-                  if event == "keyPress"
-                    error "doesn't support script in keyPress event"
-                  else
-                    script_name =
-                      "#{name}_#{index}_#{instance_linkage_name}_#{instance_name}"
-                    funcname = "#{script_name}_#{event}"
-                    @instance_script_map[script_name] ||= Hash.new
-                    @instance_script_map[script_name][event] ||= Hash.new
-                    @instance_script_map[script_name][event] = funcname
-                    @script_funcname_map[funcname] ||= {}
-                    @script_funcname_map[funcname][lang] = script
-                  end
+        s = text[i, text.length - i]
+        skip = 0
+        case s
+        when /^(on|onClipEvent)([\s\001]*)(\([\s\001]*)([a-zA-Z]+)([\s\001]*\))/
+          skip += $1.length + $2.length + $3.length + $4.length + $5.length
+          event = $4 if event_nest == 0
+        when /^(on[\s\001]*\([\s\001]*keyPress[\s\001]*".*"[\s\001]*\))/
+          skip += $1.length
+          event = "keyPress"
+        when /^(\{\s*)/
+          skip += $1.length
+          event_nest += 1
+        when /^(\}\s*)/
+          skip += $1.length
+          event_nest -= 1
+          if event_nest == 0
+            scripts.each do |lang, script|
+              if script =~ /\W/
+                if event == "keyPress"
+                  error "doesn't support script in keyPress event"
+                else
+                  script_name =
+                    "#{name}_#{index}_#{instance_linkage_name}_#{instance_name}"
+                  funcname = "#{script_name}_#{event}"
+                  @instance_script_map[script_name] ||= Hash.new
+                  @instance_script_map[script_name][event] ||= Hash.new
+                  @instance_script_map[script_name][event] = funcname
+                  @script_funcname_map[funcname] ||= {}
+                  @script_funcname_map[funcname][lang] = script
                 end
               end
-              event = nil
-              scripts = {}
             end
-          when /^(\/\*\s*)/
-            skip += $1.length
-            if script_index.nil?
-              case s
-              when /^(\/\*\s*)(js)(\s*\001|\s+)/i
-                lang = :JavaScript
-                script_index = i + $1.length + $2.length + $3.length
-                skip += $2.length + $3.length
-                script_nest = nest
-              when /^(\/\*\s*)(lua)(\s*\001|\s+)/i
-                lang = :Lua
-                script_index = i + $1.length + $2.length + $3.length
-                skip += $2.length + $3.length
-                script_nest = nest
-              end
-            end
-            nest += 1
-          when /^(\*\/\s*)/
-            skip += $1.length
-            nest -= 1
-            if !script_index.nil? and nest == script_nest
-              tmp = text[script_index, i - script_index].sub(/\s*$/, '')
-              tmp.sub!(/^[\s\001]*\001/, '')
-              tmp.sub!(/[\s\001]+$/, '')
-              tmp.gsub!(/\001/, "\n")
-              scripts[lang] ||= ""
-              scripts[lang] += tmp
-              script_index = nil
+            event = nil
+            scripts = {}
+          end
+        when /^(\/\*\s*)/
+          skip += $1.length
+          if script_index.nil?
+            case s
+            when /^(\/\*\s*)(js)(\s*\001|\s+)/i
+              lang = :JavaScript
+              script_index = i + $1.length + $2.length + $3.length
+              skip += $2.length + $3.length
+              script_nest = nest
+            when /^(\/\*\s*)(lua)(\s*\001|\s+)/i
+              lang = :Lua
+              script_index = i + $1.length + $2.length + $3.length
+              skip += $2.length + $3.length
+              script_nest = nest
             end
           end
-          i += skip
+          nest += 1
+        when /^(\*\/\s*)/
+          skip += $1.length
+          nest -= 1
+          if !script_index.nil? and nest == script_nest
+            tmp = text[script_index, i - script_index].sub(/\s*$/, '')
+            tmp.sub!(/^[\s\001]*\001/, '')
+            tmp.sub!(/[\s\001]+$/, '')
+            tmp.gsub!(/\001/, "\n")
+            scripts[lang] ||= ""
+            scripts[lang] += tmp
+            script_index = nil
+          end
         end
+        i += skip
       end
     end
   end
