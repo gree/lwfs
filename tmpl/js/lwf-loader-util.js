@@ -11,25 +11,26 @@
     lpart.id = 'lpart';
     var rpart = document.createElement('div');
     rpart.id = 'rpart';
+    var myStage = {};
 
     if (!isMobile) {
       {
-          var qr = document.createElement('span');
-          qr.id = 'qr';
-          var q = qrcode(10, 'M');
-          q.addData(
-              (window['testlwf_html5target'] != 'native')
-                  ? window.location.href
-                  : window.location.href.replace(/^http:/, "lwfh5gl:"));
-          q.make();
-          qr.innerHTML = q.createImgTag();
-          rpart.appendChild(qr);
+        var qr = document.createElement('span');
+        qr.id = 'qr';
+        var q = qrcode(10, 'M');
+        q.addData(
+          (window['testlwf_html5target'] != 'native')
+            ? window.location.href
+            : window.location.href.replace(/^http:/, "lwfh5gl:"));
+        q.make();
+        qr.innerHTML = q.createImgTag();
+        rpart.appendChild(qr);
       }
 
       {
-          var h1 = document.createElement('h1');
-          h1.innerHTML = document.title + '<span id="loading_icon"></span>';
-          lpart.appendChild(h1);
+        var h1 = document.createElement('h1');
+        h1.innerHTML = document.title + '<span id="loading_icon"></span>';
+        lpart.appendChild(h1);
       }
 
       {
@@ -80,20 +81,41 @@
 
         var resize = function(event) {
           var myStage = document.getElementById('lwfs-sample');
-
           if (/([0-9]+)x([0-9]+)/.test(event.target.textContent)) {
             var inputWidth = parseInt(RegExp.$1);
             var inputHeight = parseInt(RegExp.$2);
+            var stageWidth = window.lwfWidth ? window.lwfWidth : 320;
+            var stageHeight = window.lwfHeight ? window.lwfHeight : 480;
+
+            var screenRatio = inputWidth / inputHeight;
+            var imageRatio = stageWidth / stageHeight;
+
+            if (screenRatio > imageRatio) {
+              stageWidth *= (inputHeight / stageHeight);
+              stageHeight = inputHeight;
+            } else {
+              stageHeight *= (inputWidth / stageWidth);
+              stageWidth = inputWidth;
+            }
 
             myStage.style.width = inputWidth + 'px';
             myStage.style.height = inputHeight + 'px';
-            window.lwfLoader.stageWidth = inputWidth;
-            window.lwfLoader.stageHeight = inputHeight;
+
+            window.lwfLoader.stageWidth = stageWidth;
+            window.lwfLoader.stageHeight = stageHeight;
+            window.lwfLoader.screenWidth = inputWidth;
+            window.lwfLoader.screenHeight = inputHeight;
+            window.lwfLoader.resizeMode = 'fitToScreen';
+            window.lwfLoader.stageHAlign = 0;
+            window.lwfLoader.stageVAlign = -1;
           } else {
             myStage.style.width = 0;
             myStage.style.height = 0;
             window.lwfLoader.stageWidth = 0;
             window.lwfLoader.stageHeight = 0;
+            window.lwfLoader.screenWidth = 0;
+            window.lwfLoader.screenHeight = 0;
+            window.lwfLoader.stageHAlign = -1;
           }
           return false;
         };
@@ -133,14 +155,50 @@
         lpart.appendChild(div_fps);
       }
 
-      var myStage = document.getElementById('lwfs-sample');
+      myStage = document.getElementById('lwfs-sample');
       myStage.style.marginLeft = '10px';
       myStage.style.marginTop = '10px';
 
       header.appendChild(lpart);
       header.appendChild(rpart);
-    } else {
+
+    } else {  // case viewing with mobile devices
+      var inputWidth = window.innerWidth;
+      var inputHeight = window.innerHeight;
+      var stageWidth = window.lwfWidth ? window.lwfWidth : 320;
+      var stageHeight = window.lwfHeight ? window.lwfHeight : 480;
+
+      if (isAndroid) {
+        if (window.innerWidth > window.screen.width) {
+          inputWidth = window.screen.width;
+        }
+        if (window.innerHeight > window.screen.height) {
+          inputHeight = window.screen.height;
+        }
+      }
+
+      var screenRatio = inputWidth / inputHeight;
+      var imageRatio = stageWidth / stageHeight;
+
+      if (screenRatio > imageRatio) {
+        stageWidth *= (inputHeight / stageHeight);
+        stageHeight = inputHeight;
+      } else {
+        stageHeight *= (inputWidth / stageWidth);
+        stageWidth = inputWidth;
+      }
+
       window.lwfLoader.debug = false;
+      myStage = document.getElementById('lwfs-sample');
+      myStage.style.width = inputWidth + 'px';
+      myStage.style.height = inputHeight + 'px';
+      window.lwfLoader.stageWidth = stageWidth;
+      window.lwfLoader.stageHeight = stageHeight;
+      window.lwfLoader.screenWidth = inputWidth;
+      window.lwfLoader.screenHeight = inputHeight;
+      window.lwfLoader.resizeMode = 'fitToScreen';
+      window.lwfLoader.stageHAlign = 0;
+      window.lwfLoader.stageVAlign = -1;
 
       var headerElement = document.getElementById('header');
       headerElement.style.display = 'none';
