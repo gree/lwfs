@@ -3398,6 +3398,16 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this._rotation = v;
     };
 
+    BitmapClip.prototype.setMatrix = function(m) {
+      this.mScaleX = m.scaleX;
+      this.mScaleY = m.scaleY;
+      this.mSkew0 = m.skew0;
+      this.mSkew1 = m.skew1;
+      this.x = m.translateX;
+      this.y = m.translateY;
+      this.dirty();
+    };
+
     BitmapClip.prototype.getAlphaProperty = function() {
       return this._alpha;
     };
@@ -5149,7 +5159,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (rotation == null) {
         rotation = 0;
       }
-      this.property.setMatrix(m, scalex, scaleY, rotation);
+      this.property.setMatrix(m, scaleX, scaleY, rotation);
       return this;
     };
 
@@ -7442,6 +7452,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
   ColorTransform.prototype["set"] = ColorTransform.prototype.set;
 
+  BitmapClip.prototype["setMatrix"] = BitmapClip.prototype.setMatrix;
+
   WebkitCSSRendererFactory = (function() {
     function WebkitCSSRendererFactory(data, resourceCache, cache, stage, textInSubpixel, use3D, recycleTextCanvas, quirkyClearRect) {
       var bitmap, bitmapEx, h, style, text, w, _i, _j, _k, _len, _len1, _len2, _ref1, _ref2, _ref3, _ref4;
@@ -8788,7 +8800,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.onloaddata = function(settings, data, url) {
-      var lwfUrl, needsToLoadScript, _ref2, _ref3;
+      var needsToLoadScript, _ref2, _ref3;
       if (!((data != null) && data.check())) {
         settings.error.push({
           url: url,
@@ -8800,8 +8812,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       settings["name"] = data.name();
       this.checkTextures(settings, data);
       needsToLoadScript = data.useScript && (((_ref2 = global["LWF"]) != null ? (_ref3 = _ref2["Script"]) != null ? _ref3[data.name()] : void 0 : void 0) == null);
-      lwfUrl = settings["lwf"];
-      this.cache[lwfUrl].data = data;
+      this.cache[settings["lwfUrl"]].data = data;
       settings.total = settings._textures.length + 1;
       if (needsToLoadScript) {
         settings.total++;
@@ -8818,12 +8829,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebkitCSSResourceCache.prototype.loadLWF = function(settings) {
-      var data, lwfUrl, url, _ref2;
+      var data, lwfUrl, _ref2;
       lwfUrl = settings["lwf"];
-      url = lwfUrl;
-      if (!url.match(/^\//)) {
-        url = ((_ref2 = settings["prefix"]) != null ? _ref2 : "") + url;
+      if (!lwfUrl.match(/^\//)) {
+        lwfUrl = ((_ref2 = settings["prefix"]) != null ? _ref2 : "") + lwfUrl;
       }
+      settings["lwfUrl"] = lwfUrl;
       settings.error = [];
       if (this.cache[lwfUrl] != null) {
         data = this.cache[lwfUrl].data;
@@ -8840,7 +8851,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         }
       }
       this.cache[lwfUrl] = {};
-      this.loadLWFData(settings, url);
+      this.loadLWFData(settings, lwfUrl);
     };
 
     WebkitCSSResourceCache.prototype.dispatchOnloaddata = function(settings, url, useWorker, useArrayBuffer, useWorkerWithArrayBuffer, data) {
@@ -8972,7 +8983,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         };
         script.src = url;
         head.appendChild(script);
-        lwfUrl = settings["lwf"];
+        lwfUrl = settings["lwfUrl"];
         if ((_base = this.cache[lwfUrl]).scripts == null) {
           _base.scripts = [];
         }
@@ -9052,8 +9063,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     WebkitCSSResourceCache.prototype.loadJS = function(settings, data) {
       var head, lwfUrl, onload, onprogress, script, url, _base, _ref2, _ref3,
         _this = this;
-      lwfUrl = settings["lwf"];
-      url = (_ref2 = settings["js"]) != null ? _ref2 : lwfUrl.replace(/\.lwf(\.js)?/i, ".js");
+      lwfUrl = settings["lwfUrl"];
+      url = (_ref2 = settings["js"]) != null ? _ref2 : settings["lwf"].replace(/\.lwf(\.js)?/i, ".js");
       if (!url.match(/^\//)) {
         url = ((_ref3 = settings["prefix"]) != null ? _ref3 : "") + url;
       }
@@ -9292,7 +9303,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     WebkitCSSResourceCache.prototype.newLWF = function(settings, imageCache, data) {
       var cache, embeddedScript, factory, lwf, lwfUrl, parentLWF, _ref2, _ref3;
-      lwfUrl = settings["lwf"];
+      lwfUrl = settings["lwfUrl"];
       cache = this.cache[lwfUrl];
       factory = this.newFactory(settings, imageCache, data);
       if (data.useScript) {
@@ -9302,7 +9313,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if (settings["active"] != null) {
         lwf.active = settings["active"];
       }
-      lwf.url = settings["lwf"];
+      lwf.url = settings["lwfUrl"];
       lwf.lwfInstanceId = ++this.lwfInstanceIndex;
       if (cache.instances == null) {
         cache.instances = {};
