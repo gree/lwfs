@@ -61,13 +61,13 @@ $lwfsconf = {
   'ALLOWED_PREFIX_PATTERN' => '',
   'TARGETS' =>
   [
-   'loader',
-   'webkitcss',
-   'canvas',
-   'webgl',
-   'native',
-   'cocos2d',
-   'unity'
+    'loader',
+    'webkitcss',
+    'canvas',
+    'webgl',
+    'native',
+    'cocos2d',
+    'unity'
   ],
   'USE_OUTPUT_FOLDER' => true,
   'ROOT_OVERRIDES' =>
@@ -79,16 +79,22 @@ $lwfsconf = {
   'FRAME_STEP' => 0,
   'DISPLAY_SCALE' => 0,
   'SCREEN_SIZE' => '0x0',
-  'STAGE' => {
+  'STAGE' =>
+  {
     'ELASTIC' => false,
     'HALIGN' => 0,
     'VALIGN' => -1
   },
-  'STATS_DISPLAY' => {
+  'STATS_DISPLAY' =>
+  {
     'GRAPH' => false,
     'TEXT' => true
   },
-  'LWF_FORMAT_VERSION' => '0x121010'
+  'LWF_FORMAT_VERSION' => '0x121010',
+  'SWF2LWF_EXTRA_OPTIONS' =>
+  [
+    #"-s"
+  ]
 }
 ['lwfs.conf', "#{SRC_DIR}/lwfs.conf"].each do |f|
   if File.file?(f)
@@ -629,7 +635,7 @@ def convert(changes)
           end
         end
         prefix = File.basename(swf, '.swf')
-        ret = swf2res(swf, $lwfsconf['LWF_FORMAT_VERSION'])
+        ret = swf2res(swf, $lwfsconf['LWF_FORMAT_VERSION'], $lwfsconf['SWF2LWF_EXTRA_OPTIONS'])
         ret['args'].each do |s|
           s.sub!(/.*\.(swf|fla|json)$/, File.basename(s))
           s.sub!(/.*\/swf2lwf.conf$/, 'swf2lwf.conf')
@@ -659,6 +665,7 @@ def outputRaw(update_time, folder)
   ['loader', 'webkitcss', 'canvas'].each do |target|
     next unless TARGETS.include?(target)
     content = <<-"EOF"
+<!DOCTYPE HTML>
 <html>
   <head>
     <meta http-equiv="refresh" content="0; URL=index.html?renderer=#{target}">
@@ -898,7 +905,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
   </head>
   <body>
     <div id="header" style="margin-left: 10px; margin-top: 10px;"></div>
-    <div id="lwfs-sample" class="lwf" style="position: relative;"></div>
+    <div id="lwfs-sample" class="lwf" style="position: relative; background-color: black;" ></div>
 
   </body>
 </html>

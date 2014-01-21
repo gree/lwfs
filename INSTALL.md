@@ -15,7 +15,7 @@ themselves are built under build/{osx,win}/runtime.
 
         rvm install 1.9.3
         rvm 1.9.3
-        bundle install
+        bundle install --no-cache
 
 ### Mac OS X (JRuby)
 
@@ -24,7 +24,7 @@ themselves are built under build/{osx,win}/runtime.
 
         rvm install jruby
         rvm jruby
-        bundle install
+        bundle install --no-cache
 
 ### Linux
 
@@ -34,7 +34,7 @@ themselves are built under build/{osx,win}/runtime.
 
         rvm install 1.9.3
         rvm 1.9.3
-        bundle install
+        bundle install --no-cache
 
 ### Windows
 
@@ -43,7 +43,7 @@ themselves are built under build/{osx,win}/runtime.
 3. Follow the steps below:
 
         gem install bundler
-        bundle install
+        bundle install --no-cache
 
 ### Remote Server
 
@@ -79,20 +79,99 @@ Invoke the following.
 
     rackup lwfs.ru
 
-Invoke the following if you use the remote server.
+## Configuration
 
-    env LWFS_REMOTE_SERVER=rsyncd-server-hostname rackup lwfs.ru
+You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
 
-Invoke the following if you want to make LWFS copy resulting lwf and
-image files to LWFS\_work\_output.
+    // -*- mode: javascript; tab-width: 4; -*-
+    {
+        "REMOTE_SERVER": "remote-server-name",
+        "BIRD_WATCHER_SERVER": "birdwatcher-server-name:3000",
+        "IGNORED_PATTERN": "[,#].*|.*\.sw[op]|.*~",
+        "ALLOWED_PREFIX_PATTERN": "",
+        "TARGETS":
+        [
+            "webkitcss",
+            "canvas",
+            "webgl",
+            "native"
+            //"cocos2d",
+            //"unity"
+        ],
+        "USE_OUTPUT_FOLDER": true,
+        "ROOT_OVERRIDES":
+        [
+            //["PROJECT/PREFIX/", "http://remote-server-name/lwfrevs/20130702_083513_m0700/"]
+        ],
+        "USE_PAGE_SHOW_HIDE_EVENTS": false,
+        "FRAME_RATE": 0,
+        "FRAME_STEP": 0,
+        "DISPLAY_SCALE": 0,
+        "SCREEN_SIZE": "0x0",
+        "STAGE":
+        {
+            "ELASTIC": false,
+            "HALIGN": 0,  // -1, 0, 1
+            "VALIGN": -1,  // -1, 0, 1
+        },
+        "STATS_DISPLAY":
+        {
+            "GRAPH": false,
+            "TEXT": true
+        },
+        "LWF_FORMAT_VERSION": null,
+        "SWF2LWF_EXTRA_OPTIONS":
+        [
+            //"-s"
+        ]
+    }
 
-    env LWFS_USE_OUTPUT_FOLDER=1 rackup lwfs.ru
-
-Invoke the following if you want to specify the BirdWatcher server.
-
-    env LWFS_BIRD_WATCHER_SERVER=birdwacher-server-hostname:port rackup lwfs.ru
-
-You can also specifiy multiple environment variables.
+* REMOTE\_SERVER
+  * Remote server.
+* BIRD\_WATCHER\_SERVER
+  * BirdWatcher server.
+* IGNORED\_PATTERN
+  * Patterns for untracked files.
+* ALLOWED\_PREFIX\_PATTERN
+  * Patterns for allowed prefixes. Any files/folders are allowed if "" is specified.
+* TARGETS
+  * Targets for which LWFS will perform conversions.
+* USE\_OUTPUT\_FOLDER
+  * True if LWFS copies converted results to ~/Desktop/LWFS\_work\_output.
+* ROOT\_OVERRIDES
+  * lwf\*.js can be specified in this array for any "PROJECT/PREFIX/" in ~/Desktop/LWFS\_work/.
+* USE\_PAGE\_SHOW\_HIDE\_EVENTS
+  * True if a lwf is initialized/finalized on pageshow/pagehide.
+* FRAME\_RATE
+  * Fixed frame rate to be used (0 means not fixed).
+* FRAME\_STEP
+  * Fixed frame step to be used (0 means not fixed).
+* DISPLAY\_SCALE
+  * Fixed display scale to be used (0 means not fixed).
+* SCREEN\_SIZE
+  * Fixed screen size to be used ("0x0" means not fixed).
+* STAGE
+  * ELASTIC
+    * True if the stage will always fullfil its wrapper.
+  * HALIGN
+    * -1 if align to left.
+    * 0 if align to center.
+    * 1 if align to right.
+  * VALIGN
+    * -1 if align to top.
+    * 0 if align to middle.
+    * 1 if align to bottom.
+* STATS\_DISPLAY
+  * GRAPH
+    * True if graphs for fps/draw calls are shown on mobile.
+  * TEXT
+    * True if texts for fps/draw calls are shown on mobile.
+* LWF\_FORMAT\_VERSION
+  * LWF file format version
+    * "0x121010", "0x131211", or null (null means the newest format).
+* SWF2LWF\_EXTRA\_OPTIONS
+  * Extra options for swf2lwf.rb
+    * "-s", for example, enables to parse special symbols as in former swf2lwf.rb.
 
 ## Requirements
 
@@ -100,45 +179,53 @@ You can also specifiy multiple environment variables.
 
 ruby-1.9.3 is required. jruby-1.7.0 is also okay.
 
+### HTTP Server
+
+shinatra-\*.gem and thin-\*.gem (and their dependencies including
+rack-*.gem, etc) are utilized.
+
 ### HTTP Client
 
-httpclient-2.3.0.1.gem is utilized for posting file system events to
+httpclient-\*.gem is utilized for posting file system events to
 the LWFS http server.
 
 ### UUID Tools
 
-uuidtools-2.1.3.gem is utilized for generating a UUID for each
+uuidtools-\*.gem is utilized for generating a UUID for each
 PC. This UUID is necessary to keep multiple users' folders
 simultaneously on the remote rsyncd server.
 
 ### File System Events
 
-Depending on the operating system/ruby, several gems are utilized:
+listen-\*.gem are utilized and it depends on some of gems
+(rb-fseven-\*.gem, rb-inotify-\*.gem, rb-fchange-\*.gem, or
+wdm-\*.gem).
 
-* rb-fsevent-0.9.2.gem
-    * for Mac OS X.
-* rb-inotify-0.8.8.gem
-    * for Linux.
-* rb-fchange-0.0.6.gem
-    * for Windows.
-    * internally utilizes ffi-1.1.5.gem.
-* listen-0.4.7.gem
-    * for JRuby, internally utilizes rb-fseven-0.9.1.gem or
-      rb-fchange-0.0.5.gem.
+### LZMA
+
+vendor/cache/ruby-lzma-\*.gem
+(https://github.com/KojiNakamaru/ruby-lzma/tree/develop), a variant to
+work with ruby-1.9.3, is utilized.
 
 ### XML
 
-gems/libxml-ruby-2.3.3.1/
+vendor/cache/libxml-ruby-\*.gem
 (https://github.com/KojiNakamaru/libxml-ruby/tree/develop) is utilized
 to accelerate parsing xml data. This is a variant of the original
-libxml-ruby-2.3.3.gem to be built for both Windows MinGW ruby and Mac
+libxml-ruby-\*.gem to be built for both Windows MinGW ruby and Mac
 OS X rvm ruby.
+
+### ActionCompiler
+
+lib/swf2lwf/gems/actioncompiler-\*.gem
+(https://github.com/gree/lwf/tree/master/tools/swf2lwf/gems) for
+parsing actions.
 
 ### Image
 
-gems/rb-img-0.0.5/, a custom extension for saving image data in png/jpg,
-is utilized. Although there are several gems for saving image data,
-each of them may have following issues:
+lib/swf2lwf/gems/rb-img-\*.gem (gems/rb-img-\*/), a custom extension for
+saving image data in png/jpg, is utilized. Although there are several
+gems for saving image data, each of them may have following issues:
 
 * Obsolete and cannot work with ruby-1.9.3.
 * Difficult to be built on Windows, MinGW ruby. Perhaps there is no
