@@ -108,16 +108,22 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
         "FRAME_STEP": 0,
         "DISPLAY_SCALE": 0,
         "SCREEN_SIZE": "0x0",
-        "STAGE": {
+        "STAGE":
+        {
             "ELASTIC": false,
             "HALIGN": 0,  // -1, 0, 1
             "VALIGN": -1,  // -1, 0, 1
         },
-        "STATS_DISPLAY": {
+        "STATS_DISPLAY":
+        {
             "GRAPH": false,
             "TEXT": true
         },
-        "LWF_FORMAT_VERSION": null
+        "LWF_FORMAT_VERSION": null,
+        "SWF2LWF_EXTRA_OPTIONS":
+        [
+            //"-s"
+        ]
     }
 
 * REMOTE\_SERVER
@@ -163,6 +169,9 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
 * LWF\_FORMAT\_VERSION
   * LWF file format version
     * "0x121010", "0x131211", or null (null means the newest format).
+* SWF2LWF\_EXTRA\_OPTIONS
+  * Extra options for swf2lwf.rb
+    * "-s", for example, enables to parse special symbols as in former swf2lwf.rb.
 
 ## Requirements
 

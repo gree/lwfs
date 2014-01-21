@@ -8,7 +8,7 @@ require 'lwf2lwfjs/lwf2lwfjs.rb'
 
 SCRIPT_ROOT = File.dirname __FILE__
 
-def swf2res(swf, lwf_format_version = nil)
+def swf2res(swf, lwf_format_version = nil, swf2lwf_extra_options = null)
   return {"is_error" => true, "message" => 'The file is not swf.'} unless swf =~ /\.swf$/
 
   ext_textures = []
@@ -60,6 +60,9 @@ def swf2res(swf, lwf_format_version = nil)
     glob("#{dirname}/*.json").each do |jsn|
       args.push(jsn)
     end
+  end
+  unless swf2lwf_extra_options.nil?
+    args += swf2lwf_extra_options;
   end
   args0 = args.dup
   begin
