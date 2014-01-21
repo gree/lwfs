@@ -1046,9 +1046,10 @@
         if (isAndroid) {
             params['use3D'] = false;
         }
-        if (! (isAndroid && /^(4\.0|[321]\.)/.test(osVersion)) && ! isFile) {
-            params['worker'] = true;
-        } else {
+        if (isAndroid && /^(4\.0|[321]\.)/.test(osVersion)) {
+            params['worker'] = false;
+        }
+        if (isFile) {
             params['worker'] = false;
             var defs = [
                 'WebkitCSSResourceCache',
