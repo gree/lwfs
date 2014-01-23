@@ -38,7 +38,7 @@ require 'chunky_png'
 require 'json'
 require 'rkelly'
 require 'zip/zip'
-ACTIONCOMPILER_VERSION = "1.0.0"
+ACTIONCOMPILER_VERSION = "1.0.1"
 begin
   require 'actioncompiler'
 rescue LoadError
@@ -341,7 +341,13 @@ def compile_as(script, funcname)
 
   begin
     raise if ActionCompiler::version() != ACTIONCOMPILER_VERSION
-    @swf = ActionCompiler::compile(as)
+    swf = ActionCompiler::compile(as)
+    if swf =~ /^ERROR: /
+      warn "ActionScript Compile " + swf
+      @swf = ""
+    else
+      @swf = swf
+    end
   rescue
     unless @actioncompiler_error
       @actioncompiler_error = true
@@ -1550,11 +1556,49 @@ def parse_line_styles(has_alpha)
   end
 end
 
+def parse_line_styles2()
+  line_styles = get_byte
+  line_styles = get_word if line_styles == 255
+  for i in 0...line_styles
+    twips = get_word
+    init_bits
+    start_cap_style = get_bits(2)
+    join_style = get_bits(2)
+    has_fill = get_bits(1)
+    no_h_scale = get_bits(1)
+    no_v_scale = get_bits(1)
+    pixel_hinting = get_bits(1)
+    reserved = get_bits(5)
+    no_close = get_bits(1)
+    end_cap_style = get_bits(2)
+    get_word if join_style == 2
+    if has_fill == 1
+      parse_fill_styles(true)
+    else
+      get_rgba 
+    end
+  end
+end
+
 def parse_define_shape
-  has_alpha = (@tag_parser == :parse_define_shape3 ? true : false)
+  case @tag_parser
+  when :parse_define_shape3
+    has_alpha = true
+    has_linestyle2 = false
+  when :parse_define_shape4
+    has_alpha = true
+    has_linestyle2 = true
+  else
+    has_alpha = false
+    has_linestyle2 = false
+  end
 
   obj_id = get_word
   stage = get_stage
+  if has_linestyle2
+    get_stage
+    get_byte
+  end
 
   info "  shape #{obj_id}"
 
@@ -1562,7 +1606,11 @@ def parse_define_shape
   @objects[obj_id] = @current_graphic
 
   parse_fill_styles(has_alpha)
-  parse_line_styles(has_alpha)
+  if has_linestyle2
+    parse_line_styles2()
+  else
+    parse_line_styles(has_alpha)
+  end
 
   init_bits
   fill_bits = get_bits(4)
@@ -1598,7 +1646,11 @@ def parse_define_shape
 
       if (flags & (1 << 4)) != 0
         parse_fill_styles(has_alpha)
-        parse_line_styles(has_alpha)
+        if has_linestyle2
+          parse_line_styles2()
+        else
+          parse_line_styles(has_alpha)
+        end
 
         init_bits
         fill_bits = get_bits(4)
@@ -1722,6 +1774,7 @@ def parse_define_shape
 end
 alias parse_define_shape2 parse_define_shape
 alias parse_define_shape3 parse_define_shape
+alias parse_define_shape4 parse_define_shape
 
 def calc_float(imax, v)
   i = (imax * v).round
