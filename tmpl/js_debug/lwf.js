@@ -2458,7 +2458,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       cc = c._;
       tc = t.multi._;
       for (i = _i = 0; _i < 4; i = ++_i) {
-        d[i] = cc[i] * tt[i];
+        d[i] = cc[i] * tc[i];
       }
     };
 
@@ -10156,8 +10156,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.needsClear = needsClear;
       this.useVertexColor = useVertexColor;
       params = {
+        alpha: false,
+        antialias: false,
+        depth: false,
         premultipliedAlpha: true,
-        alpha: false
+        preserveDrawingBuffer: false
       };
       this.drawCalls = 0;
       this.stage.style.webkitUserSelect = "none";
