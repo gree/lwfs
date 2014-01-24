@@ -2144,38 +2144,43 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     function Utility() {}
 
     Utility.calcMatrixToPoint = function(sx, sy, m) {
-      var dx, dy;
-      dx = m._[0] * sx + m._[2] * sy + m._[4];
-      dy = m._[1] * sx + m._[3] * sy + m._[5];
+      var dx, dy, mm;
+      mm = m._;
+      dx = mm[0] * sx + mm[2] * sy + mm[4];
+      dy = mm[1] * sx + mm[3] * sy + mm[5];
       return [dx, dy];
     };
 
     Utility.getMatrixDeterminant = function(matrix) {
-      return matrix._[0] * matrix._[3] - matrix._[2] * matrix._[1] < 0;
+      var mm;
+      mm = matrix._;
+      return mm[0] * mm[3] - mm[2] * mm[1] < 0;
     };
 
     Utility.syncMatrix = function(movie) {
-      var matrix, matrixId, md, rotation, scaleX, scaleY, translate, _ref1;
+      var matrix, matrixId, md, mm, rotation, scaleX, scaleY, t, translate, _ref1;
       matrixId = (_ref1 = movie.matrixId) != null ? _ref1 : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         translate = movie.lwf.data.translates[matrixId];
         scaleX = 1;
         scaleY = 1;
         rotation = 0;
-        matrix = new Matrix(scaleX, scaleY, 0, 0, translate._[0], translate._[1]);
+        t = translate._;
+        matrix = new Matrix(scaleX, scaleY, 0, 0, t[0], t[1]);
       } else {
         matrixId &= ~Constant.MATRIX_FLAG;
         matrix = movie.lwf.data.matrices[matrixId];
         md = this.getMatrixDeterminant(matrix);
-        scaleX = Math.sqrt(matrix._[0] * matrix._[0] + matrix._[1] * matrix._[1]);
+        mm = matrix._;
+        scaleX = Math.sqrt(mm[0] * mm[0] + mm[1] * mm[1]);
         if (md) {
           scaleX = -scaleX;
         }
-        scaleY = Math.sqrt(matrix._[3] * matrix._[3] + matrix._[2] * matrix._[2]);
+        scaleY = Math.sqrt(mm[3] * mm[3] + mm[2] * mm[2]);
         if (md) {
-          rotation = Math.atan2(matrix._[1], -matrix._[0]);
+          rotation = Math.atan2(mm[1], -mm[0]);
         } else {
-          rotation = Math.atan2(matrix._[1], matrix._[0]);
+          rotation = Math.atan2(mm[1], mm[0]);
         }
         rotation = rotation / Math.PI * 180;
       }
@@ -2209,7 +2214,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.getScaleX = function(movie) {
-      var matrix, matrixId, md, scaleX, _ref1;
+      var matrix, matrixId, md, mm, scaleX, _ref1;
       matrixId = (_ref1 = movie.matrixId) != null ? _ref1 : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         return 1;
@@ -2217,7 +2222,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         matrixId &= ~Constant.MATRIX_FLAG;
         matrix = movie.lwf.data.matrices[matrixId];
         md = this.getMatrixDeterminant(matrix);
-        scaleX = Math.sqrt(matrix._[0] * matrix._[0] + matrix._[1] * matrix._[1]);
+        mm = matrix._;
+        scaleX = Math.sqrt(mm[0] * mm[0] + mm[1] * mm[1]);
         if (md) {
           scaleX = -scaleX;
         }
@@ -2226,20 +2232,21 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.getScaleY = function(movie) {
-      var matrix, matrixId, scaleY, _ref1;
+      var matrix, matrixId, mm, scaleY, _ref1;
       matrixId = (_ref1 = movie.matrixId) != null ? _ref1 : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         return 1;
       } else {
         matrixId &= ~Constant.MATRIX_FLAG;
         matrix = movie.lwf.data.matrices[matrixId];
-        scaleY = Math.sqrt(matrix._[3] * matrix._[3] + matrix._[2] * matrix._[2]);
+        mm = matrix._;
+        scaleY = Math.sqrt(mm[3] * mm[3] + mm[2] * mm[2]);
         return scaleY;
       }
     };
 
     Utility.getRotation = function(movie) {
-      var matrix, matrixId, md, rotation, _ref1;
+      var matrix, matrixId, md, mm, rotation, _ref1;
       matrixId = (_ref1 = movie.matrixId) != null ? _ref1 : 0;
       if ((matrixId & Constant.MATRIX_FLAG) === 0) {
         return 0;
@@ -2247,10 +2254,11 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         matrixId &= ~Constant.MATRIX_FLAG;
         matrix = movie.lwf.data.matrices[matrixId];
         md = this.getMatrixDeterminant(matrix);
+        mm = matrix._;
         if (md) {
-          rotation = Math.atan2(matrix._[1], -matrix._[0]);
+          rotation = Math.atan2(mm[1], -mm[0]);
         } else {
-          rotation = Math.atan2(matrix._[1], matrix._[0]);
+          rotation = Math.atan2(mm[1], mm[0]);
         }
         rotation = rotation / Math.PI * 180;
         return rotation;
@@ -2284,17 +2292,20 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.calcMatrixId = function(lwf, dst, src0, src1Id) {
-      var matrixId, src1, translate;
+      var d, matrixId, s0, src1, t, translate;
       if (src1Id === 0) {
         dst.set(src0);
       } else if ((src1Id & Constant.MATRIX_FLAG) === 0) {
         translate = lwf.data.translates[src1Id];
-        dst._[0] = src0._[0];
-        dst._[2] = src0._[2];
-        dst._[4] = src0._[0] * translate._[0] + src0._[2] * translate._[1] + src0._[4];
-        dst._[1] = src0._[1];
-        dst._[3] = src0._[3];
-        dst._[5] = src0._[1] * translate._[0] + src0._[3] * translate._[1] + src0._[5];
+        d = dst._;
+        s0 = src0._;
+        t = translate._;
+        d[0] = s0[0];
+        d[2] = s0[2];
+        d[4] = s0[0] * t[0] + s0[2] * t[1] + s0[4];
+        d[1] = s0[1];
+        d[3] = s0[3];
+        d[5] = s0[1] * t[0] + s0[3] * t[1] + s0[5];
       } else {
         matrixId = src1Id & ~Constant.MATRIX_FLAG;
         src1 = lwf.data.matrices[matrixId];
@@ -2304,36 +2315,46 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.calcMatrix = function(dst, src0, src1) {
-      dst._[0] = src0._[0] * src1._[0] + src0._[2] * src1._[1];
-      dst._[2] = src0._[0] * src1._[2] + src0._[2] * src1._[3];
-      dst._[4] = src0._[0] * src1._[4] + src0._[2] * src1._[5] + src0._[4];
-      dst._[1] = src0._[1] * src1._[0] + src0._[3] * src1._[1];
-      dst._[3] = src0._[1] * src1._[2] + src0._[3] * src1._[3];
-      dst._[5] = src0._[1] * src1._[4] + src0._[3] * src1._[5] + src0._[5];
+      var d, s0, s1;
+      d = dst._;
+      s0 = src0._;
+      s1 = src1._;
+      d[0] = s0[0] * s1[0] + s0[2] * s1[1];
+      d[2] = s0[0] * s1[2] + s0[2] * s1[3];
+      d[4] = s0[0] * s1[4] + s0[2] * s1[5] + s0[4];
+      d[1] = s0[1] * s1[0] + s0[3] * s1[1];
+      d[3] = s0[1] * s1[2] + s0[3] * s1[3];
+      d[5] = s0[1] * s1[4] + s0[3] * s1[5] + s0[5];
       return dst;
     };
 
     Utility.rotateMatrix = function(dst, src, scale, offsetX, offsetY) {
+      var d, s;
       offsetX *= scale;
       offsetY *= scale;
-      dst._[0] = -src._[2] * scale;
-      dst._[2] = src._[0] * scale;
-      dst._[4] = src._[0] * offsetX + src._[2] * offsetY + src._[4];
-      dst._[1] = -src._[3] * scale;
-      dst._[3] = src._[1] * scale;
-      dst._[5] = src._[1] * offsetX + src._[3] * offsetY + src._[5];
+      d = dst._;
+      s = src._;
+      d[0] = -s[2] * scale;
+      d[2] = s[0] * scale;
+      d[4] = s[0] * offsetX + s[2] * offsetY + s[4];
+      d[1] = -s[3] * scale;
+      d[3] = s[1] * scale;
+      d[5] = s[1] * offsetX + s[3] * offsetY + s[5];
       return dst;
     };
 
     Utility.scaleMatrix = function(dst, src, scale, offsetX, offsetY) {
+      var d, s;
       offsetX *= scale;
       offsetY *= scale;
-      dst._[0] = src._[0] * scale;
-      dst._[2] = src._[2] * scale;
-      dst._[4] = src._[0] * offsetX + src._[2] * offsetY + src._[4];
-      dst._[1] = src._[1] * scale;
-      dst._[3] = src._[3] * scale;
-      dst._[5] = src._[1] * offsetX + src._[3] * offsetY + src._[5];
+      d = dst._;
+      s = src._;
+      d[0] = s[0] * scale;
+      d[2] = s[2] * scale;
+      d[4] = s[0] * offsetX + s[2] * offsetY + s[4];
+      d[1] = s[1] * scale;
+      d[3] = s[3] * scale;
+      d[5] = s[1] * offsetX + s[3] * offsetY + s[5];
       return dst;
     };
 
@@ -2377,15 +2398,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.invertMatrix = function(dst, src) {
-      var dt;
-      dt = src._[0] * src._[3] - src._[2] * src._[1];
+      var d, dt, s;
+      d = dst._;
+      s = src._;
+      dt = s[0] * s[3] - s[2] * s[1];
       if (dt !== 0) {
-        dst._[0] = src._[3] / dt;
-        dst._[2] = -src._[2] / dt;
-        dst._[4] = (src._[2] * src._[5] - src._[4] * src._[3]) / dt;
-        dst._[1] = -src._[1] / dt;
-        dst._[3] = src._[0] / dt;
-        dst._[5] = (src._[4] * src._[1] - src._[0] * src._[5]) / dt;
+        d[0] = s[3] / dt;
+        d[2] = -s[2] / dt;
+        d[4] = (s[2] * s[5] - s[4] * s[3]) / dt;
+        d[1] = -s[1] / dt;
+        d[3] = s[0] / dt;
+        d[5] = (s[4] * s[1] - s[0] * s[5]) / dt;
       } else {
         dst.clear();
       }
@@ -2410,9 +2433,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.calcColorTransform = function(dst, src0, src1) {
-      var i, _i;
+      var d, i, s0, s1, _i;
+      d = dst.multi._;
+      s0 = src0.multi._;
+      s1 = src1.multi._;
       for (i = _i = 0; _i < 4; i = ++_i) {
-        dst.multi._[i] = src0.multi._[i] * src1.multi._[i];
+        d[i] = s0[i] * s1[i];
       }
       return dst;
     };
@@ -2427,9 +2453,12 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     Utility.calcColor = function(dst, c, t) {
-      var i, _i;
+      var cc, d, i, tc, _i;
+      d = dst._;
+      cc = c._;
+      tc = t.multi._;
       for (i = _i = 0; _i < 4; i = ++_i) {
-        dst._[i] = c._[i] * t.multi._[i];
+        d[i] = cc[i] * tt[i];
       }
     };
 
@@ -3251,62 +3280,67 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.height = fragment.h;
       this.dataMatrixId = data.matrixId;
       this.renderer = lwf.rendererFactory.constructBitmap(lwf, objId, this);
-      this._regX = 0;
-      this._regY = 0;
-      this._x = 0;
-      this._y = 0;
-      this._scaleX = 1;
-      this._scaleY = 1;
-      this._rotation = 0;
-      this._alpha = 1;
       this.depth = -1;
       this.visible = true;
       this.dirtyMatrix = true;
       this.dirtyMatrixSR = false;
       this.dirtyColorTransform = true;
-      this.mScaleX = 1;
-      this.mScaleY = 1;
-      this.mSkew0 = 0;
-      this.mSkew1 = 0;
+      this._ = TypedArray.available ? new Float32Array(16) : [];
+      this._[0] = 1;
+      this._[1] = 0;
+      this._[2] = 0;
+      this._[3] = 1;
+      this._[4] = 0;
+      this._[5] = 0;
+      this._[6] = 0;
+      this._[7] = 0;
+      this._[8] = 0;
+      this._[9] = 0;
+      this._[10] = 1;
+      this._[11] = 1;
+      this._[12] = 0;
+      this._[13] = 1;
+      this._[14] = 0;
+      this._[15] = 1;
     }
 
     BitmapClip.prototype.updateMatrix = function(m) {
-      var c, dst, radian, s, x, y;
+      var dst, mm, my;
+      dst = this.matrix._;
+      mm = m._;
+      my = this._;
       if (this.dirtyMatrixSR) {
-        radian = this._rotation * Math.PI / 180;
-        if (radian === 0) {
-          c = 1;
-          s = 0;
-        } else {
-          c = Math.cos(radian);
-          s = Math.sin(radian);
-        }
-        this.mScaleX = this._scaleX * c;
-        this.mSkew0 = this._scaleY * -s;
-        this.mSkew1 = this._scaleX * s;
-        this.mScaleY = this._scaleY * c;
+        my[0] = my[10] * my[13];
+        my[1] = my[10] * my[14];
+        my[2] = my[11] * -my[14];
+        my[3] = my[11] * my[13];
         this.dirtyMatrixSR = false;
       }
-      x = this._x - this._regX;
-      y = this._y - this._regY;
-      dst = this.matrix;
-      dst.scaleX = m.scaleX * this.mScaleX + m.skew0 * this.mSkew1;
-      dst.skew0 = m.scaleX * this.mSkew0 + m.skew0 * this.mScaleY;
-      dst.translateX = m.scaleX * x + m.skew0 * y + m.translateX + m.scaleX * this._regX + m.skew0 * this._regY + dst.scaleX * -this._regX + dst.skew0 * -this._regY;
-      dst.skew1 = m.skew1 * this.mScaleX + m.scaleY * this.mSkew1;
-      dst.scaleY = m.skew1 * this.mSkew0 + m.scaleY * this.mScaleY;
-      dst.translateY = m.skew1 * x + m.scaleY * y + m.translateY + m.skew1 * this._regX + m.scaleY * this._regY + dst.skew1 * -this._regX + dst.scaleY * -this._regY;
+      my[4] = my[8] - my[6];
+      my[5] = my[9] - my[7];
+      dst[0] = mm[0] * my[0] + mm[2] * my[1];
+      dst[2] = mm[0] * my[2] + mm[2] * my[3];
+      dst[4] = mm[0] * my[4] + mm[2] * my[5] + mm[4] + mm[0] * my[6] + mm[2] * my[7] + dst[0] * -my[6] + dst[2] * -my[7];
+      dst[1] = mm[1] * my[0] + mm[3] * my[1];
+      dst[3] = mm[1] * my[2] + mm[3] * my[3];
+      dst[5] = mm[1] * my[4] + mm[3] * my[5] + mm[5] + mm[1] * my[6] + mm[3] * my[7] + dst[1] * -my[6] + dst[3] * -my[7];
       this.dirtyMatrix = false;
     };
 
     BitmapClip.prototype.updateColorTransform = function(c) {
-      var cm, m;
-      m = this.colorTransform.multi;
-      cm = c.multi;
-      m.red = cm.red;
-      m.green = cm.green;
-      m.blue = cm.blue;
-      m.alpha = this._alpha * cm.alpha;
+      var cm, dst, i, _i, _j;
+      dst = this.colorTransform.multi._;
+      cm = c.multi._;
+      if (this._[15] === 1) {
+        for (i = _i = 0; _i < 4; i = ++_i) {
+          dst[i] = cm[i];
+        }
+      } else {
+        for (i = _j = 0; _j < 3; i = ++_j) {
+          dst[i] = cm[i];
+        }
+        dst[3] = this._[15] * cm[3];
+      }
       this.dirtyColorTransform = false;
     };
 
@@ -3322,102 +3356,133 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     BitmapClip.prototype.getRegX = function() {
-      return this._regX;
+      return this._[6];
     };
 
     BitmapClip.prototype.setRegX = function(v) {
-      if (this._regX !== v) {
+      if (this._[6] !== v) {
         this.dirty();
       }
-      this._regX = v;
+      this._[6] = v;
     };
 
     BitmapClip.prototype.getRegY = function() {
-      return this._regY;
+      return this._[7];
     };
 
     BitmapClip.prototype.setRegY = function(v) {
-      if (this._regY !== v) {
+      if (this._[7] !== v) {
         this.dirty();
       }
-      this._regY = v;
+      this._[7] = v;
     };
 
     BitmapClip.prototype.getX = function() {
-      return this._x;
+      return this._[8];
     };
 
     BitmapClip.prototype.setX = function(v) {
-      if (this._x !== v) {
+      if (this._[8] !== v) {
         this.dirty();
       }
-      this._x = v;
+      this._[8] = v;
     };
 
     BitmapClip.prototype.getY = function() {
-      return this._y;
+      return this._[9];
     };
 
     BitmapClip.prototype.setY = function(v) {
-      if (this._y !== v) {
+      if (this._[9] !== v) {
         this.dirty();
       }
-      this._y = v;
+      this._[9] = v;
     };
 
     BitmapClip.prototype.getScaleX = function() {
-      return this._scaleX;
+      return this._[10];
     };
 
     BitmapClip.prototype.setScaleX = function(v) {
-      if (this._scaleX !== v) {
+      if (this._[10] !== v) {
         this.dirty(true);
       }
-      this._scaleX = v;
+      this._[10] = v;
     };
 
     BitmapClip.prototype.getScaleY = function() {
-      return this._scaleY;
+      return this._[11];
     };
 
     BitmapClip.prototype.setScaleY = function(v) {
-      if (this._scaleY !== v) {
+      if (this._[11] !== v) {
         this.dirty(true);
       }
-      this._scaleY = v;
+      this._[11] = v;
     };
 
     BitmapClip.prototype.getRotation = function() {
-      return this._rotation;
+      return this._[12];
     };
 
     BitmapClip.prototype.setRotation = function(v) {
-      if (this._rotation !== v) {
+      var radian;
+      if (this._[12] !== v) {
         this.dirty(true);
       }
-      this._rotation = v;
+      this._[12] = v;
+      radian = this._[12] * Math.PI / 180;
+      if (radian === 0) {
+        this._[13] = 1;
+        this._[14] = 0;
+      } else {
+        this._[13] = Math.cos(radian);
+        this._[14] = Math.sin(radian);
+      }
+    };
+
+    BitmapClip.prototype.moveTo = function(x, y) {
+      this._[8] = x;
+      this._[9] = x;
+      return this.dirty();
+    };
+
+    BitmapClip.prototype.move = function(x, y) {
+      this._[8] += x;
+      this._[9] += x;
+      return this.dirty();
+    };
+
+    BitmapClip.prototype.scaleTo = function(x, y) {
+      this._[10] = x;
+      this._[11] = y;
+      return this.dirty();
+    };
+
+    BitmapClip.prototype.scale = function(x, y) {
+      this._[10] *= x;
+      this._[11] *= y;
+      return this.dirty();
     };
 
     BitmapClip.prototype.setMatrix = function(m) {
-      this.mScaleX = m.scaleX;
-      this.mScaleY = m.scaleY;
-      this.mSkew0 = m.skew0;
-      this.mSkew1 = m.skew1;
-      this.x = m.translateX;
-      this.y = m.translateY;
+      var i, _i;
+      for (i = _i = 0; _i < 6; i = ++_i) {
+        this._[i] = m._[i];
+      }
       this.dirty();
     };
 
     BitmapClip.prototype.getAlphaProperty = function() {
-      return this._alpha;
+      return this._[15];
     };
 
     BitmapClip.prototype.setAlphaProperty = function(v) {
-      if (this._alpha !== v) {
+      if (this._[15] !== v) {
         this.lwf.setPropertyDirty();
         this.dirtyColorTransform = true;
       }
-      this._alpha = v;
+      this._[15] = v;
     };
 
     return BitmapClip;
@@ -7134,6 +7199,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
   LWF.prototype["addEventListener"] = LWF.prototype.addEventHandler;
 
+  LWF.prototype["addExecHandler"] = LWF.prototype.addExecHandler;
+
+  LWF.prototype["addExecListener"] = LWF.prototype.addExecHandler;
+
   LWF.prototype["addMovieEventHandler"] = LWF.prototype.addMovieEventHandler;
 
   LWF.prototype["addMovieEventListener"] = LWF.prototype.addMovieEventHandler;
@@ -7149,6 +7218,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   LWF.prototype["clearEventHandler"] = LWF.prototype.clearEventHandler;
 
   LWF.prototype["clearEventListener"] = LWF.prototype.clearEventHandler;
+
+  LWF.prototype["clearExecHandler"] = LWF.prototype.clearExecHandler;
+
+  LWF.prototype["clearExecListener"] = LWF.prototype.clearExecHandler;
 
   LWF.prototype["clearMovieEventHandler"] = LWF.prototype.clearMovieEventHandler;
 
@@ -7216,6 +7289,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
   LWF.prototype["removeEventListener"] = LWF.prototype.removeEventHandler;
 
+  LWF.prototype["removeExecHandler"] = LWF.prototype.removeExecHandler;
+
+  LWF.prototype["removeExecListener"] = LWF.prototype.removeExecHandler;
+
   LWF.prototype["removeMovieEventHandler"] = LWF.prototype.removeMovieEventHandler;
 
   LWF.prototype["removeMovieEventListener"] = LWF.prototype.removeMovieEventHandler;
@@ -7255,6 +7332,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
   LWF.prototype["setEventHandler"] = LWF.prototype.setEventHandler;
 
   LWF.prototype["setEventListener"] = LWF.prototype.setEventHandler;
+
+  LWF.prototype["setExecHandler"] = LWF.prototype.setExecHandler;
+
+  LWF.prototype["setExecListener"] = LWF.prototype.setExecHandler;
 
   LWF.prototype["setFastForward"] = LWF.prototype.setFastForward;
 
@@ -7452,7 +7533,15 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
   ColorTransform.prototype["set"] = ColorTransform.prototype.set;
 
+  BitmapClip.prototype["move"] = BitmapClip.prototype.move;
+
+  BitmapClip.prototype["moveTo"] = BitmapClip.prototype.moveTo;
+
   BitmapClip.prototype["setMatrix"] = BitmapClip.prototype.setMatrix;
+
+  BitmapClip.prototype["scale"] = BitmapClip.prototype.scale;
+
+  BitmapClip.prototype["scaleTo"] = BitmapClip.prototype.scaleTo;
 
   WebkitCSSRendererFactory = (function() {
     function WebkitCSSRendererFactory(data, resourceCache, cache, stage, textInSubpixel, use3D, recycleTextCanvas, quirkyClearRect) {
@@ -10058,7 +10147,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     function WebGLRendererFactory(data, resourceCache, cache, stage, textInSubpixel, needsClear, useVertexColor) {
-      var bitmap, bitmapEx, fragmentShader, gl, params, text, vertexShader, _i, _j, _k, _len, _len1, _len2, _ref4, _ref5, _ref6, _ref7;
+      var bitmap, bitmapEx, fragmentShader, gl, params, text, vertexBufferSize, vertexShader, _i, _j, _k, _len, _len1, _len2, _ref4, _ref5, _ref6, _ref7;
       this.data = data;
       this.resourceCache = resourceCache;
       this.cache = cache;
@@ -10083,16 +10172,16 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.propertyMatrix = new Matrix;
       this.vertexData = new Float32Array(1);
       this.indexData = new Uint16Array(1);
+      this.color = new Float32Array(4);
       gl = this.stageContext;
-      this.vertexBufferSize = 3 * 4 + 2 * 4 + 4 * 4;
       this.vertexBuffer = gl.createBuffer();
       this.indexBuffer = gl.createBuffer();
       this.matrix = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
       if (WebGLRendererFactory.shaderProgram != null) {
         this.shaderProgram = WebGLRendererFactory.shaderProgram;
       } else {
-        vertexShader = this.loadShader(gl, gl.VERTEX_SHADER, "attribute vec4 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec4 aColor;\nuniform mat4 uPMatrix;\nuniform mat4 uMatrix;\nvarying lowp vec2 vTextureCoord;\nvarying lowp vec4 vColor;\nvoid main() {\n  gl_Position = uPMatrix * uMatrix * aVertexPosition;\n  vTextureCoord = aTextureCoord;\n  vColor = aColor;\n}");
-        fragmentShader = this.loadShader(gl, gl.FRAGMENT_SHADER, "varying lowp vec2 vTextureCoord;\nvarying lowp vec4 vColor;\nuniform sampler2D uTexture;\nvoid main() {\n  gl_FragColor = vColor * texture2D(uTexture, vTextureCoord);\n}");
+        vertexShader = this.loadShader(gl, gl.VERTEX_SHADER, "attribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec4 aColor;\nuniform mat4 uPMatrix;\nuniform mat4 uMatrix;\nvarying vec2 vTextureCoord;\nvarying vec4 vColor;\nvoid main() {\n  gl_Position = uPMatrix * uMatrix * vec4(aVertexPosition, 0, 1);\n  vTextureCoord = aTextureCoord;\n  vColor = aColor;\n}");
+        fragmentShader = this.loadShader(gl, gl.FRAGMENT_SHADER, "precision mediump float;\nvarying vec2 vTextureCoord;\nvarying vec4 vColor;\nuniform sampler2D uTexture;\nvoid main() {\n  gl_FragColor = vColor * texture2D(uTexture, vTextureCoord);\n}");
         this.shaderProgram = gl.createProgram();
         gl.attachShader(this.shaderProgram, vertexShader);
         gl.attachShader(this.shaderProgram, fragmentShader);
@@ -10108,6 +10197,14 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.uPMatrix = gl.getUniformLocation(this.shaderProgram, "uPMatrix");
       this.uMatrix = gl.getUniformLocation(this.shaderProgram, "uMatrix");
       this.uTexture = gl.getUniformLocation(this.shaderProgram, "uTexture");
+      vertexBufferSize = 2 * 4 + 2 * 4 + 4 * 4;
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+      gl.vertexAttribPointer(this.aVertexPosition, 2, gl.FLOAT, false, vertexBufferSize, 0);
+      gl.vertexAttribPointer(this.aTextureCoord, 2, gl.FLOAT, false, vertexBufferSize, 8);
+      gl.vertexAttribPointer(this.aColor, 4, gl.FLOAT, false, vertexBufferSize, 16);
+      gl.enableVertexAttribArray(this.aVertexPosition);
+      gl.enableVertexAttribArray(this.aTextureCoord);
+      gl.enableVertexAttribArray(this.aColor);
       this.setupGL();
       gl.clearColor(0.0, 0.0, 0.0, 1.0);
       this.textures = {};
@@ -10220,16 +10317,18 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         return;
       }
       gl = this.stageContext;
-      vertices = this.faces * 4 * 9;
+      vertices = this.faces * 4 * 8;
       this.faces = 0;
       if (vertices > this.vertexData.length) {
         vertices *= 2;
-        if (vertices > 65532 * 9) {
-          vertices = 65532 * 9;
+        if (vertices > 65532 * 8) {
+          vertices = 65532 * 8;
         }
-        indices = vertices / (4 * 9) * 6;
+        indices = vertices / (4 * 8) * 6;
         if (vertices !== this.vertexData.length) {
           this.vertexData = new Float32Array(vertices);
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, this.vertexData, gl.DYNAMIC_DRAW);
           this.indexData = new Uint16Array(indices);
           offset = 0;
           indexOffset = 0;
@@ -10316,67 +10415,89 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     WebGLRendererFactory.prototype.updateMesh = function(gl, context, texture, m, c, renderingIndex, blendMode, meshCache, useMeshCache) {
-      var alpha, blue, green, i, offset, px, py, pz, red, scaleX, scaleY, skew0, skew1, translateX, translateY, translateZ, uv, vertexData, x, y, _i, _j, _k, _ref4;
-      if (texture !== this.currentTexture || blendMode !== this.currentBlendMode || this.faces * 4 * 9 >= this.vertexData.length) {
+      var cc, i, mm, offset, uv, v, x, y, _i, _j, _k, _ref4;
+      if (texture !== this.currentTexture || blendMode !== this.currentBlendMode || this.faces * 4 * 8 >= this.vertexData.length) {
         this.renderMesh(gl);
         this.currentTexture = texture;
         this.currentBlendMode = blendMode;
         this.blendSrcFactor = context.preMultipliedAlpha ? gl.ONE : gl.SRC_ALPHA;
         this.blendDstFactor = blendMode === "add" ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA;
       }
-      alpha = c.multi.alpha;
+      /*
+      alpha = c.multi.alpha
+      if @useVertexColor
+        red = c.multi.red
+        green = c.multi.green
+        blue = c.multi.blue
+        if context.preMultipliedAlpha
+          red *= alpha
+          green *= alpha
+          blue *= alpha
+      else
+        red = 1
+        green = 1
+        blue = 1
+      */
+
+      cc = this.color;
+      cc[3] = c.multi._[3];
       if (this.useVertexColor) {
-        red = c.multi.red;
-        green = c.multi.green;
-        blue = c.multi.blue;
-        if (context.preMultipliedAlpha) {
-          red *= alpha;
-          green *= alpha;
-          blue *= alpha;
-        }
+        cc[0] = c.multi._[0];
+        cc[1] = c.multi._[1];
+        cc[2] = c.multi._[2];
       } else {
-        red = 1;
-        green = 1;
-        blue = 1;
+        cc[0] = 1;
+        cc[1] = 1;
+        cc[2] = 1;
       }
       if (useMeshCache) {
         for (i = _i = 0; _i < 4; i = ++_i) {
-          offset = i * 9;
-          meshCache[offset + 5] = red;
-          meshCache[offset + 6] = green;
-          meshCache[offset + 7] = blue;
-          meshCache[offset + 8] = alpha;
+          offset = i * 8;
+          meshCache[offset + 4] = cc[0];
+          meshCache[offset + 5] = cc[1];
+          meshCache[offset + 6] = cc[2];
+          meshCache[offset + 7] = cc[3];
         }
       } else {
-        scaleX = m.scaleX;
-        skew0 = m.skew0;
-        translateX = m.translateX;
-        skew1 = m.skew1;
-        scaleY = m.scaleY;
-        translateY = m.translateY;
-        translateZ = 0;
-        vertexData = context.vertexData;
+        /*
+        scaleX = m.scaleX
+        skew0 = m.skew0
+        translateX = m.translateX
+        
+        skew1 = m.skew1
+        scaleY = m.scaleY
+        translateY = m.translateY
+        
+        translateZ = 0
+        */
+
+        v = context.vertexData;
         uv = context.uv;
+        mm = m._;
         for (i = _j = 0; _j < 4; i = ++_j) {
-          x = vertexData[i].x;
-          y = vertexData[i].y;
-          px = x * scaleX + y * skew0 + translateX;
-          py = x * skew1 + y * scaleY + translateY;
-          pz = translateZ;
-          offset = i * 9;
-          meshCache[offset + 0] = px;
-          meshCache[offset + 1] = py;
-          meshCache[offset + 2] = pz;
-          meshCache[offset + 3] = uv[i].u;
-          meshCache[offset + 4] = uv[i].v;
-          meshCache[offset + 5] = red;
-          meshCache[offset + 6] = green;
-          meshCache[offset + 7] = blue;
-          meshCache[offset + 8] = alpha;
+          /*
+          x = vertexData[i].x
+          y = vertexData[i].y
+          px = x * scaleX + y * skew0 + translateX
+          py = x * skew1 + y * scaleY + translateY
+          pz = translateZ
+          */
+
+          x = i * 2 + 0;
+          y = i * 2 + 1;
+          offset = i * 8;
+          meshCache[offset + 0] = v[x] * mm[0] + v[y] * mm[2] + mm[4];
+          meshCache[offset + 1] = v[x] * mm[1] + v[y] * mm[3] + mm[5];
+          meshCache[offset + 2] = uv[x];
+          meshCache[offset + 3] = uv[y];
+          meshCache[offset + 4] = cc[0];
+          meshCache[offset + 5] = cc[1];
+          meshCache[offset + 6] = cc[2];
+          meshCache[offset + 7] = cc[3];
         }
       }
-      offset = this.faces++ * 4 * 9;
-      for (i = _k = 0, _ref4 = 4 * 9; 0 <= _ref4 ? _k < _ref4 : _k > _ref4; i = 0 <= _ref4 ? ++_k : --_k) {
+      offset = this.faces++ * 4 * 8;
+      for (i = _k = 0, _ref4 = 4 * 8; 0 <= _ref4 ? _k < _ref4 : _k > _ref4; i = 0 <= _ref4 ? ++_k : --_k) {
         this.vertexData[offset + i] = meshCache[i];
       }
     };
@@ -10388,14 +10509,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       gl.bindTexture(gl.TEXTURE_2D, this.currentTexture);
       gl.blendFunc(this.blendSrcFactor, this.blendDstFactor);
       gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, this.vertexData, gl.DYNAMIC_DRAW);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-      gl.vertexAttribPointer(this.aVertexPosition, 3, gl.FLOAT, false, this.vertexBufferSize, 0);
-      gl.vertexAttribPointer(this.aTextureCoord, 2, gl.FLOAT, false, this.vertexBufferSize, 12);
-      gl.vertexAttribPointer(this.aColor, 4, gl.FLOAT, false, this.vertexBufferSize, 20);
-      gl.enableVertexAttribArray(this.aVertexPosition);
-      gl.enableVertexAttribArray(this.aTextureCoord);
-      gl.enableVertexAttribArray(this.aColor);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.vertexData);
       gl.uniformMatrix4fv(this.uMatrix, false, this.matrix);
       gl.drawElements(gl.TRIANGLES, this.faces * 6, gl.UNSIGNED_SHORT, 0);
       this.faces = 0;
@@ -10462,12 +10577,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     WebGLRendererFactory.prototype.renderMask = function(gl) {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.maskVertexBuffer);
-      gl.vertexAttribPointer(this.aVertexPosition, 3, gl.FLOAT, false, this.vertexBufferSize, 0);
-      gl.vertexAttribPointer(this.aTextureCoord, 2, gl.FLOAT, false, this.vertexBufferSize, 12);
-      gl.vertexAttribPointer(this.aColor, 4, gl.FLOAT, false, this.vertexBufferSize, 20);
-      gl.enableVertexAttribArray(this.aVertexPosition);
-      gl.enableVertexAttribArray(this.aTextureCoord);
-      gl.enableVertexAttribArray(this.aColor);
       gl.uniformMatrix4fv(this.uMatrix, false, this.maskMatrix);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.maskIndexBuffer);
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.maskFrameBuffer);
@@ -10582,61 +10691,69 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       y0 = y * scale;
       x1 = (x + w) * scale;
       y1 = (y + h) * scale;
-      this.vertexData = [
-        {
-          x: x1,
-          y: y1
-        }, {
-          x: x1,
-          y: y0
-        }, {
-          x: x0,
-          y: y1
-        }, {
-          x: x0,
-          y: y0
-        }
-      ];
+      /*
+      @vertexData = [
+        {x:x1, y:y1},
+        {x:x1, y:y0},
+        {x:x0, y:y1},
+        {x:x0, y:y0}
+      ]
+      */
+
+      this.vertexData = new Float32Array(2 * 4);
+      this.vertexData[0] = x1;
+      this.vertexData[1] = y1;
+      this.vertexData[2] = x1;
+      this.vertexData[3] = y0;
+      this.vertexData[4] = x0;
+      this.vertexData[5] = y1;
+      this.vertexData[6] = x0;
+      this.vertexData[7] = y0;
+      this.uv = new Float32Array(2 * 4);
       if (fragment.rotated === 0) {
         u0 = u / tw;
         v0 = v / th;
         u1 = (u + w) / tw;
         v1 = (v + h) / th;
-        this.uv = [
-          {
-            u: u1,
-            v: v1
-          }, {
-            u: u1,
-            v: v0
-          }, {
-            u: u0,
-            v: v1
-          }, {
-            u: u0,
-            v: v0
-          }
-        ];
+        /*
+        @uv = [
+          {u:u1, v:v1},
+          {u:u1, v:v0},
+          {u:u0, v:v1},
+          {u:u0, v:v0}
+        ]
+        */
+
+        this.uv[0] = u1;
+        this.uv[1] = v1;
+        this.uv[2] = u1;
+        this.uv[3] = v0;
+        this.uv[4] = u0;
+        this.uv[5] = v1;
+        this.uv[6] = u0;
+        this.uv[7] = v0;
       } else {
         u0 = u / tw;
         v0 = v / th;
         u1 = (u + h) / tw;
         v1 = (v + w) / th;
-        this.uv = [
-          {
-            u: u0,
-            v: v1
-          }, {
-            u: u1,
-            v: v1
-          }, {
-            u: u0,
-            v: v0
-          }, {
-            u: u1,
-            v: v0
-          }
-        ];
+        /*
+        @uv = [
+          {u:u0, v:v1},
+          {u:u1, v:v1},
+          {u:u0, v:v0},
+          {u:u1, v:v0}
+        ]
+        */
+
+        this.uv[0] = u0;
+        this.uv[1] = v1;
+        this.uv[2] = u1;
+        this.uv[3] = v1;
+        this.uv[4] = u0;
+        this.uv[5] = v0;
+        this.uv[6] = u1;
+        this.uv[7] = v0;
       }
     }
 
@@ -10651,7 +10768,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.context = context;
       this.matrixForRender = new Matrix(0, 0, 0, 0, 0, 0);
       this.meshCache = new Float32Array(4 * 9);
-      this.cmd = {};
+      this.cmd = {
+        renderer: null,
+        context: this.context,
+        texture: this.context.texture,
+        matrix: null,
+        colorTransform: null,
+        blendMode: null,
+        maskMode: null,
+        meshCache: this.meshCache,
+        useMeshCache: false
+      };
     }
 
     WebGLBitmapRenderer.prototype.destruct = function() {};
@@ -10664,14 +10791,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       matrixChanged = this.matrixForRender.setWithComparing(m);
       factory = this.context.factory;
       cmd = this.cmd;
-      cmd.renderer = null;
-      cmd.context = this.context;
-      cmd.texture = this.context.texture;
       cmd.matrix = m;
       cmd.colorTransform = c;
       cmd.blendMode = factory.blendMode;
       cmd.maskMode = factory.maskMode;
-      cmd.meshCache = this.meshCache;
       cmd.useMeshCache = !matrixChanged;
       factory.addCommand(renderingIndex, cmd);
     };
@@ -10717,42 +10840,48 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       y0 = 0;
       x1 = tw;
       y1 = th;
-      this.vertexData = [
-        {
-          x: x1,
-          y: y1
-        }, {
-          x: x1,
-          y: y0
-        }, {
-          x: x0,
-          y: y1
-        }, {
-          x: x0,
-          y: y0
-        }
-      ];
+      /*
+      @vertexData = [
+        {x:x1, y:y1},
+        {x:x1, y:y0},
+        {x:x0, y:y1},
+        {x:x0, y:y0}
+      ]
+      */
+
+      this.vertexData = new Float32Array(2 * 4);
+      this.vertexData[0] = x1;
+      this.vertexData[1] = y1;
+      this.vertexData[2] = x1;
+      this.vertexData[3] = y0;
+      this.vertexData[4] = x0;
+      this.vertexData[5] = y1;
+      this.vertexData[6] = x0;
+      this.vertexData[7] = y0;
       dw = 2.0 * tw;
       dh = 2.0 * th;
       u0 = 1 / dw;
       v0 = 1 / dh;
       u1 = u0 + (tw * 2 - 2) / dw;
       v1 = v0 + (th * 2 - 1) / dh;
-      this.uv = [
-        {
-          u: u1,
-          v: v1
-        }, {
-          u: u1,
-          v: v0
-        }, {
-          u: u0,
-          v: v1
-        }, {
-          u: u0,
-          v: v0
-        }
-      ];
+      /*
+      @uv = [
+        {u:u1, v:v1},
+        {u:u1, v:v0},
+        {u:u0, v:v1},
+        {u:u0, v:v0}
+      ]
+      */
+
+      this.uv = new Float32Array(2 * 4);
+      this.uv[0] = u1;
+      this.uv[1] = v1;
+      this.uv[2] = u1;
+      this.uv[3] = v0;
+      this.uv[4] = u0;
+      this.uv[5] = v1;
+      this.uv[6] = u0;
+      this.uv[7] = v0;
     }
 
     return WebGLTextContext;
@@ -10768,7 +10897,17 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.textObject = textObject;
       WebGLTextRenderer.__super__.constructor.apply(this, arguments);
       this.meshCache = new Float32Array(4 * 9);
-      this.cmd = {};
+      this.cmd = {
+        renderer: null,
+        context: this.context,
+        texture: this.texture,
+        matrix: this.matrix,
+        colorTransform: null,
+        blendMode: null,
+        maskMode: null,
+        meshCache: this.meshCache,
+        useMeshCache: false
+      };
     }
 
     WebGLTextRenderer.prototype.destruct = function() {
@@ -10792,14 +10931,9 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       WebGLTextRenderer.__super__.render.apply(this, arguments);
       factory = this.context.factory;
       cmd = this.cmd;
-      cmd.renderer = null;
-      cmd.context = this.context;
-      cmd.texture = this.texture;
-      cmd.matrix = this.matrix;
       cmd.colorTransform = c;
       cmd.blendMode = factory.blendMode;
       cmd.maskMode = factory.maskMode;
-      cmd.meshCache = this.meshCache;
       cmd.useMeshCache = !this.matrixChanged;
       factory.addCommand(renderingIndex, cmd);
     };
