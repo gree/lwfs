@@ -329,7 +329,7 @@ def compile_as(script, funcname)
   src = @lwfpath + ".as"
   dst = @lwfpath + ".asbin"
 
-  re = Regexp.new("(?<t>tellTarget\s*\([^\(]+\)\s*)(?<p>\{(?:[^{}]|\g<p>)*\})/")
+  re = /(?<t>tellTarget\s*\([^\(]+\)\s*)(?<p>\{(?:[^{}]|\g<p>)*\})/
   as = script.gsub(/fscommand(\s*\(\s*")/, 'geturl1\1FSCommand:').gsub(re, '\k<t>\k<p>;') + "\n"
 
   info funcname
