@@ -84,8 +84,8 @@
           if (/([0-9]+)x([0-9]+)/.test(event.target.textContent)) {
             var inputWidth = parseInt(RegExp.$1);
             var inputHeight = parseInt(RegExp.$2);
-            var stageWidth = window.lwfWidth ? window.lwfWidth : 320;
-            var stageHeight = window.lwfHeight ? window.lwfHeight : 480;
+            var stageWidth = window.lwfWidth;
+            var stageHeight = window.lwfHeight;
 
             var screenRatio = inputWidth / inputHeight;
             var imageRatio = stageWidth / stageHeight;
@@ -165,8 +165,8 @@
     } else {  // case viewing with mobile devices
       var inputWidth = window.innerWidth;
       var inputHeight = window.innerHeight;
-      var stageWidth = window.lwfWidth ? window.lwfWidth : 320;
-      var stageHeight = window.lwfHeight ? window.lwfHeight : 480;
+      var stageWidth = window.lwfWidth;
+      var stageHeight = window.lwfHeight;
 
       if (isAndroid) {
         if (window.innerWidth > window.screen.width) {
