@@ -244,7 +244,7 @@ configure do
     FileUtils.cp_r('tmpl/js/loading.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/qrcode.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/test-html5.js', "#{OUT_DIR}/html5/js")
-    FileUtils.cp_r('tmpl/js/lwf-loader-all.min.js', "#{OUT_DIR}/html5/js")
+    FileUtils.cp_r('tmpl/js/lwf-loader.min.js', "#{OUT_DIR}/html5/js")
     FileUtils.cp_r('tmpl/js/underscore-min.js', "#{OUT_DIR}/html5/js")
     glob('tmpl/js/lwf*.js').each do |f|
       FileUtils.cp(f, "#{OUT_DIR}/html5/js") unless f =~ /(cocos2d|unity)/i
@@ -817,7 +817,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
   end
   if glob("#{folder}/*lwf-loader*.js").length == 0
     loaderscripts += <<-"EOF"
-    <script type="text/javascript" src="#{relative}js/lwf-loader-all.min.js"></script>
+    <script type="text/javascript" src="#{relative}js/lwf-loader.min.js"></script>
     EOF
   end
   ['loader'].each do |target|
