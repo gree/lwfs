@@ -2008,8 +2008,8 @@ def parse_define_button2
         button_height = 0
       else
         gmatrix = gobj.matrix.dup
-        matrix.translate_x += gobj.u + gmatrix.translate_x
-        matrix.translate_y += gobj.v + gmatrix.translate_y
+        matrix.translate_x += (gobj.u + gmatrix.translate_x) * matrix.scale_x
+        matrix.translate_y += (gobj.v + gmatrix.translate_y) * matrix.scale_y
         button_width = gobj.width * gmatrix.scale_x
         button_height = gobj.height * gmatrix.scale_y
       end
