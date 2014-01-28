@@ -3248,26 +3248,25 @@ def parse_xflxml(xml, isRootMovie = false)
           end
           i += skip
         end
-      else
-        if @version == 8
-          re = /on\s*\(\s*(?<c>press|release|rollOver|rollOut)\s*\)\s*(?<p>\{(?:[^{}]|\g<p>)*\})/
-          text.gsub(re) do |m|
-            event = $~[:c]
-            btnscript = $~[:p]
-            btnscript.sub!(/^[\s\001]*\001/, '')
-            btnscript.sub!(/[\s\001]+$/, '')
-            btnscript.gsub!(/\001/, "\n")
-            btnscript = btnscript.slice(1, btnscript.length - 2)
-            script_name = "#{name}_#{index}_" +
-              "#{instance_linkage_name}_#{instance_name}"
-            funcname = "#{script_name}_#{event}"
-            btnscript = compile_as(btnscript, funcname)
-            @instance_script_map[script_name] ||= Hash.new
-            @instance_script_map[script_name][event] ||= Hash.new
-            @instance_script_map[script_name][event] = funcname
-            @script_funcname_map[funcname] ||= {}
-            @script_funcname_map[funcname][:ActionScript] = btnscript
-          end
+      end
+      if @version == 8
+        re = /^[\s\001]*on[\s\001]*\([\s\001]*(?<c>press|release|rollOver|rollOut)[\s\001]*\)[\s\001]*(?<p>\{(?:[^{}]|\g<p>)*\})/
+        text.gsub(re) do |m|
+          event = $~[:c]
+          btnscript = $~[:p]
+          btnscript.sub!(/^[\s\001]*\001/, '')
+          btnscript.sub!(/[\s\001]+$/, '')
+          btnscript.gsub!(/\001/, "\n")
+          btnscript = btnscript.slice(1, btnscript.length - 2)
+          script_name = "#{name}_#{index}_" +
+            "#{instance_linkage_name}_#{instance_name}"
+          funcname = "#{script_name}_#{event}"
+          btnscript = compile_as(btnscript, funcname)
+          @instance_script_map[script_name] ||= Hash.new
+          @instance_script_map[script_name][event] ||= Hash.new
+          @instance_script_map[script_name][event] = funcname
+          @script_funcname_map[funcname] ||= {}
+          @script_funcname_map[funcname][:ActionScript] = btnscript
         end
       end
     end
