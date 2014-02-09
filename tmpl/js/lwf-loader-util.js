@@ -84,9 +84,19 @@
           if (/([0-9]+)x([0-9]+)/.test(event.target.textContent)) {
             var inputWidth = parseInt(RegExp.$1);
             var inputHeight = parseInt(RegExp.$2);
-            var stageWidth = window.lwfWidth;
-            var stageHeight = window.lwfHeight;
+            var stageWidth = window.lwfLoader.stageWidth ? window.lwfLoader.stageWidth : window.lwfLoader.lwfWidth;
+            var stageHeight = window.lwfLoader.stageHeight ? window.lwfLoader.stageHeight : window.lwfLoader.lwfHeight;
 
+            // load from external setting if lwfSize is not given
+            if (!stageWidth && window['testlwf_settings'].width) {
+              stageWidth = window['testlwf_settings'].width;
+            }
+
+            if (!stageHeight && window['testlwf_settings'].height) {
+              stageHeight = window['testlwf_settings'].height;
+            }
+
+            // screen's display ratio, LWF stage's ratio (determined by image ratio)
             var screenRatio = inputWidth / inputHeight;
             var imageRatio = stageWidth / stageHeight;
 
@@ -162,54 +172,21 @@
       header.appendChild(lpart);
       header.appendChild(rpart);
 
+      setInterval(function(){
+        document.getElementById('current_fps').innerHTML = 'Current FPS(avg): ' + window.lwfLoader.getCurrentFPS() + 'fps';
+      },1000);
     } else {  // case viewing with mobile devices
-      var inputWidth = window.innerWidth;
-      var inputHeight = window.innerHeight;
-      var stageWidth = window.lwfWidth;
-      var stageHeight = window.lwfHeight;
-
-      if (isAndroid) {
-        if (window.innerWidth > window.screen.width) {
-          inputWidth = window.screen.width;
-        }
-        if (window.innerHeight > window.screen.height) {
-          inputHeight = window.screen.height;
-        }
-      }
-
-      var screenRatio = inputWidth / inputHeight;
-      var imageRatio = stageWidth / stageHeight;
-
-      if (screenRatio > imageRatio) {
-        stageWidth *= (inputHeight / stageHeight);
-        stageHeight = inputHeight;
-      } else {
-        stageHeight *= (inputWidth / stageWidth);
-        stageWidth = inputWidth;
-      }
-
-      window.lwfLoader.debug = false;
-      myStage = document.getElementById('lwfs-sample');
-      myStage.style.width = inputWidth + 'px';
-      myStage.style.height = inputHeight + 'px';
-      window.lwfLoader.stageWidth = stageWidth;
-      window.lwfLoader.stageHeight = stageHeight;
-      window.lwfLoader.screenWidth = inputWidth;
-      window.lwfLoader.screenHeight = inputHeight;
-      window.lwfLoader.resizeMode = 'fitToScreen';
-      window.lwfLoader.stageHAlign = 0;
-      window.lwfLoader.stageVAlign = -1;
-
+      window.displaySetting.resizeMode = "fitToScreen";
       var headerElement = document.getElementById('header');
       headerElement.style.display = 'none';
     }
   };
 
-  if (!isMobile) {
-    setInterval(function(){
-      document.getElementById('current_fps').innerHTML = 'Current FPS(avg): ' + window.lwfLoader.getCurrentFPS() + 'fps';
-    },1000);
-  }
-
-  window.addEventListener('pageshow', onpageshow, false);
+  window.addEventListener('DOMContentLoaded', function() {
+    onpageshow();
+    var element = document.getElementById('lwfs-sample');
+    lwfLoader.setDisplaySetting(window.displaySetting);
+    //lwfLoader.setPreventDefaultBehaviour(true);
+    lwfLoader.playLWF(element, window.setting);
+  });
 }).call(this);
