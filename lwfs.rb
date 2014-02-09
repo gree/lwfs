@@ -827,6 +827,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
     <title>LWF Loader: #{name}</title>
     <link rel="shortcut icon" href="#{relative}img/#{favicon}" />
     <link rel="icon" href="#{relative}img/#{favicon}" />
@@ -837,31 +838,18 @@ def outputOK(update_time, folder, name, prefix, commandline)
 #{(loaderscripts + userscripts).chomp}
     <script type="text/javascript" src="#{relative}js/lwf-loader-util.js"></script>
     <script type="text/javascript">
-      var paramHandler = function (pElement) {
-          return {
-              handler: {
-                  loadError: function (e) {
-                      console.log(e);
-                  },
-                  exception: function (e) {
-                      console.log(e);
-                  }
-              }
-          }
-      };
-      var paramCallback = function (pElement) {
-          return {
-              callback: {
-                  onLoad: function (pLwf) {
-                      console.log(pLwf);
-                  }
-              }
-          }
-      };
-
       var setting = _.isObject(window["testlwf_settings"]) ? _.clone(window["testlwf_settings"]) : {};
       setting.lwf = "#{prefix}.lwf";
       setting.prefix = "_/";
+
+      // Use given displaySetting if provided by default
+      var displaySetting = _.isObject(window["display_settings"]) ? _.clone(window["display_settings"]) : {};
+
+      if (_.isEmpty(displaySetting)) {
+        displaySetting = {
+          renderer: "canvas"  // use canvas renderer by default
+        };
+      }
 
       window["testlwf_root_override"] = "#{root_override}";
       window["testlwf_name"] = "#{name}";
@@ -893,14 +881,8 @@ def outputOK(update_time, folder, name, prefix, commandline)
           "text": #{STATS_DISPLAY['TEXT']}
       };
 
+      // further loads LWF in lwf-loader-util.js file
       var lwfLoader = new window.LwfLoader();
-      window.addEventListener('DOMContentLoaded', function() {
-        var element = document.getElementById('lwfs-sample');
-        lwfLoader.addInitializeHook(paramHandler);
-        lwfLoader.addInitializeHook(paramCallback);
-        lwfLoader.playLWF(element, setting);
-      });
-
     </script>
   </head>
   <body>
@@ -991,7 +973,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
       };
     </script>
     <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
-#{userscripts.chomp}
+#{(loaderscripts + userscripts).chomp}
 #{birdwatcher.chomp}
   </head>
   <body>
