@@ -244,6 +244,13 @@
         inPlay = true;
         fr0 = lwf.frameRate;
         lwf.rootMovie.moveTo(config.rootoffset.x, config.rootoffset.y);
+
+        // initialize the lwf-loader instance for the latter usage
+        if (!lwf.privateData) {
+          lwf.privateData = {};
+        }
+        lwf.privateData.lwfLoader = new window.LwfLoader();
+
         destroy = function() {
             if (! lwf) {
                 return;
