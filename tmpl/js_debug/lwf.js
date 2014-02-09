@@ -8423,7 +8423,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     HTML5TextRenderer.prototype.initCanvas = function() {
-      var canvas, ctx, leftMargin, lm, property, rightMargin, rm, scale, sw, text;
+      var canvas, ctx, leftMargin, lm, property, rightMargin, rm, scale, sw, text, _ref1;
       scale = this.lwf.textScale;
       property = this.context.textProperty;
       this.leading = property.leading * scale;
@@ -8461,11 +8461,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.align = "left";
           this.offsetX = leftMargin;
       }
-      canvas = document.createElement("canvas");
-      canvas.width = this.context.text.width * scale;
-      canvas.height = this.context.text.height * scale;
+      _ref1 = this.context.factory.resourceCache.createCanvas(this.context.text.width * scale, this.context.text.height * scale), canvas = _ref1[0], ctx = _ref1[1];
       this.maxWidth = canvas.width - (leftMargin + rightMargin);
-      ctx = canvas.getContext("2d");
       this.initCanvasContext(ctx);
       this.canvas = canvas;
       this.canvasContext = ctx;
@@ -8505,6 +8502,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.alpha = -1;
       this.zIndex = -1;
       this.visible = false;
+      this.node = null;
+      this.currentCanvas = null;
       this.cmd = {};
     }
 
@@ -8539,19 +8538,21 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
       WebkitCSSTextRenderer.__super__.render.apply(this, arguments);
       nodeChanged = false;
-      if ((this.node != null) && this.node !== this.canvas) {
-        this.node.parentNode.removeChild(this.node);
-        this.node = null;
-      }
       if (this.node == null) {
-        nodeChanged = true;
-        this.node = this.canvas;
+        this.node = document.createElement("div");
+        this.node.style.width = "" + this.canvas.width + "px";
+        this.node.style.height = "" + this.canvas.height + "px";
         this.node.style.display = "block";
         this.node.style.pointerEvents = "none";
         this.node.style.position = "absolute";
         this.node.style.webkitTransformOrigin = "0px 0px";
         this.node.style.visibility = "visible";
         this.context.factory.stage.appendChild(this.node);
+        nodeChanged = true;
+      }
+      if (this.currentCanvas !== this.canvas) {
+        this.node.style.background = "-webkit-canvas(" + this.canvas.name + ") transparent";
+        this.currentCanvas = this.canvas;
       }
       maskMode = this.context.factory.maskMode;
       if (!nodeChanged && !this.matrixChanged && this.alpha === c.multi.alpha && this.zIndex === renderingIndex && maskMode === "normal" && this.node.parentNode === this.context.factory.stage) {
@@ -8932,8 +8933,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           this.checkTextures(settings, data);
           settings.total = settings._textures.length + 1;
           settings.loadedCount = 1;
-          if (typeof onprogress !== "undefined" && onprogress !== null) {
-            onprogress.call(settings, settings.loadedCount, settings.total);
+          if (settings["onprogress"] != null) {
+            settings["onprogress"].call(settings, settings.loadedCount, settings.total);
           }
           this.loadImages(settings, data);
           return;
@@ -9231,10 +9232,10 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       ctx.drawImage(image, u, v, iw, ih, 0, 0, iw, ih);
     };
 
-    WebkitCSSResourceCache.prototype.createCanvas = function(filename, w, h) {
+    WebkitCSSResourceCache.prototype.createCanvas = function(w, h) {
       var canvas, ctx, name;
       if (this.constructor === WebkitCSSResourceCache) {
-        name = "canvas_" + ++this.canvasIndex;
+        name = "__canvas__" + ++this.canvasIndex;
         ctx = document.getCSSCanvasContext("2d", name, w, h);
         canvas = ctx.canvas;
         canvas.name = name;
@@ -9267,7 +9268,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             iw = w;
             ih = h;
           }
-          _ref4 = this.createCanvas(o.filename, w, h), canvas = _ref4[0], ctx = _ref4[1];
+          _ref4 = this.createCanvas(w, h), canvas = _ref4[0], ctx = _ref4[1];
           switch (o.colorOp) {
             case "rgb":
               ctx.fillStyle = "#" + o.colorValue;
@@ -9344,7 +9345,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
             jpgImg = imageCache[jpg.filename];
             alphaImg = imageCache[alpha.filename];
             if ((jpgImg != null) && (alphaImg != null)) {
-              _ref3 = _this.createCanvas(jpg.filename, jpgImg.width, jpgImg.height), canvas = _ref3[0], ctx = _ref3[1];
+              _ref3 = _this.createCanvas(jpgImg.width, jpgImg.height), canvas = _ref3[0], ctx = _ref3[1];
               ctx.drawImage(jpgImg, 0, 0, jpgImg.width, jpgImg.height, 0, 0, jpgImg.width, jpgImg.height);
               ctx.globalCompositeOperation = 'destination-in';
               ctx.drawImage(alphaImg, 0, 0, alphaImg.width, alphaImg.height, 0, 0, jpgImg.width, jpgImg.height);
@@ -10903,7 +10904,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.cmd = {
         renderer: null,
         context: this.context,
-        texture: this.texture,
+        texture: null,
         matrix: this.matrix,
         colorTransform: null,
         blendMode: null,
@@ -10934,6 +10935,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       WebGLTextRenderer.__super__.render.apply(this, arguments);
       factory = this.context.factory;
       cmd = this.cmd;
+      cmd.texture = this.texture;
       cmd.colorTransform = c;
       cmd.blendMode = factory.blendMode;
       cmd.maskMode = factory.maskMode;
