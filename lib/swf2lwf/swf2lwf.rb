@@ -38,7 +38,7 @@ require 'chunky_png'
 require 'json'
 require 'rkelly'
 require 'zip/zip'
-ACTIONCOMPILER_VERSION = "1.0.1"
+ACTIONCOMPILER_VERSION = "1.0.2"
 begin
   require 'actioncompiler'
 rescue LoadError
@@ -339,11 +339,16 @@ def compile_as(script, funcname)
   info as
   info "-----------------------------------------------------------"
 
+  as += "\nasm {end};"
+
   begin
     raise if ActionCompiler::version() != ACTIONCOMPILER_VERSION
     swf = ActionCompiler::compile(as)
     if swf =~ /^ERROR: /
-      warn "ActionScript Compile " + swf
+      warn "ActionScript Compile " + swf + "\n" +
+        "-----------------------------------------------------------\n" +
+        script +
+        "-----------------------------------------------------------\n"
       @swf = ""
     else
       @swf = swf
@@ -1881,6 +1886,9 @@ def parse_action
     end
 
     case action
+    when SWFACTION_END
+      info "    END"
+
     when SWFACTION_NEXTFRAME
       info "    GOTONEXTFRAME"
       actions.push [:GOTONEXTFRAME]
