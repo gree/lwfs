@@ -304,8 +304,8 @@
                         iw = Math.round(iw);
                         ih = Math.round(ih);
                         if (stageWrapper) {
-                            stageWrapper.style.width = iw + 'px';
-                            stageWrapper.style.height = ih + 'px';
+                            stageWrapper.style.width = (iw + 2) + 'px';
+                            stageWrapper.style.height = (ih + 2) + 'px';
                         }
                         var s = Math.min(iw / lwf.width, ih / lwf.height);
                         stage_w = Math.round(lwf.width * s);
@@ -747,6 +747,11 @@
         } else if (/-birdwatcher\.html$/.test(window.location.pathname)) {
             mode = 'birdwatcher';
         }
+        if (/^\.\/lwf/.test(window['testlwf_lwfjs'])) {
+            mode = 'user-specified lwf*.js';
+        } else if (/^http/.test((window['testlwf_lwfjs']))) {
+            mode += ' (root-overridden: ' + window['testlwf_root_override'] + ')';
+        }
         if (isMobile) {
             var lwfstats = window['testlwf_lwfstats'];
             var dpr = window.devicePixelRatio;
@@ -887,7 +892,7 @@
                 var div = document.createElement('div');
                 div.className = 'info';
                 var href = decodeURI(window.location.href);
-                if (mode == 'release') {
+                if (mode == 'release' || mode == 'user-specified lwf*.js') {
                     href = href.replace(/\.html(|\?.*)$/, '-debug.html$1');
                 } else if (mode == 'debug') {
                     href = href.replace(/-debug\.html(|\?.*)$/, '-birdwatcher.html$1');
@@ -936,12 +941,14 @@
                     //'480x854',
                     '540x960',
                     '640x960',
+                    '640x1136',
                     '768x1024',
                     '|',
                     '800x480',
                     //'854x480',
                     '960x540',
                     '960x640',
+                    '1136x640',
                     '1024x768'
                 ];
                 var resize = function(event) {
