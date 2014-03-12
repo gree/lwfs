@@ -8,7 +8,7 @@ default browser to show the conversion results.
 
 ## Quick Start
 
-http://code.google.com/p/lwfs/downloads/list contains prebuilt binaries and
+https://github.com/gree/lwfs/releases contains prebuilt binaries and
 examples for Mac OS X and Windows. If you just want to use LWFS,
 please try them. You don't need to read INSTALL.md that contains more
 details for programmers.
