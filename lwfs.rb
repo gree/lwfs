@@ -905,6 +905,11 @@ def outputOK(update_time, folder, name, prefix, commandline)
       lwfjs = 'lwf.js'
     end
     ['release', 'debug', 'birdwatcher'].each do |rel|
+      if rel == 'release' and File.exists?("#{folder}/#{lwfjs}")
+        lwfjs_prefix = "."
+      else
+        lwfjs_prefix = "#{root_override}#{(rel == 'release') ? 'js' : 'js_debug'}"
+      end
       birdwatcher = ''
       if rel == 'birdwatcher'
         birdwatcher = <<-"EOF"
@@ -934,7 +939,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
     <link rel="stylesheet" href="#{relative}css/viewer.css" />
     <script type="text/javascript" src="#{relative}js/ajax.js"></script>
     <script type="text/javascript" src="#{relative}js/qrcode.js"></script>
-    <script type="text/javascript" src="#{root_override}#{(rel == 'release') ? 'js' : 'js_debug'}/#{lwfjs}"></script>
+    <script type="text/javascript" src="#{lwfjs_prefix}/#{lwfjs}"></script>
     <script type="text/javascript">
       window["testlwf_root_override"] = "#{root_override}";
       window["testlwf_name"] = "#{name}";
@@ -942,7 +947,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
       window["testlwf_commandline"] = "#{commandline}";
       window["testlwf_warn"] = #{warnings != ''};
       window["testlwf_lwf"] = "_/#{prefix}.lwf";
-      window["testlwf_lwfjs"] = "#{lwfjs}";
+      window["testlwf_lwfjs"] = "#{lwfjs_prefix}/#{lwfjs}";
       window["testlwf_lwfstats"] = {
           "w": #{lwfstats[:w]},
           "h": #{lwfstats[:h]},
@@ -971,6 +976,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
           "graph": #{STATS_DISPLAY['GRAPH']},
           "text": #{STATS_DISPLAY['TEXT']}
       };
+      window["testlwf_settings"] = {};
     </script>
     <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
 #{(loaderscripts + userscripts).chomp}
