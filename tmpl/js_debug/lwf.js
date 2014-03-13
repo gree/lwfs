@@ -8010,6 +8010,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       this.color = new Color;
       this.textRendered = false;
       this.textScale = this.lwf.textScale;
+      this.currentShadowMarginY = 0;
       this.initCanvas();
     }
 
@@ -8103,8 +8104,54 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       return newlines;
     };
 
+    HTML5TextRenderer.prototype.renderLines = function(ctx, lines, useStroke, shadowColor, offsetY) {
+      var c, i, j, line, offset, x, y, _i, _j, _k, _ref, _ref1, _ref2;
+      for (i = _i = 0, _ref = lines.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
+        line = lines[i];
+        x = this.offsetX * this.lwf.textScale;
+        if (this.letterSpacing !== 0) {
+          switch (this.context.textProperty.align & Align.ALIGN_MASK) {
+            case Align.RIGHT:
+              x -= this.measureText(line);
+              break;
+            case Align.CENTER:
+              x -= this.measureText(line) / 2;
+          }
+        }
+        y = offsetY + (this.fontHeight + this.leading) * i * 96 / 72;
+        if (useStroke) {
+          if (this.context.shadowColor != null) {
+            ctx.shadowColor = "rgba(0, 0, 0, 0)";
+          }
+          if (this.letterSpacing === 0) {
+            ctx.strokeText(line, x, y);
+          } else {
+            offset = 0;
+            for (j = _j = 0, _ref1 = line.length; 0 <= _ref1 ? _j < _ref1 : _j > _ref1; j = 0 <= _ref1 ? ++_j : --_j) {
+              c = line[j];
+              ctx.strokeText(c, x + offset, y);
+              offset += this.canvasContext.measureText(c).width + this.letterSpacing;
+            }
+          }
+        }
+        if (this.context.shadowColor != null) {
+          ctx.shadowColor = shadowColor;
+        }
+        if (this.letterSpacing === 0) {
+          ctx.fillText(line, x, y);
+        } else {
+          offset = 0;
+          for (j = _k = 0, _ref2 = line.length; 0 <= _ref2 ? _k < _ref2 : _k > _ref2; j = 0 <= _ref2 ? ++_k : --_k) {
+            c = line[j];
+            ctx.fillText(c, x + offset, y);
+            offset += this.canvasContext.measureText(c).width + this.letterSpacing;
+          }
+        }
+      }
+    };
+
     HTML5TextRenderer.prototype.renderText = function(textColor) {
-      var c, canvas, context, ctx, h, i, j, len, line, lines, offset, offsetY, property, scale, shadowColor, useStroke, x, y, _i, _j, _k, _ref, _ref1, _ref2;
+      var c, canvas, context, ctx, first, h, height, img, last, lines, offsetY, property, r, scale, shadowColor, useStroke, width, _i, _j;
       this.textRendered = true;
       context = this.context;
       canvas = this.canvas;
@@ -8112,21 +8159,6 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       scale = this.lwf.textScale;
       lines = this.adjustText(this.str.split("\n"));
       property = context.textProperty;
-      switch (property.align & Align.VERTICAL_MASK) {
-        case Align.VERTICAL_BOTTOM:
-          len = lines.length;
-          h = (this.fontHeight * len + this.leading * (len - 1)) * 96 / 72;
-          offsetY = canvas.height - h;
-          break;
-        case Align.VERTICAL_MIDDLE:
-          len = lines.length;
-          h = (this.fontHeight * len + this.leading * (len - 1)) * 96 / 72;
-          offsetY = (canvas.height - h) / 2;
-          break;
-        default:
-          offsetY = 0;
-      }
-      offsetY += this.fontHeight * 1.2;
       context.factory.clearCanvasRect(canvas, ctx);
       this.initCanvasContext(ctx);
       ctx.fillStyle = "rgb(" + textColor.red + "," + textColor.green + "," + textColor.blue + ")";
@@ -8144,48 +8176,49 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
         ctx.shadowOffsetY = property.shadowOffsetY * scale;
         ctx.shadowBlur = property.shadowBlur * scale;
       }
-      for (i = _i = 0, _ref = lines.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-        line = lines[i];
-        x = this.offsetX * scale;
-        if (this.letterSpacing !== 0) {
-          switch (this.context.textProperty.align & Align.ALIGN_MASK) {
-            case Align.RIGHT:
-              x -= this.measureText(line);
-              break;
-            case Align.CENTER:
-              x -= this.measureText(line) / 2;
+      offsetY = this.fontHeight * 1.2;
+      switch (property.align & Align.VERTICAL_MASK) {
+        case Align.VERTICAL_BOTTOM:
+        case Align.VERTICAL_MIDDLE:
+          this.renderLines(ctx, lines, useStroke, "rgba(0, 0, 0, 0)", offsetY);
+          img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          width = canvas.width;
+          height = canvas.height;
+          first = null;
+          last = null;
+          r = 0;
+          while ((first == null) && r < height) {
+            for (c = _i = 0; 0 <= width ? _i < width : _i > width; c = 0 <= width ? ++_i : --_i) {
+              if (img.data[r * width * 4 + c * 4 + 3] !== 0) {
+                first = r;
+                break;
+              }
+            }
+            r++;
           }
-        }
-        y = offsetY + (this.fontHeight + this.leading) * i * 96 / 72;
-        if (useStroke) {
-          if (context.shadowColor != null) {
-            ctx.shadowColor = "rgba(0, 0, 0, 0)";
-          }
-          if (this.letterSpacing === 0) {
-            ctx.strokeText(line, x, y);
-          } else {
-            offset = 0;
-            for (j = _j = 0, _ref1 = line.length; 0 <= _ref1 ? _j < _ref1 : _j > _ref1; j = 0 <= _ref1 ? ++_j : --_j) {
-              c = line[j];
-              ctx.strokeText(c, x + offset, y);
-              offset += this.canvasContext.measureText(c).width + this.letterSpacing;
+          r = height;
+          while ((last == null) && r > 0) {
+            r--;
+            for (c = _j = 0; 0 <= width ? _j < width : _j > width; c = 0 <= width ? ++_j : --_j) {
+              if (img.data[r * width * 4 + c * 4 + 3] !== 0) {
+                last = r;
+                break;
+              }
             }
           }
-        }
-        if (context.shadowColor != null) {
-          ctx.shadowColor = shadowColor;
-        }
-        if (this.letterSpacing === 0) {
-          ctx.fillText(line, x, y);
-        } else {
-          offset = 0;
-          for (j = _k = 0, _ref2 = line.length; 0 <= _ref2 ? _k < _ref2 : _k > _ref2; j = 0 <= _ref2 ? ++_k : --_k) {
-            c = line[j];
-            ctx.fillText(c, x + offset, y);
-            offset += this.canvasContext.measureText(c).width + this.letterSpacing;
+          if ((first != null) && (last != null)) {
+            h = last - first + 1;
+            switch (property.align & Align.VERTICAL_MASK) {
+              case Align.VERTICAL_BOTTOM:
+                offsetY += height - h - first - this.currentShadowMarginY;
+                break;
+              case Align.VERTICAL_MIDDLE:
+                offsetY += (height - h) / 2 - first - this.currentShadowMarginY;
+            }
           }
-        }
+          context.factory.clearCanvasRect(canvas, ctx);
       }
+      this.renderLines(ctx, lines, useStroke, shadowColor, offsetY);
     };
 
     HTML5TextRenderer.prototype.needsScale = function() {
@@ -8193,13 +8226,34 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
     };
 
     HTML5TextRenderer.prototype.render = function(m, c, renderingIndex, renderingCount, visible) {
-      var blue, colorChanged, fontChanged, green, red, scaleChanged, str, strChanged;
+      var blue, colorChanged, fontChanged, green, property, red, scale, scaleChanged, str, strChanged;
       this.matrixChanged = this.matrixForCheck.setWithComparing(m);
       if (this.matrixChanged) {
         if (this.needsScale()) {
           m = Utility.scaleMatrix(this.matrix, m, 1 / this.lwf.textScale, 0, 0);
         } else {
           m = Utility.copyMatrix(this.matrix, m);
+        }
+        if (this.context.shadowColor != null) {
+          property = this.context.textProperty;
+          scale = this.lwf.textScale;
+          this.currentShadowMarginY = 0;
+          switch (property.align & Align.VERTICAL_MASK) {
+            case Align.VERTICAL_BOTTOM:
+              if (property.shadowOffsetY > 0) {
+                this.currentShadowMarginY = property.shadowOffsetY * scale;
+              }
+              this.currentShadowMarginY += property.shadowBlur * scale;
+              break;
+            case Align.VERTICAL_MIDDLE:
+              break;
+            default:
+              if (property.shadowOffsetY < 0) {
+                this.currentShadowMarginY = property.shadowOffsetY * scale;
+              }
+              this.currentShadowMarginY -= property.shadowBlur * scale;
+          }
+          m.translateY += m.scaleY * this.currentShadowMarginY;
         }
         if (!this.context.factory.textInSubpixel) {
           m.translateX = Math.round(m.translateX);
