@@ -5425,6 +5425,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
 
     ROUND_OFF_TICK_RATE = 0.05;
 
+    LWF.globalRenderCount = 0;
+
     function LWF(lwfData, rendererFactory, embeddedScript, privateData) {
       if (rendererFactory == null) {
         rendererFactory = null;
@@ -5828,7 +5830,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       if ((this.rootMovie == null) || !this.active || this.fastForwardCurrent) {
         return;
       }
-      ++this.renderCount;
+      this.renderCount = ++LWF.globalRenderCount;
       renderingCountBackup = this.renderingCount;
       if (rCount > 0) {
         this.renderingCount = rCount;
@@ -6783,7 +6785,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
                     break;
                   case Animation.INSTANCE_TARGET_PARENT:
                     target = target.parent;
-                    if (this.target == null) {
+                    if (target == null) {
                       target = this.rootMovie;
                     }
                     break;
@@ -8660,7 +8662,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
           url = newUrl;
         }
       }
-      if (!url.match(/^\//)) {
+      if (!(url.match(/^\//) || url.match(/^https?:\/\//))) {
         url = prefix + url;
       }
       url = url.replace(/(\.gif|\.png|\.jpg)/i, suffix + "$1" + queryString);
