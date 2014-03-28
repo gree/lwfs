@@ -26,6 +26,10 @@ unset TZ
 export LWFS_USE_REMOTE_SERVER=0
 export LWFS_LOG_FILE='../../lwfs.log'
 
+if [ "$LWFS_DATA_FOLDER" = "." ]; then
+  export LWFS_DATA_FOLDER='../../..'
+fi
+
 # app
 cd $BASE/lwfs
 #ruby lwfs.rb

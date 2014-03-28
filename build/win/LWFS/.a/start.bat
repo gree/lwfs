@@ -7,6 +7,8 @@ set LWFS_USE_REMOTE_SERVER=0
 set LWFS_LOG_FILE=../../lwfs.log
 cd lwfs
 
+if "%LWFS_DATA_FOLDER%" == "." goto :setdatafolder
+
 ver | find "XP"
 if %errorlevel% EQU 0 goto :winxp
 
@@ -14,8 +16,12 @@ if %errorlevel% EQU 0 goto :winxp
 ruby "%~dp0ruby19\bin\rackup" lwfs.ru
 exit
 
+:setdatafolder
+set LWFS_DATA_FOLDER=..\..\..
+goto :run
+
 :winxp
 set ShellFolders=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders
 for /f "usebackq tokens=*" %%i in (`reg query "%ShellFolders%" /v Desktop`) do @set RESULT=%%i
-set LWFS_DESKTOP_FOLDER=%RESULT:Desktop	REG_SZ	=%
+set LWFS_DATA_FOLDER=%RESULT:Desktop	REG_SZ	=%
 goto :run

@@ -9,6 +9,7 @@ if RUBY_PLATFORM == /java/
   require 'listen'
 end
 require 'logger'
+require 'pathname'
 require 'set'
 require 'sinatra'
 require 'socket'
@@ -37,8 +38,8 @@ module Sinatra::Helpers
 end
 
 def defineDirs(prefix)
-  prefix = ENV['LWFS_DESKTOP_FOLDER'] unless ENV['LWFS_DESKTOP_FOLDER'].nil?
-  prefix = prefix.gsub(/\\/, '/').encode(Encoding::UTF_8)
+  prefix = ENV['LWFS_DATA_FOLDER'] unless ENV['LWFS_DATA_FOLDER'].nil?
+  prefix = Pathname.new(prefix.encode(Encoding::UTF_8).gsub(/\\/, '/')).cleanpath.to_s
   SRC_DIR.replace(prefix + '/LWFS_work')
   OUT_DIR.replace(prefix + '/LWFS_work_output')
 end
@@ -456,7 +457,7 @@ def cp_r(src, dst)
   glob("#{src}/*", IGNORED_PATTERN).each do |f|
     checkInterruption(__LINE__, 0.001)
     if File.file?(f) and not (f =~ /\/index-[^\/]+\.html$/i)
-      if f =~ /(swf|fla|json|conf|html|xml|js|lua|png|jpg|jpeg|gif)$/i
+      if f =~ /(swf|fla|json|conf|html|css|xml|js|lua|png|jpg|jpeg|gif|mp3|m4a)$/i
         FileUtils.cp(f, dst)
         #FileUtils.ln(f, dst)
       end
@@ -551,6 +552,7 @@ def diff(src, dst)
           "#{src}/*.lwfconf",
           "#{src}/swf2lwf.conf",
           "#{src}/index.html",
+          "#{src}/**/*.css",
           "#{src}/**/*.xml",
           "#{src}/**/*.js",
           "#{src}/**/*.lua"]).each do |src_file|
@@ -565,6 +567,7 @@ def diff(src, dst)
           "#{dst}/*.lwfconf",
           "#{dst}/swf2lwf.conf",
           "#{dst}/index.html",
+          "#{src}/**/*.css",
           "#{dst}/**/*.xml",
           "#{dst}/**/*.js",
           "#{dst}/**/*.lua"]).each do |dst_file|
@@ -577,7 +580,9 @@ def diff(src, dst)
     glob(["#{src}/**/*.png",
           "#{src}/**/*.jpg",
           "#{src}/**/*.jpeg",
-          "#{src}/**/*.gif"]).each do |src_file|
+          "#{src}/**/*.gif",
+          "#{src}/**/*.mp3",
+          "#{src}/**/*.m4a"]).each do |src_file|
       file = src_file.sub(/#{src}\//, '')
       next if file =~ IGNORED_PATTERN
       dst_file = "#{dst}/#{file}"
@@ -586,7 +591,9 @@ def diff(src, dst)
     glob(["#{dst}/**/*.png",
           "#{dst}/**/*.jpg",
           "#{dst}/**/*.jpeg",
-          "#{dst}/**/*.gif"]).each do |dst_file|
+          "#{dst}/**/*.gif",
+          "#{src}/**/*.mp3",
+          "#{src}/**/*.m4a"]).each do |dst_file|
       file = dst_file.sub(/#{dst}\//, '')
       next if file =~ IGNORED_PATTERN
       src_file = "#{src}/#{file}"

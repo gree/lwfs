@@ -24,31 +24,37 @@
         window.addEventListener(
             (window.onpageshow !== undefined) ? 'pageshow' : 'load',
             function() {
-                var elm = document.getElementById('loading_icon');
                 var checkStatus = function() {
                     var xhr = new XMLHttpRequest();
-                    xhr.open('GET', window.location.href.replace(/[^\/]+$/, '') + '.loading', true);
+                    xhr.open('GET', window.location.href.replace(/[^\/]+$/, '') + '.loading' + '?' + Date.now(), true);
                     xhr.onreadystatechange = function() {
                         if (xhr.readyState === 4) {
                             if (xhr.status === 200) {
+                                var elm = document.getElementById('loading_icon');
                                 var res = JSON.parse(xhr.responseText);
-                                if (res.update_time !== undefined && res.update_time != UPDATE_TIME) {
-                                    setTimeout(
-                                        function() {
-                                            window.location.reload();
-                                        },
-                                        100);
-                                } else if (elm != null) {
-                                    elm.style.visibility = (res.is_in_conversion) ? 'visible' : 'hidden';
+                                if (! res.is_in_conversion) {
+                                    if (res.update_time != UPDATE_TIME) {
+                                        setTimeout(
+                                            function() {
+                                                window.location.reload();
+                                            },
+                                            100);
+                                    }
+                                } else {
+                                    if (elm != null) {
+                                        elm.style.visibility = 'visible';
+                                    }
                                 }
                             }
                         }
                     };
+                    xhr.setRequestHeader('Pragma', 'no-cache');
+                    xhr.setRequestHeader('Cache-Control', 'no-cache');
                     xhr.setRequestHeader('If-Modified-Since', 'Thu, 01 Jun 1970 00:00:00 GMT');
-                    xhr.send('');
                     setTimeout(checkStatus, INTERVAL);
+                    xhr.send('');
                 };
-                setTimeout(checkStatus, INTERVAL);
+                checkStatus();
             },
             false);
     }
