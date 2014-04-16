@@ -80,13 +80,21 @@ def swf2res(swf, lwf_format_version = nil, swf2lwf_extra_options = nil)
     t1 = Time.now
     p t1 - t0
   rescue => exception
+    errors = ''
+    if File.exist?(logfile)
+      File.open(logfile, 'r') do |file|
+        file.each do |line|
+          errors += line if /^ERROR/ =~ line
+        end
+      end
+    end
     msg = "swf2lwf caused an exception:\n"
     msg += exception.message.to_s + "\n"
     msg += "backtrace:\n" 
     exception.backtrace.each do |s|
       msg += s + "\n"
     end
-    return {"is_error" => true, "message" => msg, "args" => args0}
+    return {"is_error" => true, "message" => errors + msg, "args" => args0}
   end
 
   # File.open(File.dirname(lwf) + "/" + File.basename(lwf, ".*") + ".fonts") { |file|
