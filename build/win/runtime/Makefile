@@ -101,6 +101,7 @@ clean:
 updateruby:
 	rm -f ../ruby19.zip
 	cp -r /home/ruby19 .
+	cp -r rsync-cw/* ruby19/bin
 	chmod -R 755 ruby19
 	find ruby19 -name '*.o' | xargs rm -f
 	rm -rf ruby19/lib/ruby/gems/1.9.1/cache/*

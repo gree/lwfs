@@ -6,13 +6,14 @@ ZLIB=http://zlib.net/zlib-1.2.8.tar.gz
 LIBICONV=http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.14.tar.gz
 LIBXML2=http://xmlsoft.org/sources/libxml2-2.9.1.tar.gz
 LIBYAML=http://pyyaml.org/download/libyaml/yaml-0.1.4.tar.gz
+RSYNC=http://rsync.samba.org/ftp/rsync/src/rsync-3.1.0.tar.gz
 
 WGET=wget --no-check-certificate
 
 default:
-	@echo 'make [ all | ruby | gems | cleanall | clean | updateruby ]'
+	@echo 'make [ all | ruby | gems | cleanall | clean | updateruby | rsync ]'
 
-all: cleanall download zlib libpng libjpeg libiconv libxml2 libyaml ruby gems
+all: cleanall download zlib libpng libjpeg libiconv libxml2 libyaml ruby gems rsync
 
 download:
 	if [ ! -d dl ]; then mkdir dl; fi
@@ -22,6 +23,7 @@ download:
 	cd dl; if [ ! -f `basename $(LIBICONV)` ]; then $(WGET) $(LIBICONV); fi
 	cd dl; if [ ! -f `basename $(LIBXML2)` ]; then $(WGET) $(LIBXML2); fi
 	cd dl; if [ ! -f `basename $(LIBYAML)` ]; then $(WGET) $(LIBYAML); fi
+	cd dl; if [ ! -f `basename $(RSYNC)` ]; then $(WGET) $(RSYNC); fi
 
 checkso:
 	(otool -L `which ruby`; find /usr/local/rvm -name '*.bundle' | xargs otool -L) | grep '	' | sort | uniq
@@ -87,6 +89,10 @@ libyaml:
 	cd yaml-*; cp include/yaml.h ../opt/include
 	cd yaml-*; cp src/.libs/libyaml.a ../opt/lib
 
+rsync:
+	tar xzf dl/rsync*.tar.gz
+	source _bashrc; cd rsync*; ./configure; make
+
 cleanall: clean
 	rm -rf dl
 	sudo rm -rf /usr/local/rvm
@@ -99,6 +105,7 @@ clean:
 	rm -rf libiconv-*
 	rm -rf libxml2-*
 	rm -rf yaml-*
+	rm -rf rsync*
 
 updateruby:
 	rm -f ../ruby19.zip
