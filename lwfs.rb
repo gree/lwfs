@@ -852,12 +852,6 @@ def outputOK(update_time, folder, name, prefix, commandline)
       // Use given displaySetting if provided by default
       var displaySetting = _.isObject(window["display_settings"]) ? _.clone(window["display_settings"]) : {};
 
-      if (_.isEmpty(displaySetting)) {
-        displaySetting = {
-          renderer: "canvas"  // use canvas renderer by default
-        };
-      }
-
       window["testlwf_root_override"] = "#{root_override}";
       window["testlwf_name"] = "#{name}";
       window["testlwf_html5target"] = "#{target}";
