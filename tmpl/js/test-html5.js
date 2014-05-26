@@ -468,13 +468,12 @@
                 x = t.pageX;
                 y = t.pageY;
             } else {
-                x = e.offsetX;
-                y = e.offsetY;
+                x = e.clientX;
+                y = e.clientY;
             }
-            if (isMobile) {
-                x -= stage.offsetLeft;
-                y -= stage.offsetTop;
-            }
+            var r = stage.getBoundingClientRect();
+            x -= r.left;
+            y -= r.top;
             x /= stage_scale;
             y /= stage_scale;
             lwf.inputPoint(x, y);
@@ -492,13 +491,12 @@
                 x = t.pageX;
                 y = t.pageY;
             } else {
-                x = e.offsetX;
-                y = e.offsetY;
+                x = e.clientX;
+                y = e.clientY;
             }
-            if (isMobile) {
-                x -= stage.offsetLeft;
-                y -= stage.offsetTop;
-            }
+            var r = stage.getBoundingClientRect();
+            x -= r.left;
+            y -= r.top;
             x /= stage_scale;
             y /= stage_scale;
             lwf.inputPoint(x, y);
