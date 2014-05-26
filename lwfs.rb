@@ -283,23 +283,31 @@ get '/locate/*' do |path|
   end
 end
 
+set :static, false
+
+before do
+   headers 'Access-Control-Allow-Origin' => '*'
+end
+
 get '/*' do |path|
   if path =~ /\/$/
     path = File.join(settings.public_folder, path + 'index.html')
-    $mutex_p.synchronize do
-      begin
-        last_modified File.mtime(path)
-        File.read(path)
-      rescue => e
-        send_file path
+  else
+    path = File.join(settings.public_folder, path)
+  end
+  begin
+    if path =~ /\.(html|status)$/
+      $mutex_p.synchronize do
+        begin
+          last_modified File.mtime(path)
+          File.read(path)
+        rescue => e
+          send_file path
+        end
       end
-    end
-  elsif path =~ /\.(html|status)$/
-    $mutex_p.synchronize do
+    else
       send_file path
     end
-  else
-    send_file path
   end
 end
 
@@ -788,9 +796,20 @@ def outputOK(update_time, folder, name, prefix, commandline)
     rescue
     end
   end
+  preuserscripts = ''
+  glob("#{folder}/*.js").each do |js|
+    if js =~ /\/__[^\/]*\.js$/
+      preuserscripts += "    <script type=\"text/javascript\" charset=\"UTF-8\" src=\"#{File.basename(js)}\"></script>\n"
+    end
+  end
+  if preuserscripts == ''
+    preuserscripts = "    <script type=\"text/javascript\">/* no pre user script is found */</script>\n"
+  end
   userscripts = ''
   glob("#{folder}/*.js").each do |js|
-    userscripts += "    <script type=\"text/javascript\" charset=\"UTF-8\" src=\"#{File.basename(js)}\"></script>\n"
+    if not js =~ /\/__[^\/]*\.js$/
+      userscripts += "    <script type=\"text/javascript\" charset=\"UTF-8\" src=\"#{File.basename(js)}\"></script>\n"
+    end
   end
   if userscripts == ''
     userscripts = "    <script type=\"text/javascript\">/* no user script is found */</script>\n"
@@ -842,7 +861,9 @@ def outputOK(update_time, folder, name, prefix, commandline)
     <link rel="stylesheet" href="#{relative}css/viewer.css" />
     <script type="text/javascript" src="#{relative}js/qrcode.js"></script>
     <script type="text/javascript" src="#{relative}js/lwf.js"></script>
-#{(loaderscripts + userscripts).chomp}
+#{preuserscripts.chomp}
+#{loaderscripts.chomp}
+#{userscripts.chomp}
     <script type="text/javascript" src="#{relative}js/lwf-loader-util.js"></script>
     <script type="text/javascript">
       var setting = _.isObject(window["testlwf_settings"]) ? _.clone(window["testlwf_settings"]) : {};
@@ -979,8 +1000,10 @@ def outputOK(update_time, folder, name, prefix, commandline)
       };
       window["testlwf_settings"] = {};
     </script>
+#{preuserscripts.chomp}
     <script type="text/javascript" src="#{relative}js/test-html5.js"></script>
-#{(loaderscripts + userscripts).chomp}
+#{loaderscripts.chop}
+#{userscripts.chomp}
 #{birdwatcher.chomp}
   </head>
   <body>
