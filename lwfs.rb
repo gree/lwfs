@@ -465,7 +465,7 @@ def cp_r(src, dst)
   glob("#{src}/*", IGNORED_PATTERN).each do |f|
     checkInterruption(__LINE__, 0.001)
     if File.file?(f) and not (f =~ /\/index-[^\/]+\.html$/i)
-      if f =~ /(swf|fla|json|conf|html|css|xml|js|lua|png|jpg|jpeg|gif|mp3|m4a)$/i
+      if f =~ /(swf|fla|json|conf|html|css|xml|js|ect|lua|png|jpg|jpeg|gif|mp3|m4a)$/i
         FileUtils.cp(f, dst)
         #FileUtils.ln(f, dst)
       end
@@ -563,7 +563,8 @@ def diff(src, dst)
           "#{src}/**/*.css",
           "#{src}/**/*.xml",
           "#{src}/**/*.js",
-          "#{src}/**/*.lua"]).each do |src_file|
+          "#{src}/**/*.lua",
+          "#{src}/**/*.ect"]).each do |src_file|
       file = src_file.sub(/#{src}\//, '')
       next if file =~ IGNORED_PATTERN
       dst_file = "#{dst}/#{file}"
@@ -578,7 +579,8 @@ def diff(src, dst)
           "#{src}/**/*.css",
           "#{dst}/**/*.xml",
           "#{dst}/**/*.js",
-          "#{dst}/**/*.lua"]).each do |dst_file|
+          "#{dst}/**/*.lua",
+          "#{dst}/**/*.ect"]).each do |dst_file|
       file = dst_file.sub(/#{dst}\//, '')
       next if file =~ IGNORED_PATTERN
       src_file = "#{src}/#{file}"
