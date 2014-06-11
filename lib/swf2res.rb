@@ -27,6 +27,7 @@ def swf2res(swf, lwf_format_version = nil, swf2lwf_extra_options = nil)
   res = dirname + "/_"
   lwf = prefix + ".lwfdata/" + basename + ".lwf"
   js = prefix + ".lwfdata/" + basename + ".js"
+  lua = prefix + ".lwfdata/" + basename + ".lua"
   lwfjs = prefix + ".lwfdata/" + basename + ".lwf.js"
   stat = prefix + ".status.txt"
   logfile = prefix + ".lwfdata/" + basename + ".txt"
@@ -148,6 +149,9 @@ def swf2res(swf, lwf_format_version = nil, swf2lwf_extra_options = nil)
   end
   if File.file?(js)
     FileUtils.cp(js, res)
+  end
+  if File.file?(lua)
+    FileUtils.cp(lua, arc_src)
   end
   if File.file?(lwfjs)
     FileUtils.cp(lwfjs, res)
