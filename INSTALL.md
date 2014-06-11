@@ -107,6 +107,7 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
         "FRAME_RATE": 0,
         "FRAME_STEP": 0,
         "DISPLAY_SCALE": 0,
+        "AUTO_CENTERING": false,
         "SCREEN_SIZE": "0x0",
         "STAGE":
         {
@@ -148,6 +149,8 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
   * Fixed frame step to be used (0 means not fixed).
 * DISPLAY\_SCALE
   * Fixed display scale to be used (0 means not fixed).
+* AUTO\_CENTERING
+  * True if rootMovie is centered.
 * SCREEN\_SIZE
   * Fixed screen size to be used ("0x0" means not fixed).
 * STAGE

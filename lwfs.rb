@@ -79,6 +79,7 @@ $lwfsconf = {
   'FRAME_RATE' => 0,
   'FRAME_STEP' => 0,
   'DISPLAY_SCALE' => 0,
+  'AUTO_CENTERING' => false,
   'SCREEN_SIZE' => '0x0',
   'STAGE' =>
   {
@@ -179,6 +180,7 @@ configure do
   FRAME_RATE = $lwfsconf['FRAME_RATE'].to_i
   FRAME_STEP = $lwfsconf['FRAME_STEP'].to_i
   DISPLAY_SCALE = $lwfsconf['DISPLAY_SCALE'].to_f
+  AUTO_CENTERING = $lwfsconf['AUTO_CENTERING']
   SCREEN_SIZE = $lwfsconf['SCREEN_SIZE']
   REMOTE_SERVER = $lwfsconf['REMOTE_SERVER']
   BIRD_WATCHER_SERVER = $lwfsconf['BIRD_WATCHER_SERVER']
@@ -886,6 +888,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
           "fr": #{FRAME_RATE},
           "fs": #{FRAME_STEP},
           "ds": #{DISPLAY_SCALE},
+          "ac": #{AUTO_CENTERING},
           "ss": {
               "w": #{screensize[:w]},
               "h": #{screensize[:h]}
@@ -982,6 +985,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
           "fr": #{FRAME_RATE},
           "fs": #{FRAME_STEP},
           "ds": #{DISPLAY_SCALE},
+          "ac": #{AUTO_CENTERING},
           "ss": {
               "w": #{screensize[:w]},
               "h": #{screensize[:h]}

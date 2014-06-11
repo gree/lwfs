@@ -33,6 +33,7 @@
         w: 0,
         h: 0
     };
+    var ac = false;
     var isConfigurable = true;
     var config = window['testlwf_config'];
     var mode = 'release';
@@ -345,6 +346,9 @@
                         stage.width = Math.round(stage_w * dpr);
                         stage.height = Math.round(stage_h * dpr);
                         stage_scale = stage_w / stage.width;
+                        if (ac) {
+                            lwf.rootMovie.moveTo(stage.width / 2, stage.height / 2);
+                        }
                     }
                     lwf.property.clear();
                     if (stage_h / stage_w >= lwf.height / lwf.width) {
@@ -522,7 +526,7 @@
             var info = '';
             var elm = document.getElementById('info1');
             var fps = (lwf) ? lwf.frameRate : 0;
-            info = '(format: ' + lwfstats['format_version'] + ')' + '(x' + ds.toFixed(2) + ', ' + stage_w + 'x' + stage_h + ', ' + fps + 'fps, ' + fs + 'fs)';
+            info = '(format: ' + lwfstats['format_version'] + ')' + '(x' + ds.toFixed(2) + ', ' + stage_w + 'x' + stage_h + ', ' + fps + 'fps, ' + fs + 'fs, ' + 'centering: ' + ((ac) ? 'on' : 'off') + ')';
             elm.textContent = info;
         };
         stage.lwf = lwf;
@@ -579,6 +583,12 @@
                         } else {
                             ds = 0.25;
                         }
+                        isRewinding = true;
+                    }
+                    isHandled = true;
+                } else if (key == 'O') {
+                    if (isConfigurable) {
+                        ac = ! ac;
                         isRewinding = true;
                     }
                     isHandled = true;
@@ -727,6 +737,10 @@
             config.ds = parseFloat(RegExp.$1);
             isConfigurable = false;
         }
+        if (/[?&]ac=(true|false)/.test(window.location.search)) {
+            config.ac = (RegExp.$1 == 'true');
+            isConfigurable = false;
+        }
         if (/[?&]ss=([0-9.]+)x([0-9.]+)/.test(window.location.search)) {
             config.ss.w = parseInt(RegExp.$1);
             config.ss.h = parseInt(RegExp.$2);
@@ -735,6 +749,7 @@
         fr = (config.fr) ? config.fr : 0;
         fs = (config.fs) ? config.fs : 1;
         ds = (config.ds) ? config.ds : 1;
+        ac = (config.ac) ? true : false;
         if (config.ss.w && config.ss.h) {
             ss.w = config.ss.w;
             ss.h = config.ss.h;
@@ -878,6 +893,7 @@
                                 + '?fr=' + fr
                                 + '&fs=' + fs
                                 + '&ds=' + ds
+                                + '&ac=' + ac
                                 + '&ss=' + ss.w + 'x' + ss.h,
                             '_blank');
                         return false;
@@ -993,9 +1009,10 @@
                 div.id = 'usage';
                 div.textContent
                     = 'SPACE: rewind, S: pause/resume, F: step, '
-                    + ((config.fr) ? '' : 'DOWN/UP/0: frame rate, ')
-                    + ((config.fs) ? '' : 'LEFT/RIGHT: frame step, ')
-                    + ((config.ds) ? '' : 'D: scale, ')
+                    + ((! isConfigurable) ? '' : 'DOWN/UP/0: frame rate, ')
+                    + ((! isConfigurable) ? '' : 'LEFT/RIGHT: frame step, ')
+                    + ((! isConfigurable) ? '' : 'D: scale, ')
+                    + ((! isConfigurable) ? '' : 'O: toggle centering, ')
                     + 'ESC: destroy.';
                 footer.appendChild(div);
             }
