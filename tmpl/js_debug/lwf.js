@@ -2497,14 +2497,23 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       return dst;
     };
 
-    Utility.calcColor = function(dst, c, t) {
-      var cc, d, i, ta, tc, _i;
-      d = dst._;
-      cc = c._;
-      tc = t.multi._;
-      ta = t.add._;
-      for (i = _i = 0; _i < 4; i = ++_i) {
-        d[i] = cc[i] * tc[i] + ta[i];
+    Utility.calcColor = function(lwf, dst, c, t) {
+      var cc, d, i, ta, tc, _i, _j;
+      if (lwf.useVertexColor) {
+        d = dst._;
+        cc = c._;
+        tc = t.multi._;
+        ta = t.add._;
+        for (i = _i = 0; _i < 4; i = ++_i) {
+          d[i] = cc[i] * tc[i] + ta[i];
+        }
+      } else {
+        d = dst._;
+        cc = c._;
+        for (i = _j = 0; _j < 3; i = ++_j) {
+          d[i] = cc[i];
+        }
+        d[3] = cc[3] * t.multi._[3];
       }
     };
 
@@ -7860,8 +7869,8 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       }
     };
 
-    WebkitCSSRendererFactory.prototype.convertColor = function(d, c, t) {
-      Utility.calcColor(d, c, t);
+    WebkitCSSRendererFactory.prototype.convertColor = function(lwf, d, c, t) {
+      Utility.calcColor(lwf, d, c, t);
       d.red = Math.round(d.red * 255);
       d.green = Math.round(d.green * 255);
       d.blue = Math.round(d.blue * 255);
@@ -8413,7 +8422,7 @@ if (typeof global === "undefined" && typeof window !== "undefined") {
       red = this.color.red;
       green = this.color.green;
       blue = this.color.blue;
-      this.context.factory.convertColor(this.color, this.context.textColor, c);
+      this.context.factory.convertColor(this.lwf, this.color, this.context.textColor, c);
       c = this.color;
       colorChanged = false;
       if (red !== c.red || green !== c.green || blue !== c.blue) {
