@@ -92,7 +92,7 @@ $lwfsconf = {
     'GRAPH' => false,
     'TEXT' => true
   },
-  'LWF_FORMAT_VERSION' => '0x121010',
+  'LWF_FORMAT_VERSION' => nil,
   'SWF2LWF_EXTRA_OPTIONS' =>
   [
     #"-s"
@@ -1122,6 +1122,9 @@ def updateFolders(changes)
         FileUtils.cp_r("#{DST_DIR}/#{name}/_", "#{OUT_DIR}/unity/#{name}")
         glob("#{OUT_DIR}/unity/#{name}/*.lwf").each do |f|
           FileUtils.mv(f, f.sub(/\.lwf$/, '.bytes'))
+        end
+        glob("#{OUT_DIR}/unity/#{name}/*.lua").each do |f|
+          FileUtils.mv(f, f.sub(/\.lua$/, '_script.txt'))
         end
         FileUtils.rm_rf(glob("#{OUT_DIR}/unity/#{name}/*.js"))
         # native

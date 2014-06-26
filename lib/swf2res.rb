@@ -151,7 +151,7 @@ def swf2res(swf, lwf_format_version = nil, swf2lwf_extra_options = nil)
     FileUtils.cp(js, res)
   end
   if File.file?(lua)
-    FileUtils.cp(lua, arc_src)
+    FileUtils.cp(lua, res)
   end
   if File.file?(lwfjs)
     FileUtils.cp(lwfjs, res)
