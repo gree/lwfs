@@ -578,7 +578,7 @@ def diff(src, dst)
           "#{dst}/*.lwfconf",
           "#{dst}/swf2lwf.conf",
           "#{dst}/index.html",
-          "#{src}/**/*.css",
+          "#{dst}/**/*.css",
           "#{dst}/**/*.xml",
           "#{dst}/**/*.js",
           "#{dst}/**/*.lua",
@@ -604,8 +604,8 @@ def diff(src, dst)
           "#{dst}/**/*.jpg",
           "#{dst}/**/*.jpeg",
           "#{dst}/**/*.gif",
-          "#{src}/**/*.mp3",
-          "#{src}/**/*.m4a"]).each do |dst_file|
+          "#{dst}/**/*.mp3",
+          "#{dst}/**/*.m4a"]).each do |dst_file|
       file = dst_file.sub(/#{dst}\//, '')
       next if file =~ IGNORED_PATTERN
       src_file = "#{src}/#{file}"
