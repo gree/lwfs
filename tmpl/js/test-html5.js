@@ -4,7 +4,7 @@
     var isIOS = /(iPhone|iPad)/.test(ua);
     var isAndroid = /Android/.test(ua);
     var isChrome = /Chrome/.test(ua);
-    var isBuggyWebKitCSS = (isAndroid && / (SC-0|Galaxy Nexus|SH-0)/.test(ua) && window['testlwf_html5target'] == 'webkitcss');
+    var isBuggyClearRect = (isAndroid && / (SC-0|Galaxy Nexus|SH-0|SCL21)/.test(ua));
     var isBuggyWebGL = (isAndroid && ! isChrome && window['testlwf_html5target'] == 'webgl');
     var isBuggyTouchEvent = (isAndroid && (isChrome || / SC-0/.test(ua)));
     var osVersion = 'unknown';
@@ -1099,7 +1099,7 @@
                 }
             }
         }
-        if (isBuggyWebKitCSS) {
+        if (isBuggyClearRect) {
             params['quirkyClearRect'] = true;
         }
         if (window['testlwf_settings'] != null) {
