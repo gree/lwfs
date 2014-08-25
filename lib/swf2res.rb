@@ -117,6 +117,7 @@ def swf2res(swf, lwf_format_version = nil, swf2lwf_extra_options = nil)
         texture =~ /(.*)_rgba_\d+,\d+,\d+,\d+(.*)/ or
         texture =~ /(.*)_add_[0-9a-f]{6}(.*)/ or
         texture =~ /(.*)_add_\d+,\d+,\d+(.*)/
+      texture += '.png' unless texture =~ /\.(png|jpg|jpeg|gif)$/
       textures[texture] = true
     end
   end
