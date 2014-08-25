@@ -2,6 +2,9 @@
  * img.c
  */
 
+#ifdef __MINGW32__
+#include <windows.h>
+#endif
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,6 +64,9 @@ VALUE img_save(
     int dst_num_bytes;
     FILE *fp = NULL;
     char *err_msg = NULL;
+#ifdef __MINGW32__
+    WCHAR fname_w[MAX_PATH + 1];
+#endif
     rb_check_type(fname_, RUBY_T_STRING);
     rb_check_type(width_, RUBY_T_FIXNUM);
     rb_check_type(height_, RUBY_T_FIXNUM);
@@ -92,7 +98,15 @@ VALUE img_save(
         err_msg = "unsupported format";
         goto end;
     }
+#ifdef __MINGW32__
+    if (MultiByteToWideChar(CP_UTF8, 0, fname, strlen(fname) + 1, NULL, 0) > MAX_PATH + 1) {
+        goto end;
+    }
+    MultiByteToWideChar(CP_UTF8, 0, fname, strlen(fname) + 1, fname_w, MAX_PATH + 1);
+    fp = _wfopen(fname_w, L"wb");
+#else
     fp = fopen(fname, "wb");
+#endif
     if (! fp) {
         err_msg = "failed to open the file.";
         goto end;

@@ -9,6 +9,9 @@ def glob(filter, ignored_pattern = nil)
     filter = filter.encode(Encoding::UTF_8)
   end
   Dir.glob(filter).each do |e|
+    if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
+      e.encode!(Encoding::UTF_8, Encoding::UTF_8_MAC)
+    end
     entries.push(e) unless e =~ ignored_pattern
   end
   entries.sort

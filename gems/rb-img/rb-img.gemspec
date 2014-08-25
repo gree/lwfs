@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name = %q{rb-img}
-  s.version = "0.0.7"
+  s.version = "0.0.8"
   s.description = "ruby img extension."
   s.license = "zlib"
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=

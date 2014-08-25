@@ -41,10 +41,10 @@ end
 callback = Proc.new do |modified, added, removed|
   $mutex.synchronize do
     (modified + added + removed).each do |entry|
-      entry = entry.encode(Encoding::UTF_8,
-                           Encoding.default_external,
-                           :invalid => :replace,
-                           :undef => :replace)
+#      entry = entry.encode(Encoding::UTF_8,
+#                           Encoding.default_external,
+#                           :invalid => :replace,
+#                           :undef => :replace)
       prefix = ''
       if entry =~ /^([A-Z][A-Z0-9_\-]*)((\/[A-Z][A-Z0-9_\-]*)*)(\/?)/
         # fully captal characters represent projects and allow nested folders.

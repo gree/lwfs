@@ -54,6 +54,7 @@ elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
   defineDirs(ENV['HOME'])
 end
 
+$external_encoding = (ENV['LWFS_EXTERNAL_ENCODING'].nil?) ? Encoding.default_external : ENV['LWFS_EXTERNAL_ENCODING']
 $log = Logger.new((ENV['LWFS_LOG_FILE'].nil?) ? STDOUT : ENV['LWFS_LOG_FILE'], 10)
 $lwfsconf = {
   'REMOTE_SERVER' => 'remote.server.name',
@@ -265,7 +266,7 @@ configure do
     while not postUpdate(PORT)
       sleep(1.0)
     end
-    $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR.encode(Encoding::default_external), PORT, IS_RUNNING, IGNORED_PATTERN.to_s)
+    $watcher = spawn(RUBY_COMMAND, WATCH_SCRIPT, SRC_DIR.encode($external_encoding), PORT, IS_RUNNING, IGNORED_PATTERN.to_s)
   end
 end
 
@@ -273,11 +274,11 @@ get '/locate/*' do |path|
   if File.directory?("#{SRC_DIR}/#{path}") or File.file?("#{SRC_DIR}/#{path}")
     if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
       path = "#{SRC_DIR}/#{path}"
-      path.encode!(Encoding.default_external)
+      path.encode!($external_encoding)
       `open -R "#{path}"`
     elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
       path = "#{SRC_DIR}/#{path}".gsub(/\//, '\\')
-      path.encode!(Encoding.default_external)
+      path.encode!($external_encoding)
       `start explorer /select,#{path}`
     else
       # not supported
