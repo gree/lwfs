@@ -1,12 +1,12 @@
 # -*- mode: makefile-gmake; -*-
 
-LIBJPEG=http://www.ijg.org/files/jpegsrc.v8d.tar.gz
-LIBPNG=http://prdownloads.sourceforge.net/libpng/libpng-1.2.50.tar.gz
+LIBJPEG=http://www.ijg.org/files/jpegsrc.v9a.tar.gz
+LIBPNG=http://prdownloads.sourceforge.net/libpng/libpng-1.2.51.tar.gz
 ZLIB=http://zlib.net/zlib-1.2.8.tar.gz
 LIBICONV=http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.14.tar.gz
 LIBXML2=http://xmlsoft.org/sources/libxml2-2.9.1.tar.gz
-LIBYAML=http://pyyaml.org/download/libyaml/yaml-0.1.4.tar.gz
-RSYNC=http://rsync.samba.org/ftp/rsync/src/rsync-3.1.0.tar.gz
+LIBYAML=https://github.com/yaml/libyaml/archive/0.1.4.tar.gz
+RSYNC=http://rsync.samba.org/ftp/rsync/src/rsync-3.1.1.tar.gz
 
 WGET=wget --no-check-certificate
 
@@ -22,7 +22,7 @@ download:
 	cd dl; if [ ! -f `basename $(ZLIB)` ]; then $(WGET) $(ZLIB); fi
 	cd dl; if [ ! -f `basename $(LIBICONV)` ]; then $(WGET) $(LIBICONV); fi
 	cd dl; if [ ! -f `basename $(LIBXML2)` ]; then $(WGET) $(LIBXML2); fi
-	cd dl; if [ ! -f `basename $(LIBYAML)` ]; then $(WGET) $(LIBYAML); fi
+	cd dl; if [ ! -f `basename $(LIBYAML)` ]; then $(WGET) $(LIBYAML); mv `basename $(LIBYAML)` libyaml-`basename $(LIBYAML)`; fi
 	cd dl; if [ ! -f `basename $(RSYNC)` ]; then $(WGET) $(RSYNC); fi
 
 checkso:
@@ -60,7 +60,7 @@ libpng:
 	cd libpng-*; cp .libs/libpng.a ../opt/lib
 
 libjpeg:
-	tar xzf dl/jpegsrc.v8d.tar.gz
+	tar xzf dl/jpegsrc.*.tar.gz
 	source _bashrc; cd jpeg-*; ./configure; make
 	mkdir -p opt/include opt/lib
 	cd jpeg-*; cp jconfig.h jerror.h jmorecfg.h  jpeglib.h ../opt/include
@@ -83,11 +83,11 @@ libxml2:
 	cd libxml2-*; cp .libs/libxml2.a ../opt/lib
 
 libyaml:
-	tar xzf dl/yaml-0.1.4.tar.gz
-	source _bashrc; cd yaml-*; ./configure; make
+	tar xzf dl/libyaml-*.tar.gz
+	source _bashrc; cd libyaml-*; ./bootstrap; ./configure; make
 	mkdir -p opt/include opt/lib
-	cd yaml-*; cp include/yaml.h ../opt/include
-	cd yaml-*; cp src/.libs/libyaml.a ../opt/lib
+	cd libyaml-*; cp include/yaml.h ../opt/include
+	cd libyaml-*; cp src/.libs/libyaml.a ../opt/lib
 
 rsync:
 	tar xzf dl/rsync*.tar.gz
@@ -104,7 +104,7 @@ clean:
 	rm -rf jpeg-*
 	rm -rf libiconv-*
 	rm -rf libxml2-*
-	rm -rf yaml-*
+	rm -rf libyaml-*
 	rm -rf rsync*
 
 updateruby:
