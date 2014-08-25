@@ -1,5 +1,6 @@
 var doc = fl.getDocumentDOM();
 var folder = ',js';
+var scriptType = "js";
 
 var lib;
 var items;
@@ -18,7 +19,7 @@ var includeData;
 var type = ['load', 'postLoad', 'enterFrame', 'unload'];
 var suffix = ['_load', '_postLoad', '_enterFrame', '_unload'];
 var isRoot = false;
-
+var flashVersion;
 
 init();
 
@@ -26,6 +27,8 @@ function init(){
     if (!doc) {
         alert("[ERROR] Can't open fla file.");
     } else {
+        flashVersion = String(fl.version).split(",");
+        flashVersion = Number(flashVersion[0].replace(/\D/g, ""));
         lib = doc.library;
         timeline = doc.getTimeline();
         symbol = timeline.libraryItem;
@@ -196,7 +199,7 @@ function createFilesObject(param){
         obj.itemName = ary[0];
         obj.frame = Number(ary[1]);
         obj.type = checkType(ary[2]);
-        obj.layerName = 'js';
+        obj.layerName = scriptType;
         if(obj.type !== null) obj.layerName += suffix[obj.type];
         if(typeof ary[3] !== 'undefined'){
             obj.option = ary[3];
@@ -211,7 +214,7 @@ function createFilesObject(param){
         obj.itemName = param[0];
         obj.frame = Number(frameAndType[0]);
         obj.type = checkType(frameAndType[1]);
-        obj.layerName = 'js';
+        obj.layerName = scriptType;
         if(obj.type !== null) obj.layerName += suffix[obj.type];
         obj.option = deleteFileExtention(param[2]);
     }
@@ -256,7 +259,7 @@ function checkFileExtention(str){
     if (length === 0) {
         return bool;
     }
-    if(fileTypes[length - 1] === 'js'){
+    if(fileTypes[length - 1] === scriptType){
         bool = true;
     }
     return bool;
@@ -289,7 +292,7 @@ function createJoinData(){
 }
 
 function addScriptType(type){
-    var str = '/* js';
+    var str = '/* ' + scriptType;
     if(type !== null){
         str += suffix[type];
     }
@@ -305,6 +308,11 @@ function addScriptFooter(){
     return '\n\n*/';
 }
 
+function removeBlockComment(str){
+   var newStr = str.replace(/\/\*([\s\S]*?)\*\//mg, "");
+    return newStr;
+}
+
 function includeScriptFile(){
     var lgh = items.length;
     for(var i = 0; i < lgh; i++){
@@ -318,7 +326,7 @@ function includeScriptFile(){
     var rootData = searchIncludeData('root');
     if(rootData.length > 0){
         isRoot = true;
-        addData(rootData);
+        addData(rootData, 'root');
     }
 }
 
@@ -335,7 +343,10 @@ function searchIncludeData(mcName){
 
 function addData(data, mcPath){
     var lgh = data.length;
-    lib.editItem(mcPath);
+
+    if(mcPath){
+        lib.editItem(mcPath);
+    }
 
     trace('');
     trace('{' + data[0].itemName + '}');
@@ -349,6 +360,7 @@ function addData(data, mcPath){
             trace('-> ' + data[i].traceName[j]);
         }
     }
+    doc.exitEditMode();
 }
 
 function addLayer(layerName){
@@ -380,6 +392,9 @@ function addScript(layer, data){
     var addFrame = layer.frames[data.frame];
     if(data.frame != addFrame.startFrame){
         timeline.convertToBlankKeyframes(data.frame);
+    }
+    if(flashVersion > 12){
+        data.script = removeBlockComment(data.script);
     }
     data.script = addScriptType(data.type) + addScriptHeader(data.fileName) + data.script + addScriptFooter();
     layer.frames[data.frame].actionScript = data.script;
