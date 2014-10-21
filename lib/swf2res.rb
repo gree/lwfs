@@ -80,7 +80,7 @@ def swf2res(swf, lwf_format_version = nil, swf2lwf_extra_options = nil)
     lwf2lwfjs(lwf)
     t1 = Time.now
     p t1 - t0
-  rescue => exception
+  rescue Exception => exception
     errors = ''
     if File.exist?(logfile)
       File.open(logfile, 'r') do |file|

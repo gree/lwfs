@@ -4,6 +4,7 @@ $:.unshift File.dirname(__FILE__)
 
 require 'rbconfig'
 require 'rubygems'
+require 'cgi'
 require 'fileutils'
 if RUBY_PLATFORM == /java/
   require 'listen'
@@ -106,7 +107,7 @@ $lwfsconf = {
       lwfsconf.each do |k, v|
         $lwfsconf[k] = v
       end
-    rescue => e
+    rescue Exception => e
       $log.error(e.to_s)
       $log.error(e.backtrace.to_s)
     end
@@ -304,7 +305,7 @@ get '/*' do |path|
         begin
           last_modified File.mtime(path)
           File.read(path)
-        rescue => e
+        rescue Exception => e
           send_file path
         end
       end
@@ -354,8 +355,8 @@ post '/update/*' do |target|
     t0 = t1 = t2 = t3 = t4 = t5 = t6 = t7 = t8 = Time.now
     if $is_start
       begin
-        updateTopIndex(Time.now.to_f, true)
-      rescue => e
+        updateTopIndex(Time.now.to_f, :start)
+      rescue Exception => e
         $log.error(e.to_s)
         $log.error(e.backtrace.to_s)
       end
@@ -381,6 +382,7 @@ post '/update/*' do |target|
     end
     $is_start = false
     is_in_progress = true
+    exceptions = []
     while is_in_progress
       catch :restart do
         t1 = Time.now
@@ -389,10 +391,8 @@ post '/update/*' do |target|
         changes = {:vanishes => [], :updates => [], :unchanges => []}
         begin
           changes = sync()
-        rescue => e
-          $log.error(e.to_s)
-          $log.error(e.backtrace.to_s)
-          $log.info("restart at #{__LINE__}")
+        rescue Exception => e
+          is_in_progress = checkException(__LINE__, e, exceptions)
           throw :restart
         end
         t3 = Time.now
@@ -400,10 +400,8 @@ post '/update/*' do |target|
         t4 = Time.now
         begin
           convert(changes)
-        rescue => e
-          $log.error(e.to_s)
-          $log.error(e.backtrace.to_s)
-          $log.info("restart at #{__LINE__}")
+        rescue Exception => e
+          is_in_progress = checkException(__LINE__, e, exceptions)
           throw :restart
         end
         t5 = Time.now
@@ -412,22 +410,12 @@ post '/update/*' do |target|
         begin
           updateFolders(changes)
           updateTopIndex(Time.now.to_f)
-        rescue => e
-          $log.error(e.to_s)
-          $log.error(e.backtrace.to_s)
-          $log.info("restart at #{__LINE__}")
+        rescue Exception => e
+          is_in_progress = checkException(__LINE__, e, exceptions)
           throw :restart
         end
         t7 = Time.now
-        $mutex_i.synchronize do
-          if $is_interrupted
-            $is_interrupted = false
-            $log.info("restart at #{__LINE__}")
-            throw :restart
-          end
-          $changes = []
-          $is_in_post = false
-        end
+        checkInterruption(__LINE__, 0.001, true)
         rsync() unless REMOTE_SERVER.nil?
         t8 = Time.now
         is_in_progress = false
@@ -437,13 +425,43 @@ post '/update/*' do |target|
   end
 end
 
-def checkInterruption(line, wait)
+def checkException(line, e, exceptions)
+  msg = ''
+  msg += e.message.to_s + "\n"
+  msg += "backtrace:\n" 
+  e.backtrace.each do |s|
+    msg += s + "\n"
+  end
+  exceptions << msg
+  exceptions.shift if exceptions.length > 5
+  if exceptions.length == 5
+    updateTopIndex(Time.now.to_f, :exception, exceptions)
+    $mutex_i.synchronize do
+      $changes = []
+      $is_interrupted = false
+      $is_in_post = false
+    end
+    false
+  else
+    $log.error(e.to_s)
+    $log.error(e.backtrace.to_s)
+    $log.info("restart at #{line}")
+    true
+  end
+end
+
+def checkInterruption(line, wait, is_end = false)
   sleep(wait)
   $mutex_i.synchronize do
     if $is_interrupted
       $is_interrupted = false
       $log.info("restart at #{line}")
       throw :restart
+    end
+    if is_end
+      $changes = []
+      $is_interrupted = false
+      $is_in_post = false
     end
   end
 end
@@ -798,7 +816,9 @@ def outputOK(update_time, folder, name, prefix, commandline)
       end
       rootoffset[:x] = x
       rootoffset[:y] = y
-    rescue
+    rescue Exception => e
+      $log.error(e.to_s)
+      $log.error(e.backtrace.to_s)
     end
   end
   preuserscripts = ''
@@ -1046,7 +1066,6 @@ def outputNG(update_time, folder, name, prefix, commandline, msg)
     msg = lines[6].chomp
     FileUtils.rm_f(glob("#{folder}/index-*.html"))
   end
-  msg.gsub!(/\n/, '<br/>')
   relative = '../' * (name.split('/').count + 1)
   content = <<-"EOF"
 <!DOCTYPE HTML>
@@ -1066,7 +1085,7 @@ def outputNG(update_time, folder, name, prefix, commandline, msg)
         <h1>ERROR: #{name}<span id="loading_icon"></span></h1>
         <div class="info"><a href="javascript:void(0)" onClick="Ajax.post('http://localhost:10080/update/', {'arg': '#{name}', 'force': true}); return false;">force to update</a></div>
         <div class="info">(#{commandline})</div>
-        <div class="info">#{msg}</div>
+        <div class="info">#{CGI.escapeHTML(msg.chomp.gsub("\n", "\n  "))}</div>
   EOF
   content += <<-"EOF"
       </div>
@@ -1160,21 +1179,33 @@ def updateLoadingStatus(dir, is_in_conversion, update_time = nil)
   end
 end
 
-def updateTopIndex(update_time, is_start = false)
+def updateTopIndex(update_time, mode = :default, exceptions = [])
   index_update_time = update_time
   names = []
-  if not is_start
+  updated_message = Time.now.strftime('%F %T')
+  repeated_exceptions = nil
+  case mode
+  when :start
+    if $updated_jsfls.length > 0
+      updated_message += ', also updated ' + $updated_jsfls.map{|item| "<u>#{item}</u>"}.join(' and ')
+      $updated_jsfls = []
+    end
+  when :exception
+    repeated_exceptions = <<-"EOF"
+    <p>ERROR: failed to finish because of repeated exceptions:</p>
+    EOF
+    exceptions.sort.uniq.each do |msg|
+      repeated_exceptions += <<-"EOF"
+    <div class="exception">#{CGI.escapeHTML(msg.chomp.gsub("\n", "\n  "))}</div>
+    EOF
+    end
+  else
     glob("#{DST_DIR}/*/**/.status").each do |entry|
       prefix = "#{DST_DIR}/"
       name = File.dirname(entry.slice(prefix.length, entry.length - prefix.length))
       names.push(name)
     end
     names.sort!()
-  end
-  updated_message = Time.now.strftime('%F %T')
-  if not is_start and $updated_jsfls.length > 0
-    updated_message += ', also updated ' + $updated_jsfls.map{|item| "<u>#{item}</u>"}.join(' and ')
-    $updated_jsfls = []
   end
   content = <<-"EOF"
 <!DOCTYPE HTML>
@@ -1206,18 +1237,21 @@ def updateTopIndex(update_time, is_start = false)
       </div>
       <div id="clear">
       </div>
+      <div id="repeated_exceptions">
+      #{(repeated_exceptions.nil?) ? '' : repeated_exceptions.chomp}
+      </div>
       <p>(updated: #{updated_message})</p>
       <table cellpadding="0" cellspacing="0" border="0" class="dataTable" id="sorter">
   EOF
-  content += '        <thead>'
-  content += '          <tr><th>name</th><th></th>'
+  content += "        <thead>"
+  content += "          <tr><th>name</th><th></th>"
   ['loader', 'webkitcss', 'canvas', 'webgl'].each do |target|
     next unless TARGETS.include?(target)
     content += "<th>#{target}</th>"
   end
   content += "<th>status</th><th>last modified</th></tr>\n"
-  content += '        </thead>'
-  content += '        <tbody>'
+  content += "        </thead>\n"
+  content += "        <tbody>\n"
   names.each do |name|
     status = File.readlines("#{DST_DIR}/#{name}/.status")[0].chomp
     prefix = ''
@@ -1243,7 +1277,7 @@ def updateTopIndex(update_time, is_start = false)
     end
     content += "<td class=\"center\">#{date}</td></tr>\n"
   end
-  content += '        </tbody>'
+  content += "        </tbody>\n"
   modified = Time.now
   content += <<-"EOF"
       </table>
@@ -1266,7 +1300,7 @@ def updateTopIndex(update_time, is_start = false)
     File.open("#{DST_DIR}/index.html", 'w') do |fp|
       fp.write(content)
     end
-    updateLoadingStatus("#{DST_DIR}/", is_start, index_update_time)
+    updateLoadingStatus("#{DST_DIR}/", mode == :start, index_update_time)
   end
 end
 

@@ -29,3 +29,11 @@
     width: 24px;
     height: 24px;
 }
+div.exception {
+    font-family: monospace;
+    font-size: medium;
+    margin: 1px;
+    color: black;
+    background-color: white;
+    white-space: pre;
+}
