@@ -11,9 +11,9 @@ Installation
 2. Remove previously installed LWFS applications.
 3. Copy this folder onto your drive, such as under /Application.
 
-Note on Mavericks
+Note on recent OS X.
 ------------------
-Mavericks requires an apple script downloaded "to be signed," but
+Recent OS X requires an apple script downloaded "to be signed," but
 start.app and stop.app here are not signed. For now after extracting
 LWFS*.zip, please execute below on the terminal:
 
