@@ -101,6 +101,7 @@ BLEND_ERASE = 3
 BLEND_MASK = 4
 BLEND_MULTIPLY = 5
 BLEND_SCREEN = 6
+BLEND_SUBTRACT = 7
 
 BLEND_MODE = {
    0 => {:type => "normal",     :supported => true, :value => BLEND_NORMAL},
@@ -112,7 +113,7 @@ BLEND_MODE = {
    6 => {:type => "darken",     :supported => false},
    7 => {:type => "difference", :supported => false},
    8 => {:type => "add",        :supported => true, :value => BLEND_ADD},
-   9 => {:type => "subtract",   :supported => false},
+   9 => {:type => "subtract",   :supported => true, :value => BLEND_SUBTRACT},
   10 => {:type => "invert",     :supported => false},
   11 => {:type => "alpha",      :supported => true, :value => BLEND_MASK},
   12 => {:type => "erase",      :supported => true, :value => BLEND_ERASE},
@@ -2424,6 +2425,10 @@ def parse_place_object2
   get_byte if has_visible
   get_rgba if has_visible
 
+  if has_obj_id && !@objects[obj_id]
+    return
+  end
+
   if has_obj_id
     place = Place.new
 
@@ -3545,7 +3550,7 @@ def swf2lwf(*args)
   @textureatlasdicts = Array.new
   textureatlasfiles.each do |textureatlasfile|
     # check TexturePacker JSON
-    textureatlasdict = JSON.parse(File.read(textureatlasfile))
+    textureatlasdict = JSON.parse(File.read(textureatlasfile, mode: "r:BOM|UTF-8"))
     if textureatlasdict.nil? or textureatlasdict["meta"].nil?
       error "can't read #{textureatlasfile}"
       next
@@ -4309,19 +4314,6 @@ global.LWF.Script["#{lwfname}"] = function() {
 if not LWF then LWF={} end
 if not LWF.Script then LWF.Script={} end
 if not LWF.Script.#{lwfname} then LWF.Script.#{lwfname}={} end
-local _root
-
-LWF.Script.#{lwfname}.Init = function(self)
-	local movie = self
-	while movie.parent ~= nil do
-		movie = movie.parent.lwf.rootMovie
-	end
-	_root = movie
-end
-
-LWF.Script.#{lwfname}.Destroy = function(self)
-	_root = nil
-end
       EOL
     end
 
@@ -4369,6 +4361,8 @@ end
           lua.write <<-EOL
 
 LWF.Script.#{lwfname}.#{k} = function(self)
+	local _root = self.lwf._root
+
           EOL
           lua.write script.gsub(/^/, "\t")
           lua.write "\n"
