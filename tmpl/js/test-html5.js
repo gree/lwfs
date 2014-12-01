@@ -141,7 +141,7 @@
                 this.canvas.style.height = h + 'px';
                 this.ctx = this.canvas.getContext('2d');
                 this.ctx.lineWidth = 1;
-                this.ctx.fillStyle = "rgb(240,240,240)";
+                this.ctx.fillStyle = 'rgb(240,240,240)';
                 this.ctx.fillRect(0, 0, w, h);
                 this.div.appendChild(this.canvas);
             }
@@ -173,9 +173,9 @@
                 var y0 = (1 - this.data[i0] / this.max) * (this.h - 1);
                 var x1 = 0;
                 var y1 = 0;
-                this.ctx.fillStyle = "rgb(240,240,240)";
+                this.ctx.fillStyle = 'rgb(240,240,240)';
                 this.ctx.fillRect(x0, 0, (i1 - i0) * 2, this.h);
-                this.ctx.fillStyle = "rgb(0,0,0)";
+                this.ctx.fillStyle = 'rgb(0,0,0)';
                 this.ctx.beginPath();
                 this.ctx.moveTo(x0, y0);
                 for (var i = i0 + 1; i <= i1; i++) {
