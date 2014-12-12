@@ -171,7 +171,7 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
     * True if texts for fps/draw calls are shown on mobile.
 * LWF\_FORMAT\_VERSION
   * LWF file format version
-    * "0x121010", "0x131211", or null (null means the newest format).
+    * "0x121010", "0x131211", "0x141211", or null (null means the newest format).
 * SWF2LWF\_EXTRA\_OPTIONS
   * Extra options for swf2lwf.rb
     * "-s", for example, enables to parse special symbols as in former swf2lwf.rb.
