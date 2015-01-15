@@ -85,6 +85,7 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
 
     // -*- mode: javascript; tab-width: 4; -*-
     {
+        // global/static settings
         "REMOTE_SERVER": "remote-server-name",
         "BIRD_WATCHER_SERVER": "birdwatcher-server-name:3000",
         "IGNORED_PATTERN": "[,#].*|.*\.sw[op]|.*~",
@@ -103,6 +104,7 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
         [
             //["PROJECT/PREFIX/", "http://remote-server-name/lwfrevs/20130702_083513_m0700/"]
         ],
+        // local/dynamic settings
         "USE_PAGE_SHOW_HIDE_EVENTS": false,
         "FRAME_RATE": 0,
         "FRAME_STEP": 0,
@@ -127,6 +129,14 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
         ]
     }
 
+You may also put multiple lwfs.conf under any subfolder of
+~/Desktop/LWFS_work/ to control "local/dynamic" settings for the
+folder and descendant folders of the folder.
+
+### Global/Static Settings
+
+These settings are global/static settings reflected on LWFS start-up.
+
 * REMOTE\_SERVER
   * Remote server.
 * BIRD\_WATCHER\_SERVER
@@ -141,6 +151,12 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
   * True if LWFS copies converted results to ~/Desktop/LWFS\_work\_output.
 * ROOT\_OVERRIDES
   * lwf\*.js can be specified in this array for any "PROJECT/PREFIX/" in ~/Desktop/LWFS\_work/.
+
+### Local/Dynamic Settings
+
+These settings are local/dynamic settings reflected when any content
+is converted.
+
 * USE\_PAGE\_SHOW\_HIDE\_EVENTS
   * True if a lwf is initialized/finalized on pageshow/pagehide.
 * FRAME\_RATE

@@ -55,11 +55,32 @@ elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
   defineDirs(ENV['HOME'])
 end
 
+def getLWFSConf(name)
+  if name == ''
+    $lwfsconf.dup
+  else
+    lwfsconf = getLWFSConf((name == '.') ? '' : File.dirname(name))
+    if File.exists?("#{SRC_DIR}/#{name}/lwfs.conf")
+      begin
+        tmp = JSON.parse(File.read("#{SRC_DIR}/#{name}/lwfs.conf"))
+        tmp.each do |k, v|
+          lwfsconf[k] = v if lwfsconf.key?(k)
+        end
+      rescue Exception => e
+        $log.error(e.to_s)
+        $log.error(e.backtrace.to_s)
+      end
+    end
+    lwfsconf
+  end
+end
+
 $external_encoding = (ENV['LWFS_EXTERNAL_ENCODING'].nil?) ? Encoding.default_external : ENV['LWFS_EXTERNAL_ENCODING']
 $log = Logger.new((ENV['LWFS_LOG_FILE'].nil?) ? STDOUT : ENV['LWFS_LOG_FILE'], 10)
 $lwfsconf = {
-  'REMOTE_SERVER' => 'remote.server.name',
-  'BIRD_WATCHER_SERVER' => 'birdwatcher.server.name:3000',
+  # global/static settings
+  'REMOTE_SERVER' => nil,
+  'BIRD_WATCHER_SERVER' => nil,
   'IGNORED_PATTERN' => '[,#].*|.*\.sw[op]|.*~',
   'ALLOWED_PREFIX_PATTERN' => '',
   'TARGETS' =>
@@ -77,6 +98,7 @@ $lwfsconf = {
   [
     #['PROJECT/PREFIX/', 'http://remote.server.name/lwfrevs/20130702_083513_m0700/']
   ],
+  # local/dynamic settings
   'USE_PAGE_SHOW_HIDE_EVENTS' => false,
   'FRAME_RATE' => 0,
   'FRAME_STEP' => 0,
@@ -100,17 +122,15 @@ $lwfsconf = {
     #"-s"
   ]
 }
-['lwfs.conf', "#{SRC_DIR}/lwfs.conf"].each do |f|
-  if File.file?(f)
-    begin
-      lwfsconf = JSON.parse(File.read(f))
-      lwfsconf.each do |k, v|
-        $lwfsconf[k] = v
-      end
-    rescue Exception => e
-      $log.error(e.to_s)
-      $log.error(e.backtrace.to_s)
+if File.exists?("lwfs.conf")
+  begin
+    tmp = JSON.parse(File.read("lwfs.conf"))
+    tmp.each do |k, v|
+      $lwfsconf[k] = v if $lwfsconf.key?(k)
     end
+  rescue Exception => e
+    $log.error(e.to_s)
+    $log.error(e.backtrace.to_s)
   end
 end
 if ENV['LWFS_USE_REMOTE_SERVER'] != '1'
@@ -326,7 +346,7 @@ post '/update/*' do |target|
         entry = entry.slice(prefix.length, entry.length - prefix.length)
         prefix = ''
         if entry =~ /^([A-Z][A-Z0-9_\-]*)((\/[A-Z][A-Z0-9_\-]*)*)(\/?)/
-          # fully captal characters represent projects and allow nested folders.
+          # fully capital characters represent projects and allow nested folders.
           prefix = $1 + $2 + $4
         end
         entry = entry.slice(prefix.length, entry.length - prefix.length)
@@ -641,28 +661,30 @@ def convert(changes)
   changes[:unchanges].each do |name|
     folder = "#{DST_DIR}/#{name}"
     next unless File.exists?(folder)  # vanished folders
+    lwfsconf = getLWFSConf(name)
     $log.info("converting (unchanged) #{name}...")
     if File.file?("#{folder}/index.html")
-      outputRaw(update_time, folder)
+      outputRaw(lwfsconf, update_time, folder)
     elsif File.file?("#{folder}/main.js") and File.file?("#{folder}/myApp.js") and File.file?("#{folder}/resource.js")
-      outputCocos2d(update_time, folder, name)
+      outputCocos2d(lwfsconf, update_time, folder, name)
     elsif File.readlines("#{folder}/.status")[0] =~ /OK/
-      outputOK(update_time, folder, name, '', '')
+      outputOK(lwfsconf, update_time, folder, name, '', '')
     else
-      outputNG(update_time, folder, name, '', '', '')
+      outputNG(lwfsconf, update_time, folder, name, '', '', '')
     end
   end
   changes[:updates].each do |name|
     folder = "#{DST_DIR}/.tmp.#{name}"
     next unless File.exists?(folder)  # vanished folders
+    lwfsconf = getLWFSConf(name)
     $log.info("converting #{name}...")
     if File.file?("#{folder}/index.html")
-      outputRaw(update_time, folder)
+      outputRaw(lwfsconf, update_time, folder)
     else
       swfs = glob("#{folder}/*.swf")
       prefix = ''
       if swfs.count == 0
-        outputNG(update_time, folder, name, prefix, '', 'found no swf.')
+        outputNG(lwfsconf, update_time, folder, name, prefix, '', 'found no swf.')
       else
         swf = swfs[0]
         swfs.each do |path|
@@ -673,7 +695,7 @@ def convert(changes)
           end
         end
         prefix = File.basename(swf, '.swf')
-        ret = swf2res(swf, $lwfsconf['LWF_FORMAT_VERSION'], $lwfsconf['SWF2LWF_EXTRA_OPTIONS'])
+        ret = swf2res(swf, lwfsconf['LWF_FORMAT_VERSION'], lwfsconf['SWF2LWF_EXTRA_OPTIONS'])
         ret['args'].each do |s|
           s.sub!(/.*\.(swf|fla|json)$/, File.basename(s))
           s.sub!(/.*\/swf2lwf.conf$/, 'swf2lwf.conf')
@@ -681,10 +703,10 @@ def convert(changes)
         end
         commandline = "swf2lwf#{(ret['args'].length > 0) ? ' ' : ''}#{ret['args'].join(' ')}"
         if not ret['is_error']
-          outputOK(update_time, folder, name, prefix, commandline)
+          outputOK(lwfsconf, update_time, folder, name, prefix, commandline)
         else
           # ret['message'] contains warnings.
-          outputNG(update_time, folder, name, prefix, commandline, ret['message'])
+          outputNG(lwfsconf, update_time, folder, name, prefix, commandline, ret['message'])
         end
       end
     end
@@ -692,7 +714,7 @@ def convert(changes)
   end
 end
 
-def outputRaw(update_time, folder)
+def outputRaw(lwfsconf, update_time, folder)
   index_update_time = update_time
   if File.exists?("#{folder}/.status")
     lines = File.readlines("#{folder}/.status")
@@ -724,7 +746,7 @@ def outputRaw(update_time, folder)
   updateLoadingStatus("#{folder}/", false, index_update_time);
 end
 
-def outputOK(update_time, folder, name, prefix, commandline)
+def outputOK(lwfsconf, update_time, folder, name, prefix, commandline)
   index_update_time = update_time
   if File.exists?("#{folder}/.status")
     lines = File.readlines("#{folder}/.status")
@@ -747,7 +769,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
   end
   relative = '../' * (name.split('/').count + 1)
   root_override = relative
-  $lwfsconf['ROOT_OVERRIDES'].each do |e|
+  lwfsconf['ROOT_OVERRIDES'].each do |e|
     root_override = e[1] if name.index(e[0]) == 0
   end
   if warnings != ''
@@ -905,7 +927,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
       window["testlwf_warn"] = #{warnings != ''};
 
       window["testlwf_config"] = {
-          "use_page_show_hide_events": #{$lwfsconf['USE_PAGE_SHOW_HIDE_EVENTS']},
+          "use_page_show_hide_events": #{lwfsconf['USE_PAGE_SHOW_HIDE_EVENTS']},
           "fr": #{FRAME_RATE},
           "fs": #{FRAME_STEP},
           "ds": #{DISPLAY_SCALE},
@@ -919,9 +941,9 @@ def outputOK(update_time, folder, name, prefix, commandline)
               "y": #{rootoffset[:y]}
           },
           "stage": {
-              "elastic": #{$lwfsconf['STAGE']['ELASTIC']},
-              "halign": #{$lwfsconf['STAGE']['HALIGN']},  // -1, 0, 1
-              "valign": #{$lwfsconf['STAGE']['VALIGN']}   // -1, 0, 1
+              "elastic": #{lwfsconf['STAGE']['ELASTIC']},
+              "halign": #{lwfsconf['STAGE']['HALIGN']},  // -1, 0, 1
+              "valign": #{lwfsconf['STAGE']['VALIGN']}   // -1, 0, 1
           }
       };
       window["testlwf_statsdisplay"] = {
@@ -959,7 +981,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
         lwfjs_prefix = "#{root_override}#{(rel == 'release') ? 'js' : 'js_debug'}"
       end
       birdwatcher = ''
-      if rel == 'birdwatcher'
+      if rel == 'birdwatcher' and not BIRD_WATCHER_SERVER.nil?
         birdwatcher = <<-"EOF"
     <script type="text/javascript" src="#{relative}js/birdwatcher.js"></script>
     <script type="text/javascript">
@@ -1002,7 +1024,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
           "format_version": "#{lwfstats[:format_version]}"
       };
       window["testlwf_config"] = {
-          "use_page_show_hide_events": #{$lwfsconf['USE_PAGE_SHOW_HIDE_EVENTS']},
+          "use_page_show_hide_events": #{lwfsconf['USE_PAGE_SHOW_HIDE_EVENTS']},
           "fr": #{FRAME_RATE},
           "fs": #{FRAME_STEP},
           "ds": #{DISPLAY_SCALE},
@@ -1016,9 +1038,9 @@ def outputOK(update_time, folder, name, prefix, commandline)
               "y": #{rootoffset[:y]}
           },
           "stage": {
-              "elastic": #{$lwfsconf['STAGE']['ELASTIC']},
-              "halign": #{$lwfsconf['STAGE']['HALIGN']},  // -1, 0, 1
-              "valign": #{$lwfsconf['STAGE']['VALIGN']}   // -1, 0, 1
+              "elastic": #{lwfsconf['STAGE']['ELASTIC']},
+              "halign": #{lwfsconf['STAGE']['HALIGN']},  // -1, 0, 1
+              "valign": #{lwfsconf['STAGE']['VALIGN']}   // -1, 0, 1
           }
       };
       window["testlwf_statsdisplay"] = {
@@ -1054,7 +1076,7 @@ def outputOK(update_time, folder, name, prefix, commandline)
   updateLoadingStatus("#{folder}/", false, index_update_time);
 end
 
-def outputNG(update_time, folder, name, prefix, commandline, msg)
+def outputNG(lwfsconf, update_time, folder, name, prefix, commandline, msg)
   index_update_time = update_time
   if File.exists?("#{folder}/.status")
     lines = File.readlines("#{folder}/.status")
@@ -1183,7 +1205,11 @@ def updateTopIndex(update_time, mode = :default, exceptions = [])
   index_update_time = update_time
   names = []
   updated_message = Time.now.strftime('%F %T')
-  repeated_exceptions = nil
+  warnings = ''
+  if ENV['LWFS_USE_REMOTE_SERVER'] == '1' and REMOTE_SERVER.nil?
+    warnings += 'WARNINGS: The remote server is undefined and we fall back to the local server.';
+  end
+  repeated_exceptions = ''
   case mode
   when :start
     if $updated_jsfls.length > 0
@@ -1237,9 +1263,8 @@ def updateTopIndex(update_time, mode = :default, exceptions = [])
       </div>
       <div id="clear">
       </div>
-      <div id="repeated_exceptions">
-      #{(repeated_exceptions.nil?) ? '' : repeated_exceptions.chomp}
-      </div>
+      <div id="warnings">#{warnings.chomp}</div>
+      <div id="repeated_exceptions">#{repeated_exceptions.chomp}</div>
       <p>(updated: #{updated_message})</p>
       <table cellpadding="0" cellspacing="0" border="0" class="dataTable" id="sorter">
   EOF
