@@ -1,7 +1,7 @@
 (function() {
     var isFile = /^file:/.test(window.location.href);
     var ua = navigator.userAgent;
-    var isIOS = /(iPhone|iPad)/.test(ua);
+    var isIOS = /(iPhone|iPad|iPod touch)/.test(ua);
     var isAndroid = /Android/.test(ua);
     var isChrome = /Chrome/.test(ua);
     var isBuggyClearRect = (isAndroid && / (SC-0|Galaxy Nexus|SH-0|SCL21)/.test(ua));
