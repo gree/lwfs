@@ -530,7 +530,9 @@
             elm.textContent = info;
         };
         stage.lwf = lwf;
-        {
+        if (window['testlwf_html5target'] == 'webgl') {
+            stage.style.backgroundColor = 'black';
+        } else {
             var bgColor = lwf.backgroundColor;
             var a = (bgColor >> 24) & 0xff;
             var r = (bgColor >> 16) & 0xff;
