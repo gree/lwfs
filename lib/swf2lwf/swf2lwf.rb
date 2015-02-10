@@ -1711,6 +1711,14 @@ def parse_define_shape
             delta_y = 0.0
           end
         end
+      else
+        bits = get_bits(4) + 2
+        delta_x = get_sbits(bits) / 20.0;
+        delta_y = get_sbits(bits) / 20.0;
+        delta_x += get_sbits(bits) / 20.0;
+        delta_y += get_sbits(bits) / 20.0;
+      end
+      begin
         vertices.push Vertex.new(delta_x, delta_y)
         info "  LINE #{vertices.size - 1}: (#{delta_x}, #{delta_y})"
 
@@ -1801,12 +1809,6 @@ def parse_define_shape
 
           vertices = Array.new
         end
-      else
-        bits = get_bits(4) + 2
-        get_sbits(bits)
-        get_sbits(bits)
-        get_sbits(bits)
-        get_sbits(bits)
       end
     end
   end
