@@ -2,7 +2,7 @@
 $:.unshift File.dirname(__FILE__)
 
 require 'rubygems'
-require 'listen'
+require 'tinylisten.rb'
 require 'postupdate.rb'
 
 FOLDER = ARGV[0]
@@ -38,13 +38,17 @@ Thread.new do
   end
 end
 
-callback = Proc.new do |modified, added, removed|
+listener = TinyListen.to(FOLDER) do |modified, added, removed|
+  all = (modified + added + removed).select do |name|
+    not name =~ /(^|\/)[.,]/
+  end
   $mutex.synchronize do
-    (modified + added + removed).each do |entry|
+    all.each do |entry|
 #      entry = entry.encode(Encoding::UTF_8,
 #                           Encoding.default_external,
 #                           :invalid => :replace,
 #                           :undef => :replace)
+      entry = entry.sub(/^#{FOLDER}\//, '')
       prefix = ''
       if entry =~ /^([A-Z][A-Z0-9_\-]*)((\/[A-Z][A-Z0-9_\-]*)*)(\/?)/
         # fully captal characters represent projects and allow nested folders.
@@ -57,14 +61,8 @@ callback = Proc.new do |modified, added, removed|
     $changes.uniq!
   end
 end
-
-listener = Listen.to(FOLDER)
-if RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/ and
-    `ver` =~ /Version [543]/
-  listener.force_polling(true)
+at_exit do
+  listener.stop
 end
-listener.relative_paths(true)
-listener.ignore!(/(^|\/)[.,]/)
-listener.change(&callback)
-
-listener.start!
+listener.start
+sleep
