@@ -4,6 +4,7 @@
   var isAndroid = /Android/.test(navigator.userAgent);
   var isiOS = /(iPhone|iPad|iPod)/.test(navigator.userAgent);
   var isMobile = isiOS || isAndroid;
+  var lastFitToScreen = null;
 
   var onpageshow = function() {
     var header = document.getElementById('header');
@@ -84,16 +85,17 @@
           if (/([0-9]+)x([0-9]+)/.test(event.target.textContent)) {
             var inputWidth = parseInt(RegExp.$1);
             var inputHeight = parseInt(RegExp.$2);
-            var stageWidth = window.lwfLoader.stageWidth ? window.lwfLoader.stageWidth : window.lwfLoader.lwfWidth;
-            var stageHeight = window.lwfLoader.stageHeight ? window.lwfLoader.stageHeight : window.lwfLoader.lwfHeight;
+            var stageWidth = window.lwfLoader.stageWidth ? window.lwfLoader.stageWidth : window.lwfWidth;
+            var stageHeight = window.lwfLoader.stageHeight ? window.lwfLoader.stageHeight : window.lwfHeight;
 
             // load from external setting if lwfSize is not given
-            if (!stageWidth && window['testlwf_settings'].width) {
-              stageWidth = window['testlwf_settings'].width;
-            }
-
-            if (!stageHeight && window['testlwf_settings'].height) {
-              stageHeight = window['testlwf_settings'].height;
+            if (window['testlwf_settings']) {
+              if (!stageWidth && window['testlwf_settings'].width) {
+                stageWidth = window['testlwf_settings'].width;
+              }
+              if (!stageHeight && window['testlwf_settings'].height) {
+                stageHeight = window['testlwf_settings'].height;
+              }
             }
 
             // screen's display ratio, LWF stage's ratio (determined by image ratio)
@@ -115,7 +117,10 @@
             window.lwfLoader.stageHeight = stageHeight;
             window.lwfLoader.screenWidth = inputWidth;
             window.lwfLoader.screenHeight = inputHeight;
-            window.lwfLoader.resizeMode = 'fitToScreen';
+            if (lastFitToScreen === null) {
+              lastFitToScreen = window.lwfLoader.fitToScreen;
+            }
+            window.lwfLoader.fitToScreen = true;
             window.lwfLoader.stageHAlign = 0;
             window.lwfLoader.stageVAlign = -1;
           } else {
@@ -125,6 +130,10 @@
             window.lwfLoader.stageHeight = 0;
             window.lwfLoader.screenWidth = 0;
             window.lwfLoader.screenHeight = 0;
+            if (lastFitToScreen !== null) {
+              window.lwfLoader.fitToScreen = lastFitToScreen;
+              lastFitToScreen = null;
+            }
             window.lwfLoader.stageHAlign = -1;
           }
           return false;
