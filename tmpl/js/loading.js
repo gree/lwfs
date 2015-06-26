@@ -15,7 +15,7 @@
             if (attr.name === "interval") {
                 INTERVAL = ~~Math.round(parseFloat(attr.value) * 1000);
             } else if (attr.name === "update_time") {
-                UPDATE_TIME = attr.value;
+                UPDATE_TIME = parseFloat(attr.value);
             }
         }
     }
@@ -34,11 +34,21 @@
                                 var res = JSON.parse(xhr.responseText);
                                 if (! res.is_in_conversion) {
                                     if (res.update_time != UPDATE_TIME) {
+                                        var ut = res.update_time;
                                         setTimeout(
                                             function() {
-                                                window.location.reload();
+                                                // window.location.reload(true);
+                                                // window.location.href = href;
+                                                var href = window.location.href;
+                                                var search = window.location.search;
+                                                if (/[?&]\.=[.\d]+/.test(href)) {
+                                                    href = href.replace(/([?&]\.=)[.\d]+/, '$1' + ut);
+                                                } else {
+                                                    href = href.replace(/$/, ((search == '') ? '?' : '&') + '.=' + ut);
+                                                }
+                                                window.location.replace(href);
                                             },
-                                            100);
+                                            50);
                                     }
                                 } else {
                                     if (elm != null) {
@@ -46,13 +56,13 @@
                                     }
                                 }
                             }
+                            setTimeout(checkStatus, INTERVAL);
                         }
                     };
                     xhr.setRequestHeader('Pragma', 'no-cache');
                     xhr.setRequestHeader('Cache-Control', 'no-cache');
                     xhr.setRequestHeader('If-Modified-Since', 'Thu, 01 Jun 1970 00:00:00 GMT');
-                    setTimeout(checkStatus, INTERVAL);
-                    xhr.send('');
+                    xhr.send();
                 };
                 checkStatus();
             },

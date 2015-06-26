@@ -159,6 +159,20 @@ Thread.new do
   end
 end
 
+HEAD_COMMON = <<-"EOF"
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Expires" content="Mon, 26 Jul 1997 05:00:00 GMT">
+EOF
+HEAD_COMMON.chomp!
+HEAD_MOBILE = <<-"EOF"
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
+EOF
+HEAD_MOBILE.chomp!
+
 configure do
   set :port, 10080
   set :public_folder, File.dirname(__FILE__) + '/htdocs'
@@ -320,7 +334,7 @@ get '/*' do |path|
     path = File.join(settings.public_folder, path)
   end
   begin
-    if path =~ /\.(html|status)$/
+    if path =~ /\.(html|status|loading)$/
       $mutex_p.synchronize do
         begin
           last_modified File.mtime(path)
@@ -403,10 +417,16 @@ post '/update/*' do |target|
     $is_start = false
     is_in_progress = true
     exceptions = []
+    checkInterruptionWait = 0.0
     while is_in_progress
       catch :restart do
+        $mutex_p.synchronize do
+          updateLoadingStatus("#{DST_DIR}/", true)
+        end
+        checkInterruptionWait += 0.5
+        checkInterruptionWait = 3.0 if checkInterruptionWait > 3.0
         t1 = Time.now
-        checkInterruption(__LINE__, 1.0)
+        checkInterruption(__LINE__, checkInterruptionWait)
         t2 = Time.now
         changes = {:vanishes => [], :updates => [], :unchanges => []}
         begin
@@ -475,7 +495,7 @@ def checkInterruption(line, wait, is_end = false)
   $mutex_i.synchronize do
     if $is_interrupted
       $is_interrupted = false
-      $log.info("restart at #{line}")
+      $log.info("restart at #{line} after waiting #{wait} sec.")
       throw :restart
     end
     if is_end
@@ -728,6 +748,7 @@ def outputRaw(lwfsconf, update_time, folder)
 <!DOCTYPE HTML>
 <html>
   <head>
+#{HEAD_COMMON}
     <meta http-equiv="refresh" content="0; URL=index.html?renderer=#{target}">
   </head>
   <body>
@@ -777,7 +798,8 @@ def outputOK(lwfsconf, update_time, folder, name, prefix, commandline)
 <!DOCTYPE HTML>
 <html>
   <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+#{HEAD_COMMON}
+#{HEAD_MOBILE}
     <title>WARNINGS: #{name}</title>
     <link rel="shortcut icon" href="#{relative}img/favicon-yellow.png" />
     <link rel="icon" href="#{relative}img/favicon-yellow.png" />
@@ -899,8 +921,8 @@ def outputOK(lwfsconf, update_time, folder, name, prefix, commandline)
 <!DOCTYPE HTML>
 <html>
   <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
+#{HEAD_COMMON}
+#{HEAD_MOBILE}
     <title>LWF Loader: #{name}</title>
     <link rel="shortcut icon" href="#{relative}img/#{favicon}" />
     <link rel="icon" href="#{relative}img/#{favicon}" />
@@ -998,10 +1020,8 @@ def outputOK(lwfsconf, update_time, folder, name, prefix, commandline)
 <!DOCTYPE HTML>
 <html>
   <head>
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no" />
-    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+#{HEAD_COMMON}
+#{HEAD_MOBILE}
     <title>#{target.upcase}: #{name}</title>
     <link rel="shortcut icon" href="#{relative}img/#{favicon}" />
     <link rel="icon" href="#{relative}img/#{favicon}" />
@@ -1093,7 +1113,7 @@ def outputNG(lwfsconf, update_time, folder, name, prefix, commandline, msg)
 <!DOCTYPE HTML>
 <html>
   <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+#{HEAD_COMMON}
     <title>ERROR: #{name}</title>
     <link rel="shortcut icon" href="#{relative}img/favicon-red.png" />
     <link rel="icon" href="#{relative}img/favicon-red.png" />
@@ -1237,7 +1257,7 @@ def updateTopIndex(update_time, mode = :default, exceptions = [])
 <!DOCTYPE HTML>
 <html>
   <head>
-    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+#{HEAD_COMMON}
     <title>lwfs</title>
     <link rel="shortcut icon" href="../img/favicon.png" />
     <link rel="icon" href="../img/favicon.png" />
