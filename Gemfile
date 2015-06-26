@@ -2,13 +2,13 @@
 source "https://rubygems.org"
 
 gem "httpclient"
-gem "listen"
 gem "ruby-lzma"
 gem "sinatra"
 gem "thin"
 gem "uuidtools"
 gem "actioncompiler"
 gem "rb-img"
+gem "libxml-ruby"
 platforms :ruby, :mingw do
   if RUBY_PLATFORM =~ /darwin/
     gem "rb-fsevent"
@@ -17,6 +17,4 @@ platforms :ruby, :mingw do
   elsif RUBY_PLATFORM =~ /linux/
     gem "rb-inotify"
   end
-  gem "libxml-ruby"
-  gem "rb-img"
 end

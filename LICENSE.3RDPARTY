@@ -93,10 +93,6 @@ Ruby
         http://www.gnu.org/software/libiconv/
         (LGPL)
 
-* listen
-  https://github.com/KojiNakamaru/listen/blob/fix/at_exit/LICENSE
-  (MIT)
-
 * minitest
   https://github.com/seattlerb/minitest/blob/master/README.txt
   (MIT)
@@ -111,10 +107,6 @@ Ruby
 
 * rake
   http://rake.rubyforge.org/MIT-LICENSE.html
-  (MIT)
-
-* rb-fchange
-  https://github.com/stereobooster/rb-fchange/blob/master/LICENSE.md
   (MIT)
 
 * rb-fsevent

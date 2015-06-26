@@ -216,9 +216,7 @@ simultaneously on the remote rsyncd server.
 
 ### File System Events
 
-listen-\*.gem are utilized and it depends on some of gems
-(rb-fseven-\*.gem, rb-inotify-\*.gem, rb-fchange-\*.gem, or
-wdm-\*.gem).
+rb-fseven-\*.gem, rb-inotify-\*.gem, or wdm-\*.gem is utilized.
 
 ### LZMA
 
