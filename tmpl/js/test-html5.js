@@ -347,7 +347,7 @@
                         stage.height = Math.round(stage_h * dpr);
                         stage_scale = stage_w / stage.width;
                         if (ac) {
-                            lwf.rootMovie.moveTo(stage.width / 2, stage.height / 2);
+                            lwf.rootMovie.moveTo(stage_w / 2, stage_h / 2);
                         }
                     }
                     lwf.property.clear();
