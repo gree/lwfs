@@ -41,8 +41,8 @@ end
 def defineDirs(prefix)
   prefix = ENV['LWFS_DATA_FOLDER'] unless ENV['LWFS_DATA_FOLDER'].nil?
   prefix = Pathname.new(prefix.encode(Encoding::UTF_8).gsub(/\\/, '/')).cleanpath.to_s
-  SRC_DIR.replace(prefix + '/LWFS_work')
-  OUT_DIR.replace(prefix + '/LWFS_work_output')
+  SRC_DIR.replace(File.expand_path(prefix + '/LWFS_work'))
+  OUT_DIR.replace(File.expand_path(prefix + '/LWFS_work_output'))
 end
 
 SRC_DIR = ''
