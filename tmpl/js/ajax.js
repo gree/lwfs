@@ -8,7 +8,7 @@ Ajax = {
         var req = new XMLHttpRequest();
         req.open('POST', url, true);
         req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        arg = '';
+        var arg = '';
         if (data) {
             var params = [];
             for (var name in data) {
