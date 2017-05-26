@@ -8,32 +8,31 @@ themselves are built under build/{osx,win}/runtime.
 
 ### Mac OS X
 
-1. Install gcc (https://github.com/kennethreitz/osx-gcc-installer/) if
-   you don't have any (such as those come with Xcode).
-2. Install rvm (https://rvm.io/rvm/install/).
+1. Install Xcode and its command line tools.
+2. Install Homebrew (https://brew.sh/).
 3. Follow the steps below:
 
-        rvm install 1.9.3
-        rvm 1.9.3
+        brew install rbenv ruby-build
+        rbenv install 2.3.4
         bundle install --no-cache
 
 ### Mac OS X (JRuby)
 
-1. Install rvm (https://rvm.io/rvm/install/).
-2. Follow the steps below:
+1. Install Xcode and its command line tools.
+2. Install Homebrew (https://brew.sh/).
+3. Follow the steps below:
 
-        rvm install jruby
-        rvm jruby
+        brew install rbenv ruby-build
+        rbenv install jruby-1.7.26
         bundle install --no-cache
 
 ### Linux
 
 1. Install gcc
-2. Install rvm (https://rvm.io/rvm/install/).
+2. Install rbenv and ruby-build (cf. https://github.com/rbenv/rbenv#readme, https://github.com/rbenv/ruby-build#readme).
 3. Follow the steps below:
 
-        rvm install 1.9.3
-        rvm 1.9.3
+        rbenv install 2.3.4
         bundle install --no-cache
 
 ### Windows
@@ -230,7 +229,7 @@ vendor/cache/libxml-ruby-\*.gem
 (https://github.com/KojiNakamaru/libxml-ruby/tree/develop) is utilized
 to accelerate parsing xml data. This is a variant of the original
 libxml-ruby-\*.gem to be built for both Windows MinGW ruby and Mac
-OS X rvm ruby.
+OS X rbenv ruby.
 
 ### ActionCompiler
 

@@ -1,0 +1,5 @@
+#!/bin/bash
+export PATH=/usr/bin:/bin:/usr/sbin:/sbin
+cd "$(dirname "${BASH_SOURCE[0]}")"
+xattr -d -r com.apple.metadata:kMDItemWhereFroms .
+xattr -d -r com.apple.quarantine .

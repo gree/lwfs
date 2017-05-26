@@ -1,8 +1,8 @@
 build: testtag clean
 	mkdir -p tmp/LWFS
 	cp -a LWFS tmp/LWFS/LWFS
-	cp -a README*.txt *.app tmp/LWFS
-	unzip -q ruby19.zip -d tmp/LWFS/LWFS/.a
+	cp -a README*.txt *.app fix-file-permissions tmp/LWFS
+	unzip -q ruby23.zip -d tmp/LWFS/LWFS/.a
 	mkdir -p tmp/LWFS/LWFS/.a/lwfs
 	cp -a ../../{lib,lwfs.rb,lwfs.ru,lwfs.conf,tmpl} tmp/LWFS/LWFS/.a/lwfs
 	find tmp/LWFS -name '.git*' -print0 | xargs -0 rm -rf
