@@ -1,4 +1,21 @@
 (function() {
+    // patch CanvasRenderingContext2D about font settings.
+    (function() {
+        var desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'font');
+        Object.defineProperty(
+            CanvasRenderingContext2D.prototype,
+            'font',
+            {
+                get: function() {
+                    return desc["get"].bind(this)();
+                },
+                set: function(v) {
+                    v = v.replace(/sans-serif$/, '"Hiragino Kaku Gothic ProN","MS PGothic",sans-serif');
+                    console.log(v);
+                    desc['set'].bind(this)(v);
+                }
+            });
+    })();
     var isFile = /^file:/.test(window.location.href);
     var ua = navigator.userAgent;
     var isIOS = /(iPhone|iPad|iPod touch)/.test(ua);
