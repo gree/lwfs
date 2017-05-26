@@ -80,6 +80,7 @@ $log = Logger.new((ENV['LWFS_LOG_FILE'].nil?) ? STDOUT : ENV['LWFS_LOG_FILE'], 1
 $lwfsconf = {
   # global/static settings
   'REMOTE_SERVER' => nil,
+  'REMOTE_SERVER_SYNC_METHOD' => nil,
   'BIRD_WATCHER_SERVER' => nil,
   'IGNORED_PATTERN' => '[,#].*|.*\.sw[op]|.*~',
   'ALLOWED_PREFIX_PATTERN' => '',
@@ -219,19 +220,22 @@ configure do
   AUTO_CENTERING = $lwfsconf['AUTO_CENTERING']
   SCREEN_SIZE = $lwfsconf['SCREEN_SIZE']
   REMOTE_SERVER = $lwfsconf['REMOTE_SERVER']
+  REMOTE_SERVER_SYNC_METHOD = $lwfsconf['REMOTE_SERVER_SYNC_METHOD']
   BIRD_WATCHER_SERVER = $lwfsconf['BIRD_WATCHER_SERVER']
   TARGETS = $lwfsconf['TARGETS']
   STATS_DISPLAY = $lwfsconf['STATS_DISPLAY']
   RUBY_COMMAND = (RUBY_PLATFORM =~ /java/) ? 'jruby' : 'ruby'
   if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
     prefix = ENV['HOME']
-    updateJSFL(glob(prefix + '/Library/Application Support/Adobe/Flash C[CS]*/*/Configuration/Commands'))
+    updateJSFL(glob([prefix + '/Library/Application Support/Adobe/Animate CC*/*/Configuration/Commands',
+                     prefix + '/Library/Application Support/Adobe/Flash C[CS]*/*/Configuration/Commands']))
     OPEN_COMMAND = 'open'
     WATCH_SCRIPT = 'lib/watch.rb'
     LOG_FILE = '/dev/null'
   elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
     prefix = ENV['USERPROFILE'].gsub(/\\/, '/')
-    updateJSFL(glob([prefix + '/AppData/Local/Adobe/Flash C[CS]*/*/Configuration/Commands',
+    updateJSFL(glob([prefix + '/AppData/Local/Adobe/Animate CC*/*/Configuration/Commands',
+                     prefix + '/AppData/Local/Adobe/Flash C[CS]*/*/Configuration/Commands',
                      prefix + '/Local Settings/Application Data/Adobe/Flash C[CS]*/*/Configuration/Commands']))
     OPEN_COMMAND = 'start'
     WATCH_SCRIPT = 'lib/watch.rb'
@@ -334,7 +338,7 @@ get '/*' do |path|
     path = File.join(settings.public_folder, path)
   end
   begin
-    if path =~ /\.(html|status|loading)$/
+    if path =~ /\.(html|status|loading)(\?.*)?$/
       $mutex_p.synchronize do
         begin
           last_modified File.mtime(path)
@@ -409,9 +413,7 @@ post '/update/*' do |target|
         end
       end
     else
-      $mutex_p.synchronize do
-        updateLoadingStatus("#{DST_DIR}/", true)
-      end
+      updateLoadingStatus("#{DST_DIR}/", true)
       rsync(true) unless REMOTE_SERVER.nil?
     end
     $is_start = false
@@ -420,9 +422,7 @@ post '/update/*' do |target|
     checkInterruptionWait = 0.0
     while is_in_progress
       catch :restart do
-        $mutex_p.synchronize do
-          updateLoadingStatus("#{DST_DIR}/", true)
-        end
+        updateLoadingStatus("#{DST_DIR}/", true)
         checkInterruptionWait += 0.5
         checkInterruptionWait = 3.0 if checkInterruptionWait > 3.0
         t1 = Time.now
@@ -566,9 +566,7 @@ def sync()
   # added/updated folders
   changes = $changes.dup
   changes.each do |name|
-    $mutex_p.synchronize do
-      updateLoadingStatus("#{DST_DIR}/#{name}/", true);
-    end
+    updateLoadingStatus("#{DST_DIR}/#{name}/", true);
   end
   rsync() unless REMOTE_SERVER.nil?
   updates = []
@@ -1111,7 +1109,7 @@ def outputNG(lwfsconf, update_time, folder, name, prefix, commandline, msg)
   relative = '../' * (name.split('/').count + 1)
   content = <<-"EOF"
 <!DOCTYPE HTML>
-<html>
+<html lang="en">
   <head>
 #{HEAD_COMMON}
     <title>ERROR: #{name}</title>
@@ -1138,6 +1136,13 @@ def outputNG(lwfsconf, update_time, folder, name, prefix, commandline, msg)
   EOF
   File.open("#{folder}/index-err.html", 'w') do |fp|
     fp.write(content)
+  end
+  TARGETS.each do |target|
+    ['release', 'debug', 'birdwatcher'].each do |rel|
+      File.open("#{folder}/index-#{target}#{(rel == 'release') ? '' : '-' + rel}.html", 'w') do |fp|
+        fp.write(content)
+      end
+    end
   end
   File.open("#{folder}/.status", 'w') do |fp|
     fp.puts('NG')
@@ -1201,21 +1206,31 @@ def updateFolders(changes)
 end
 
 def rsync(is_top_only = false)
-  if is_top_only
-    `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude "#{BASE_DIR}/list/*" #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
-  else
-    `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude list/index.html --exclude list/.loading #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
+  if REMOTE_SERVER_SYNC_METHOD == 'uusync'
+    if is_top_only
+      `uusync --exclude "/list/.*/" #{BASE_DIR} http://#{REMOTE_SERVER}/uusync/lwfs/#{MY_ID}`
+    else
+      `uusync #{BASE_DIR} http://#{REMOTE_SERVER}/uusync/lwfs/#{MY_ID}`
+    end
+  else  # rsync
+    if is_top_only
+      `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude "#{BASE_DIR}/list/*" #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
+    else
+      `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX --exclude list/index.html --exclude list/.loading #{BASE_DIR}/ rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}`
+    end
+    `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.loading rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
   end
-  `rsync -rtz --delete --no-p --no-g --chmod=ugo=rX #{DST_DIR}/index.html #{DST_DIR}/.loading rsync://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list`
 end
 
 def updateLoadingStatus(dir, is_in_conversion, update_time = nil)
   if File.exists?(dir)
-    File.open("#{dir}/.loading", 'w') do |fp|
-      if update_time.nil?
-        fp.write("{\"is_in_conversion\":#{is_in_conversion}}")
-      else
-        fp.write("{\"is_in_conversion\":#{is_in_conversion},\"update_time\":#{update_time}}")
+    $mutex_p.synchronize do
+      File.open("#{dir}/.loading", 'w') do |fp|
+        if update_time.nil?
+          fp.write("{\"is_in_conversion\":#{is_in_conversion}}")
+        else
+          fp.write("{\"is_in_conversion\":#{is_in_conversion},\"update_time\":#{update_time}}")
+        end
       end
     end
   end
@@ -1345,8 +1360,8 @@ def updateTopIndex(update_time, mode = :default, exceptions = [])
     File.open("#{DST_DIR}/index.html", 'w') do |fp|
       fp.write(content)
     end
-    updateLoadingStatus("#{DST_DIR}/", mode == :start, index_update_time)
   end
+  updateLoadingStatus("#{DST_DIR}/", mode == :start, index_update_time)
 end
 
 def sameFile?(f0, f1)
