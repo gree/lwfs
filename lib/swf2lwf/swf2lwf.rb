@@ -1971,7 +1971,7 @@ def parse_action
       target = get_string
       if url =~ /^FSCommand:event$/i
         info "    EVENT " + target
-        error "Invalid event name: #{target}" unless target =~ /^[a-zA-Z0-9_]+$/
+        error "Invalid event name: #{target}" unless target =~ /^[a-zA-Z0-9_][a-zA-Z0-9_-]*$/
         actions.push [:EVENT, target]
         @event_map[target] = true
       elsif url =~ /^FSCommand:skip$/i
@@ -2111,7 +2111,7 @@ def parse_define_font2
 
   fontinfo = nil
   @font_table.each do |t|
-    if Regexp.new(t["regexp"]) =~ name
+    if Regexp.new(t["regexp"], Regexp::IGNORECASE) =~ name
       fontinfo = t
       break
     end
@@ -2602,7 +2602,7 @@ def parse_export
         @particle_name_map[name] = true
         @objects[obj_id].name = name
         @objects[obj_id].type = :PARTICLE
-      when /_PROG_([a-zA-Z0-9_]+)/
+      when /_PROG_([a-zA-Z0-9_][a-zA-Z0-9_-]*)/
         name = $1
         @program_object_name_map[name] = true
         @objects[obj_id].name = name
