@@ -400,7 +400,8 @@ post '/update/*' do |target|
       end
       rsync(true) unless REMOTE_SERVER.nil?
       if REMOTE_SERVER.nil?
-        `#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/list/`
+        # `#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/list/`
+        `#{OPEN_COMMAND} http://localhost:10080/lwfs/list/`
       else
         `#{OPEN_COMMAND} http://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list/`
       end

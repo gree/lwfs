@@ -8,7 +8,7 @@ Installation
 ============
 
 1. Right-click fix-file-permissions and select "Open." Select "OK" for
-   the followin dialog:
+   the following dialog:
 
      "fix-file-permissions" is from an unidentified developer. Are you
      sure you want to open it?
