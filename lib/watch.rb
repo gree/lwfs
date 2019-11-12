@@ -50,9 +50,9 @@ listener = TinyListen.to(FOLDER) do |modified, added, removed|
 #                           :undef => :replace)
       entry = entry.sub(/^#{FOLDER}\//, '')
       prefix = ''
-      if entry =~ /^([A-Z][A-Z0-9_\-]*)((\/[A-Z][A-Z0-9_\-]*)*)(\/?)/
+      if entry =~ /^(([A-Z][A-Z0-9_\-]*\/)*)/
         # fully captal characters represent projects and allow nested folders.
-        prefix = $1 + $2 + $4
+        prefix = $1
       end
       entry = entry.slice(prefix.length, entry.length - prefix.length)
       $changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ IGNORED_PATTERN

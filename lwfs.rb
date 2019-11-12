@@ -377,18 +377,19 @@ post '/update/*' do |target|
     if params[:arg]
       new_changes = params[:arg].split("\n")
     else
-      glob("#{SRC_DIR}/**/*").each do |entry|
+      glob("#{SRC_DIR}/**/*.swf").each do |entry|
         prefix = "#{SRC_DIR}/"
         entry = entry.slice(prefix.length, entry.length - prefix.length)
         prefix = ''
-        if entry =~ /^([A-Z][A-Z0-9_\-]*)((\/[A-Z][A-Z0-9_\-]*)*)(\/?)/
+        if entry =~ /^(([A-Z][A-Z0-9_\-]*\/)*)/
           # fully capital characters represent projects and allow nested folders.
-          prefix = $1 + $2 + $4
+          prefix = $1
         end
         entry = entry.slice(prefix.length, entry.length - prefix.length)
         new_changes.push(prefix + entry.sub(/\/.*$/, '')) unless entry == '' or entry =~ IGNORED_PATTERN
       end
     end
+    new_changes = new_changes.sort.uniq
     if params[:force]
       new_changes.each do |name|
         dst = "#{DST_DIR}/#{name}/.status"
