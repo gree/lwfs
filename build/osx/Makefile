@@ -20,3 +20,10 @@ testtag:
 
 clean:
 	rm -rf LWFS-osx* LWFS-osx*.zip tmp
+
+buildcontrolapps:
+	for i in start stop; \
+	do \
+	  rm -rf $$i.app; \
+	  platypus --quit-after-execution --bundle-identifier net.gree.lwfs.$$i $$i.sh $$i.app; \
+	done
