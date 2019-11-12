@@ -106,6 +106,23 @@ $lwfsconf = {
   'DISPLAY_SCALE' => 0,
   'AUTO_CENTERING' => false,
   'SCREEN_SIZE' => '0x0',
+  'PREVIEW_SIZES' =>
+  [
+        'default',
+        '480x800',
+        '540x960',
+        '640x960',
+        '640x1136',
+        '768x1024',
+        '1125x2436',
+        '|',
+        '800x480',
+        '960x540',
+        '960x640',
+        '1136x640',
+        '1024x768',
+        '2436x1125'
+  ],
   'STAGE' =>
   {
     'ELASTIC' => false,
@@ -219,6 +236,7 @@ configure do
   DISPLAY_SCALE = $lwfsconf['DISPLAY_SCALE'].to_f
   AUTO_CENTERING = $lwfsconf['AUTO_CENTERING']
   SCREEN_SIZE = $lwfsconf['SCREEN_SIZE']
+  PREVIEW_SIZES = $lwfsconf['PREVIEW_SIZES']
   REMOTE_SERVER = $lwfsconf['REMOTE_SERVER']
   REMOTE_SERVER_SYNC_METHOD = $lwfsconf['REMOTE_SERVER_SYNC_METHOD']
   BIRD_WATCHER_SERVER = $lwfsconf['BIRD_WATCHER_SERVER']
@@ -965,7 +983,8 @@ def outputOK(lwfsconf, update_time, folder, name, prefix, commandline)
               "elastic": #{lwfsconf['STAGE']['ELASTIC']},
               "halign": #{lwfsconf['STAGE']['HALIGN']},  // -1, 0, 1
               "valign": #{lwfsconf['STAGE']['VALIGN']}   // -1, 0, 1
-          }
+          },
+          "preview_sizes": #{lwfsconf['PREVIEW_SIZES']}
       };
       window["testlwf_statsdisplay"] = {
           "graph": #{STATS_DISPLAY['GRAPH']},
@@ -1060,7 +1079,8 @@ def outputOK(lwfsconf, update_time, folder, name, prefix, commandline)
               "elastic": #{lwfsconf['STAGE']['ELASTIC']},
               "halign": #{lwfsconf['STAGE']['HALIGN']},  // -1, 0, 1
               "valign": #{lwfsconf['STAGE']['VALIGN']}   // -1, 0, 1
-          }
+          },
+          "preview_sizes": #{lwfsconf['PREVIEW_SIZES']}
       };
       window["testlwf_statsdisplay"] = {
           "graph": #{STATS_DISPLAY['GRAPH']},

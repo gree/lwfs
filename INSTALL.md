@@ -110,6 +110,22 @@ You may configure LWFS on its start-up with ~/Desktop/LWFS_work/lwfs.conf:
         "DISPLAY_SCALE": 0,
         "AUTO_CENTERING": false,
         "SCREEN_SIZE": "0x0",
+        "PREVIEW_SIZES": [
+            "default",
+            "480x800",
+            "540x960",
+            "640x960",
+            "640x1136",
+            "768x1024",
+            "1125x2436",
+            "|",
+            "800x480",
+            "960x540",
+            "960x640",
+            "1136x640",
+            "1024x768",
+            "2436x1125"
+        ],
         "STAGE":
         {
             "ELASTIC": false,
@@ -168,6 +184,8 @@ is converted.
   * True if rootMovie is centered.
 * SCREEN\_SIZE
   * Fixed screen size to be used ("0x0" means not fixed).
+* PREVIEW\_SIZES
+  * Preview sizes enumerated at "screen size:".
 * STAGE
   * ELASTIC
     * True if the stage will always fullfil its wrapper.

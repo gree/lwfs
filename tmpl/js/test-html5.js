@@ -971,19 +971,20 @@
                 var sizes = [
                     'default',
                     '480x800',
-                    //'480x854',
                     '540x960',
                     '640x960',
                     '640x1136',
                     '768x1024',
                     '|',
                     '800x480',
-                    //'854x480',
                     '960x540',
                     '960x640',
                     '1136x640',
                     '1024x768'
                 ];
+                if (config.preview_sizes) {
+                    sizes = config.preview_sizes;
+                }
                 var resize = function(event) {
                     if (/([0-9]+)x([0-9]+)/.test(event.target.textContent)) {
                         ss.w = parseInt(RegExp.$1) / 2;
