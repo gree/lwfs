@@ -1,14 +1,15 @@
 unalias -a
-export PATH=/usr/local/ruby23/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+export PATH=/usr/local/ruby27/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 
 # NOTE: we need to put MacOSX10.6.sdk as below and also need to modify
 # /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Info.plist
-# to allow 10.6 (cf. https://forums.developer.apple.com/thread/43381).
-export MACOSX_DEPLOYMENT_TARGET=10.6
-export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.6.sdk
+# to allow 10.11 (cf. https://forums.developer.apple.com/thread/43381).
+# (Xcode 11.3.1's default setting is 10.11)
+export MACOSX_DEPLOYMENT_TARGET=10.11
+export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
 
-export CFLAGS="-m32 -arch i386 -I/tmp/opt/include -I/tmp/opt/include/libxml"
-export CXXFLAGS="-m32 -arch i386 -I/tmp/opt/include -I/tmp/opt/include/libxml"
+export CFLAGS="-I/tmp/opt/include -I/tmp/opt/include/libxml"
+export CXXFLAGS="-I/tmp/opt/include -I/tmp/opt/include/libxml"
 export CPPFLAGS=" -I/tmp/opt/include -I/tmp/opt/include/libxml"
 export LDFLAGS="-L/tmp/opt/lib -Wl,-no_pie,-Z,-search_paths_first,-L/tmp/opt/lib,-F/System/Library/Frameworks,-L/usr/lib"
 export CONFIGURE_ARGS="--with-cflags='$CFLAGS' --with-cxxflags='$CXXFLAGS' --with-ldflags='$LDFLAGS'"
