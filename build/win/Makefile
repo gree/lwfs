@@ -2,7 +2,7 @@ build: testtag clean
 	mkdir -p tmp/LWFS
 	cp -a LWFS tmp/LWFS/LWFS
 	cp -a README*.txt *.jse tmp/LWFS
-	unzip -q ruby19.zip -d tmp/LWFS/LWFS/.a
+	unzip -q ruby27.zip -d tmp/LWFS/LWFS/.a
 	mkdir -p tmp/LWFS/LWFS/.a/lwfs
 	cp -a ../../{lib,lwfs.rb,lwfs.ru,lwfs.conf,tmpl} tmp/LWFS/LWFS/.a/lwfs
 	find tmp/LWFS -name '.git*' -print0 | xargs -0 rm -rf

@@ -1,2 +1,1 @@
-PATH=/home/ruby19/bin:/usr/bin
-export PATH
+export PATH="/c/PROGRA~2/GnuWin32/bin:/c/Ruby27-x64/bin:/c/Ruby27-x64/msys64/mingw64/bin:/Ruby27-x64/bin:/usr/bin:/bin"

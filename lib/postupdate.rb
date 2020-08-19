@@ -8,7 +8,8 @@ def postUpdate(port, arg = nil)
     if arg
       res = client.post_content("http://localhost:#{port}/update/", {'arg' => arg})
     else
-      res = client.post_content("http://localhost:#{port}/update/")
+      # https://stackoverflow.com/questions/2651379/webrickhttpstatuslengthrequired-error-when-accessing-create-method-in-contro/4061028#4061028
+      res = client.post_content("http://localhost:#{port}/update/", {})
     end
     ret = true  # at least the http request was correctly processed.
   rescue

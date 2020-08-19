@@ -1,5 +1,5 @@
 cd /d "%~dp0"
-set PATH=%~dp0ruby19\bin;%PATH%
+set PATH=%~dp0ruby27\bin;%PATH%
 if exist "..\.lwfsrc" copy "..\.lwfsrc" tmp.bat & call tmp.bat
 set JRUBY_OPTS="--server -J-Djruby.jit.threshold=30"
 set TZ=
@@ -14,7 +14,7 @@ ver | find "XP"
 if %errorlevel% EQU 0 goto :winxp
 
 :run
-ruby -Ku "%~dp0ruby19\bin\rackup" lwfs.ru
+ruby -Ku "%~dp0ruby27\bin\rackup" lwfs.ru
 exit
 
 :setdatafolder
