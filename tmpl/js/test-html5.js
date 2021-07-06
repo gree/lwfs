@@ -890,7 +890,7 @@
             {
                 var div = document.createElement('div');
                 div.className = 'info';
-                div.innerHTML = "<a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '" + window['testlwf_name'] + "', 'force': true}); return false;\">force to update</a>";
+                div.innerHTML = "<a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10084/update/', {'arg': '" + window['testlwf_name'] + "', 'force': true}); return false;\">force to update</a>";
                 lpart.appendChild(div);
             }
             {

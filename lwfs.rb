@@ -192,7 +192,7 @@ EOF
 HEAD_MOBILE.chomp!
 
 configure do
-  set :port, 10080
+  set :port, 10084
   set :public_folder, File.dirname(__FILE__) + '/htdocs'
 
   def updateJSFL(folders)
@@ -420,7 +420,7 @@ post '/update/*' do |target|
       rsync(true) unless REMOTE_SERVER.nil?
       if REMOTE_SERVER.nil?
         # `#{OPEN_COMMAND} http://#{Socket.gethostname}:10080/lwfs/list/`
-        `#{OPEN_COMMAND} http://localhost:10080/lwfs/list/`
+        `#{OPEN_COMMAND} http://localhost:10084/lwfs/list/`
       else
         `#{OPEN_COMMAND} http://#{REMOTE_SERVER}/lwfs/#{MY_ID}/list/`
       end
@@ -1145,7 +1145,7 @@ def outputNG(lwfsconf, update_time, folder, name, prefix, commandline, msg)
     <div id="wrapper">
       <div id="header">
         <h1>ERROR: #{name}<span id="loading_icon"></span></h1>
-        <div class="info"><a href="javascript:void(0)" onClick="Ajax.post('http://localhost:10080/update/', {'arg': '#{name}', 'force': true}); return false;">force to update</a></div>
+        <div class="info"><a href="javascript:void(0)" onClick="Ajax.post('http://localhost:10084/update/', {'arg': '#{name}', 'force': true}); return false;">force to update</a></div>
         <div class="info">(#{commandline})</div>
         <div class="info">#{CGI.escapeHTML(msg.chomp.gsub("\n", "\n  "))}</div>
   EOF
@@ -1312,7 +1312,7 @@ def updateTopIndex(update_time, mode = :default, exceptions = [])
         <div id="lpart">
           <h1>lwfs<span id="loading_icon"></span></h1>
           <p>(version: #{VERSION})</p>
-          <p><a href="javascript:void(0)" onClick=\"Ajax.post('http://localhost:10080/update/', {'force': true}); return false;\">force to update all</a></p>
+          <p><a href="javascript:void(0)" onClick=\"Ajax.post('http://localhost:10084/update/', {'force': true}); return false;\">force to update all</a></p>
         </div>
         <div id="rpart">
           <span id="qr"></span>
@@ -1339,7 +1339,7 @@ def updateTopIndex(update_time, mode = :default, exceptions = [])
     prefix = ''
     date = lastModified("#{DST_DIR}/#{name}")
     date = date.strftime('%F %T')
-    content += "          <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10080/locate/#{name}'); return false;\">#{name}</a></td><td class=\"center\"><a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10080/update/', {'arg': '#{name}', 'force': true}); return false;\">u</a></td>"
+    content += "          <tr><td><a href=\"javascript:void(0)\" onClick=\"Ajax.get('http://localhost:10084/locate/#{name}'); return false;\">#{name}</a></td><td class=\"center\"><a href=\"javascript:void(0)\" onClick=\"Ajax.post('http://localhost:10084/update/', {'arg': '#{name}', 'force': true}); return false;\">u</a></td>"
     if status != 'NG'
       ['loader', 'webkitcss', 'canvas', 'webgl'].each do |target|
         next unless TARGETS.include?(target)
