@@ -1,14 +1,8 @@
 (function() {
     var INTERVAL = 500;
     var UPDATE_TIME = '0';
-    // cf. http://d.hatena.ne.jp/amachang/20061201/1164986067
-    var currentScript
-        = (function (e) {
-            if (e.nodeName.toLowerCase() == 'script') {
-                return e;
-            }
-            return arguments.callee(e.lastChild);
-        })(document);
+    // cf. https://stackoverflow.com/questions/403967/how-may-i-reference-the-script-tag-that-loaded-the-currently-executing-script
+    var currentScript = document.currentScript;
     if (currentScript.hasAttributes()) {
         for (var i in currentScript.attributes) {
             var attr = currentScript.attributes[i];
