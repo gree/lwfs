@@ -50,7 +50,11 @@ OUT_DIR = ''
 if RbConfig::CONFIG['host_os'].downcase =~ /darwin/
   defineDirs(ENV['HOME'] + '/Desktop')
 elsif RbConfig::CONFIG['host_os'].downcase =~ /mswin(?!ce)|mingw|cygwin|bccwin/
-  defineDirs(ENV['USERPROFILE'].gsub(/\\/, '/') + '/Desktop') # '/Desktop' won't work for Windows XP
+  tmp = ENV['ONEDRIVE'].gsub(/\\/, '/') + '/Desktop'
+  unless File.directory?(tmp)
+    tmp = ENV['USERPROFILE'].gsub(/\\/, '/') + '/Desktop'
+  end
+  defineDirs(tmp) # '/Desktop' won't work for Windows XP
 elsif RbConfig::CONFIG['host_os'].downcase =~ /linux/
   defineDirs(ENV['HOME'])
 end
