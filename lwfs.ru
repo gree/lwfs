@@ -1,5 +1,4 @@
 # -*- mode: ruby; coding: utf-8 -*-
-#\ -p 10084
 require 'rubygems'
 require File.dirname(__FILE__) + '/lwfs'
 

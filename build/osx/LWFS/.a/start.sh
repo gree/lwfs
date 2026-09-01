@@ -3,7 +3,17 @@
 BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ruby environment
-RBH=$(echo "$BASE"/ruby*)
+case $(arch) in
+arm64)
+    RBH="$BASE/ruby27-arm64"
+    ;;
+x86_64)
+    RBH="$BASE/ruby27-x86_64"
+    ;;
+*)
+    exit 1
+    ;;
+esac
 export PATH="$RBH/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 if [ -n "$DYLD_LIBRARY_PATH" ]; then
   export DYLD_LIBRARY_PATH="$RBH/lib:$DYLD_LIBRARY_PATH"
@@ -33,4 +43,4 @@ fi
 # app
 cd "$BASE/lwfs"
 #ruby lwfs.rb
-ruby "$RBH/bin/rackup" lwfs.ru
+ruby "$RBH/bin/rackup" -p 10084 lwfs.ru

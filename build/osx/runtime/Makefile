@@ -1,17 +1,17 @@
 # -*- mode: makefile-gmake; -*-
 
-RUBY=https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.1.tar.bz2
-GETTEXT=https://ftp.gnu.org/pub/gnu/gettext/gettext-0.20.2.tar.gz
+RUBY=https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.8.tar.bz2
+GETTEXT=https://ftp.jaist.ac.jp/pub/GNU/gettext/gettext-0.20.2.tar.gz
 LIBJPEG=http://www.ijg.org/files/jpegsrc.v9d.tar.gz
-LIBPNG=http://prdownloads.sourceforge.net/libpng/libpng-1.2.59.tar.gz
-ZLIB=http://zlib.net/zlib-1.2.11.tar.gz
-LIBICONV=http://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.16.tar.gz
+LIBPNG=http://prdownloads.sourceforge.net/libpng/libpng-1.6.58.tar.gz
+ZLIB=https://zlib.net/fossils/zlib-1.3.2.tar.gz
+LIBICONV=https://ftp.jaist.ac.jp/pub/GNU/libiconv/libiconv-1.16.tar.gz
 LIBLZMA=https://tukaani.org/xz/xz-5.2.5.tar.gz
 LIBXML2=http://xmlsoft.org/sources/libxml2-2.9.10.tar.gz
 YAML=http://pyyaml.org/download/libyaml/yaml-0.2.4.tar.gz
-GDBM=https://ftp.gnu.org/gnu/gdbm/gdbm-1.18.1.tar.gz
-GMP=https://ftp.gnu.org/gnu/gmp/gmp-6.2.0.tar.bz2
-OPENSSL=https://www.openssl.org/source/openssl-1.1.1g.tar.gz
+GDBM=https://ftp.jaist.ac.jp/pub/GNU/gdbm/gdbm-1.18.1.tar.gz
+GMP=https://ftp.jaist.ac.jp/pub/GNU/gmp/gmp-6.3.0.tar.xz
+OPENSSL=https://www.openssl.org/source/openssl-1.1.1w.tar.gz
 RSYNC=http://rsync.samba.org/ftp/rsync/src/rsync-3.1.3.tar.gz
 
 WGET=wget --no-check-certificate
@@ -19,10 +19,11 @@ WGET=wget --no-check-certificate
 default:
 	@echo 'make [ all | ruby | gems | cleanall | clean | updateruby | rsync ]'
 
-all: checksdk cleanall download gettext zlib libpng libjpeg libiconv liblzma libxml2 yaml gmp gdbm openssl ruby gems rsync checkso
+#all: checksdk cleanall download gettext zlib libpng libjpeg libiconv liblzma libxml2 yaml gmp gdbm openssl ruby gems rsync checkso
+all: cleanall download gettext zlib libpng libjpeg libiconv liblzma libxml2 yaml gmp gdbm openssl ruby gems rsync checkso
 
-checksdk:
-	@source _bashrc; if [ ! -d $$SDKROOT ]; then echo "cannot find $$SDKROOT"; exit 1; fi
+#checksdk:
+#	@source _bashrc; if [ ! -d $$SDKROOT ]; then echo "cannot find $$SDKROOT"; exit 1; fi
 
 download:
 	if [ ! -d dl ]; then mkdir dl; fi
@@ -45,15 +46,18 @@ checkso:
 
 ruby:
 	tar xjf dl/ruby-*.tar.bz2
-	bash -c 'source _bashrc; cd ruby-*; ./configure --prefix=/usr/local/ruby27 --target=x86_64-apple-darwin15 --disable-install-doc --with-openssl-dir=`echo ../openssl-*`; make'
+#	bash -c 'source _bashrc; cd ruby-*; ./configure --prefix=/usr/local/ruby27 --target=x86_64-apple-darwin15 --disable-install-doc --with-openssl-dir=`echo ../openssl-*`; make'
+	bash -c 'source _bashrc; cd ruby-*; ./configure --prefix=/usr/local/ruby27 --disable-install-doc --with-openssl-dir=`echo ../openssl-*`; make'
 	sudo bash -c 'source _bashrc; cd ruby-*; make install'
 
 gems:
+#	sudo bash -c 'source _bashrc; gem update --system'
 	sudo bash -c 'source _bashrc; gem install --no-document httpclient -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
 	sudo bash -c 'source _bashrc; gem install --no-document rb-fsevent -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
 	sudo bash -c 'source _bashrc; gem install --no-document sinatra -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
 	sudo bash -c 'source _bashrc; gem install --no-document thin -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
 	sudo bash -c 'source _bashrc; gem install --no-document uuidtools -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
+	sudo bash -c 'source _bashrc; gem install --no-document rackup -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
 	sudo bash -c 'source _bashrc; gem install --no-document ../../../vendor/cache/ruby-lzma-*[0-9].gem -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
 	sudo bash -c 'source _bashrc; gem install --no-document ../../../vendor/cache/libxml-ruby-*[0-9].gem -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
 	sudo bash -c 'source _bashrc; gem install --no-document ../../../lib/swf2lwf/gems/rb-img-*[0-9].gem -- --with-cflags="$$CFLAGS" --with-ldflags="$$LDFLAGS"'
@@ -61,24 +65,25 @@ gems:
 
 gettext:
 	tar xzf dl/gettext-0.20.2.tar.gz
-	source _bashrc; cd gettext-*; ./configure; make
+	source _bashrc; cd gettext-*; export CFLAGS="$$CFLAGS -Wno-incompatible-function-pointer-types"; ./configure; make
 	mkdir -p /tmp/opt/include /tmp/opt/lib
 	cd gettext-*; cp gettext-runtime/intl/libintl.h /tmp/opt/include
 	cd gettext-*; cp gettext-runtime/intl/.libs/libintl.a /tmp/opt/lib
 
 zlib:
 	tar xzf dl/zlib*.tar.gz
-	source _bashrc; cd zlib-*; ./configure --static; make
+	source _bashrc; cd zlib-*; ./configure --enable-static; make
 	mkdir -p /tmp/opt/include /tmp/opt/lib
 	cd zlib-*; cp zconf.h zlib.h /tmp/opt/include
 	cd zlib-*; cp libz.a /tmp/opt/lib
 
 libpng:
 	tar xzf dl/libpng*.tar.gz
+#	source _bashrc; cd libpng-*; export CFLAGS="$$CFLAGS -DPNG_NO_FLOATING_POINT_SUPPORTED"; ./configure; make
 	source _bashrc; cd libpng-*; ./configure; make
 	mkdir -p /tmp/opt/include /tmp/opt/lib
 	cd libpng-*; cp png*.h /tmp/opt/include
-	cd libpng-*; cp .libs/libpng.a /tmp/opt/lib
+	cd libpng-*; cp .libs/libpng16.a /tmp/opt/lib/libpng.a
 
 libjpeg:
 	tar xzf dl/jpegsrc.*.tar.gz
@@ -105,7 +110,7 @@ liblzma:
 
 libxml2:
 	tar xzf dl/libxml2-*.tar.gz
-	source _bashrc; cd libxml2-*; ./configure --disable-shared; make libxml2.la
+	source _bashrc; cd libxml2-*; export CFLAGS="$$CFLAGS -Wno-incompatible-function-pointer-types"; ./configure --disable-shared; make libxml2.la
 	mkdir -p /tmp/opt/include/libxml /tmp/opt/lib
 	cd libxml2-*; cp include/libxml/*.h /tmp/opt/include/libxml
 	cd libxml2-*; cp .libs/libxml2.a /tmp/opt/lib
@@ -125,7 +130,7 @@ gdbm:
 	cd gdbm-*; cp src/.libs/libgdbm.a /tmp/opt/lib
 
 gmp:
-	tar xjf dl/gmp-*.tar.bz2
+	tar xJf dl/gmp-*.tar.xz
 	source _bashrc; cd gmp-*; ./configure; make
 	mkdir -p /tmp/opt/include /tmp/opt/lib
 	cd gmp-*; cp gmp.h gmpxx.h /tmp/opt/include
@@ -133,7 +138,7 @@ gmp:
 
 openssl:
 	tar xzf dl/openssl-*.tar.gz
-	source _bashrc; cd openssl-*; ./configure darwin64-x86_64-cc; make
+	source _bashrc; cd openssl-*; ./configure darwin64-arm64-cc; make
 	mkdir -p /tmp/opt/include /tmp/opt/lib
 	cd openssl-*; cp -r include/openssl /tmp/opt/include
 	cd openssl-*; cp -r *.a /tmp/opt/lib

@@ -14,7 +14,7 @@ ver | find "XP"
 if %errorlevel% EQU 0 goto :winxp
 
 :run
-ruby -Ku "%~dp0ruby27\bin\rackup" lwfs.ru
+ruby -Ku "%~dp0ruby27\bin\rackup" -p 10084 lwfs.ru
 exit
 
 :setdatafolder

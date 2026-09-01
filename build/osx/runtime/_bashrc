@@ -6,10 +6,11 @@ export PATH=/usr/local/ruby27/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 # to allow 10.11 (cf. https://forums.developer.apple.com/thread/43381).
 # (Xcode 11.3.1's default setting is 10.11)
 export MACOSX_DEPLOYMENT_TARGET=10.11
-export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
+#export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
 
-export CFLAGS="-I/tmp/opt/include -I/tmp/opt/include/libxml"
-export CXXFLAGS="-I/tmp/opt/include -I/tmp/opt/include/libxml"
-export CPPFLAGS=" -I/tmp/opt/include -I/tmp/opt/include/libxml"
-export LDFLAGS="-L/tmp/opt/lib -Wl,-no_pie,-Z,-search_paths_first,-L/tmp/opt/lib,-F/System/Library/Frameworks,-L/usr/lib"
+export CFLAGS="-I/tmp/opt/include -I/tmp/opt/include/libxml -Wno-implicit-function-declaration"
+export CXXFLAGS="-I/tmp/opt/include -I/tmp/opt/include/libxml -Wno-implicit-function-declaration"
+export CPPFLAGS=" -I/tmp/opt/include -I/tmp/opt/include/libxml -Wno-implicit-function-declaration"
+export LDFLAGS="-L/tmp/opt/lib -Wl,-Z,-search_paths_first,-L/tmp/opt/lib,-F/System/Library/Frameworks,-L/usr/lib"
 export CONFIGURE_ARGS="--with-cflags='$CFLAGS' --with-cxxflags='$CXXFLAGS' --with-ldflags='$LDFLAGS'"
+#export SSL_CERT_FILE=`pwd`/GlobalSignRootCA.pem

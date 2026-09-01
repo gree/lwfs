@@ -7,22 +7,18 @@
 Installation
 ============
 
-1. Right-click fix-file-permissions and select "Open." Select "OK" for
-   the following dialog:
+1. Right-click the folder contains this README.txt and select
+   "Services/New Terminal at Folder."
 
-     "fix-file-permissions" is from an unidentified developer. Are you
-     sure you want to open it?
+2. Enter
+   xattr -cr .
+   and hit return.
 
-   The terminal then opens and fix-file-permissions starts. Close the
-   terminal once the following message is displayed:
+3. Open stop.app. This will stop any running LWFS instance.
 
-     Process completed
+4. Remove previously installed LWFS applications.
 
-2. Open stop.app. This will stop any running LWFS instance.
-
-3. Remove previously installed LWFS applications.
-
-4. Copy this folder onto your drive, such as under /Application.
+5. Copy this folder onto your drive, such as under /Application.
 
 
 Note on recent OS X
