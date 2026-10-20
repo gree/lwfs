@@ -6,9 +6,11 @@ BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 case $(arch) in
 arm64)
     RBH="$BASE/ruby27-arm64"
+    RBARCH="arm64-darwin25"
     ;;
 x86_64)
     RBH="$BASE/ruby27-x86_64"
+    RBARCH="x86_64-darwin15"
     ;;
 *)
     exit 1
@@ -21,7 +23,7 @@ else
   export DYLD_LIBRARY_PATH="$RBH/lib"
 fi
 export RUBYOPT='-Ku'
-export RUBYLIB="$RBH/lib/ruby/2.7.0:$RBH/lib/ruby/2.7.0/x86_64-darwin15"
+export RUBYLIB="$RBH/lib/ruby/2.7.0:$RBH/lib/ruby/2.7.0/$RBARCH"
 export GEM_HOME="$RBH/lib/ruby/gems/2.7.0"
 export GEM_PATH="$RBH/lib/ruby/gems/2.7.0:$RBH/lib/ruby/2.7.0"
 unset IRBRC
